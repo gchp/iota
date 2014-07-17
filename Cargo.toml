@@ -1,0 +1,10 @@
+[package]
+name = "rdit"
+version = "0.1.0"
+authors = ["gregchapple1@gmail.com"]
+
+[dependencies.rustbox]
+git = "https://github.com/gchp/rustbox.git"
+
+[[bin]]
+name = "rdit"
