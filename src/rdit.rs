@@ -40,6 +40,9 @@ impl Editor {
 fn main() {
     rustbox::init();
 
+    rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, "Hello, world!");
+    rustbox::present();
+
     let(events, receiver) = channel();
     let editor = Editor {events: receiver};
 
