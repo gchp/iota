@@ -1,8 +1,8 @@
 extern crate rustbox;
 use std::comm::{Receiver};
 
-struct Editor {
-    events: Receiver<rustbox::Event>,
+pub struct Editor {
+    pub events: Receiver<rustbox::Event>,
 }
 
 enum Response {
@@ -37,23 +37,3 @@ impl Editor {
     }
 }
 
-fn main() {
-    rustbox::init();
-
-    rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, "Hello, world!");
-    rustbox::present();
-
-    let(events, receiver) = channel();
-    let editor = Editor {events: receiver};
-
-    spawn(proc() {
-        loop {
-            events.send(rustbox::poll_event());
-            //break;
-        }
-    });
-
-    editor.start();
-
-    rustbox::shutdown();
-}
