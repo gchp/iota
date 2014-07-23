@@ -8,7 +8,10 @@ fn main() {
     rustbox::present();
 
     let(events, receiver) = channel();
-    let editor = rdit::Editor {events: receiver};
+    let editor = rdit::Editor {
+        events: receiver,
+        buffers: Vec::new()
+    };
 
     spawn(proc() {
         loop {

@@ -3,6 +3,16 @@ use std::comm::{Receiver};
 
 pub struct Editor {
     pub events: Receiver<rustbox::Event>,
+    pub buffers: Vec<Buf>
+}
+
+pub struct Buf {
+    pub first_line: Vec<Line>,
+    pub last_line: Vec<Line>,
+}
+
+pub struct Line {
+    pub data: Vec<u8>,
 }
 
 enum Response {
