@@ -1,5 +1,6 @@
 extern crate rustbox;
 use std::comm::{Receiver};
+use std::io::{File, Open, ReadWrite};
 
 pub struct Editor {
     pub events: Receiver<rustbox::Event>,
@@ -43,6 +44,15 @@ impl Editor {
             if status == false {
                 return false;
             }
+        }
+    }
+
+    pub fn open_file(&self, fp: &str) {
+        let path = Path::new(fp);
+
+        let mut file = std::io::BufferedReader::new(File::open(&path));
+        for line in file.lines() {
+            rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, line.to_string());
         }
     }
 }

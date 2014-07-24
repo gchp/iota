@@ -4,7 +4,7 @@ extern crate rdit;
 fn main() {
     rustbox::init();
 
-    rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, "Hello, world!");
+    rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, "Hello, world!".to_string());
     rustbox::present();
 
     let(events, receiver) = channel();
@@ -21,6 +21,7 @@ fn main() {
     });
 
     editor.start();
+    editor.open_file("/home/gchp/test.txt");
 
     rustbox::shutdown();
 }
