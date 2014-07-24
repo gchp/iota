@@ -53,6 +53,7 @@ impl Editor {
         let mut file = std::io::BufferedReader::new(File::open(&path));
         for line in file.lines() {
             rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, line.to_string());
+            rustbox::present();
         }
     }
 }

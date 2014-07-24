@@ -20,8 +20,8 @@ fn main() {
         }
     });
 
-    editor.start();
     editor.open_file("/home/gchp/test.txt");
+    editor.start();
 
     rustbox::shutdown();
 }
