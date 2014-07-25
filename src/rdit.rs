@@ -1,6 +1,6 @@
 extern crate rustbox;
 use std::comm::{Receiver};
-use std::io::{File, Open, ReadWrite, BufferedReader};
+use std::io::{File, BufferedReader};
 
 
 pub struct Editor {
@@ -17,7 +17,7 @@ pub struct Line {
     pub data: Vec<u8>,
 }
 
-enum Response {
+pub enum Response {
     Continue,
     Quit,
 }
@@ -52,7 +52,7 @@ impl Editor {
         let path = Path::new(fp);
         let file = match File::open(&path) {
             Ok(f) => f,
-            Err(e) => fail!("New file - not implemented"),
+            Err(_) => fail!("New file - not implemented"),
         };
 
         let mut buf = BufferedReader::new(file);
