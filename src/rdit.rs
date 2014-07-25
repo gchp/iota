@@ -1,6 +1,7 @@
 extern crate rustbox;
 use std::comm::{Receiver};
-use std::io::{File, Open, ReadWrite};
+use std::io::{File, Open, ReadWrite, BufferedReader};
+
 
 pub struct Editor {
     pub events: Receiver<rustbox::Event>,
@@ -49,10 +50,15 @@ impl Editor {
 
     pub fn open_file(&self, fp: &str) {
         let path = Path::new(fp);
+        let file = match File::open(&path) {
+            Ok(f) => f,
+            Err(e) => fail!("New file - not implemented"),
+        };
 
-        let mut file = std::io::BufferedReader::new(File::open(&path));
-        for line in file.lines() {
-            rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, line.to_string());
+        let mut buf = BufferedReader::new(file);
+
+        for (index, line) in buf.lines().enumerate() {
+            rustbox::print(1, index + 1, rustbox::Bold, rustbox::White, rustbox::Black, line.unwrap());
             rustbox::present();
         }
     }
