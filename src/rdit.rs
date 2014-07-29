@@ -1,6 +1,6 @@
 extern crate rustbox;
 use std::comm::{Receiver, Sender};
-use std::io::{File, BufferedReader};
+//use std::io::{File, BufferedReader};
 
 
 pub struct Editor {
