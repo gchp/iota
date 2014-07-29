@@ -1,20 +1,23 @@
 extern crate rustbox;
-use std::comm::{Receiver};
+use std::comm::{Receiver, Sender};
 use std::io::{File, BufferedReader};
 
 
 pub struct Editor {
+    pub sender: Sender<rustbox::Event>,
     pub events: Receiver<rustbox::Event>,
     pub buffers: Vec<Buf>
 }
 
 pub struct Buf {
-    pub first_line: Vec<Line>,
-    pub last_line: Vec<Line>,
+    pub first_line: Line,
+    pub last_line: Line,
 }
 
 pub struct Line {
     pub data: Vec<u8>,
+    pub prev: Option<Box<Line>>,
+    pub next: Option<Box<Line>>,
 }
 
 pub enum Response {
@@ -22,7 +25,35 @@ pub enum Response {
     Quit,
 }
 
+impl Buf {
+    pub fn new() -> Buf {
+        Buf {
+            first_line: Line::new(),
+            last_line: Line::new(),
+        }
+    }
+}
+
+impl Line {
+    pub fn new() -> Line {
+        Line {
+            data: Vec::new(),
+            prev: None,
+            next: None,
+        }
+    }
+}
+
 impl Editor {
+    pub fn new() -> Editor {
+        let (send, recv) = channel();
+        Editor {
+            sender: send,
+            events: recv,
+            buffers: Vec::new(),
+        }
+    }
+
     pub fn handle_key_event(&self, ch: u32) -> Response {
         match std::char::from_u32(ch) {
             Some('q') => Quit,
@@ -48,19 +79,5 @@ impl Editor {
         }
     }
 
-    pub fn open_file(&self, fp: &str) {
-        let path = Path::new(fp);
-        let file = match File::open(&path) {
-            Ok(f) => f,
-            Err(_) => fail!("New file - not implemented"),
-        };
-
-        let mut buf = BufferedReader::new(file);
-
-        for (index, line) in buf.lines().enumerate() {
-            rustbox::print(1, index + 1, rustbox::Bold, rustbox::White, rustbox::Black, line.unwrap());
-            rustbox::present();
-        }
-    }
 }
 

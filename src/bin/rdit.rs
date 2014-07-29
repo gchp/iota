@@ -7,20 +7,15 @@ fn main() {
     rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, "Hello, world!".to_string());
     rustbox::present();
 
-    let(events, receiver) = channel();
-    let editor = rdit::Editor {
-        events: receiver,
-        buffers: Vec::new()
-    };
+    let editor = rdit::Editor::new();
+    let sender = editor.sender.clone();
 
     spawn(proc() {
         loop {
-            events.send(rustbox::poll_event());
-            //break;
+            sender.send(rustbox::poll_event());
         }
     });
 
-    editor.open_file("/home/gchp/test.txt");
     editor.start();
 
     rustbox::shutdown();
