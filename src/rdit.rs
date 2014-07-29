@@ -1,6 +1,6 @@
 extern crate rustbox;
 use std::comm::{Receiver, Sender};
-//use std::io::{File, BufferedReader};
+use std::io::{File, BufferedReader};
 
 
 pub struct Editor {
@@ -16,8 +16,8 @@ pub struct Buf {
 
 pub struct Line {
     pub data: Vec<u8>,
-    pub prev: Option<Box<Line>>,
-    pub next: Option<Box<Line>>,
+    pub prev: Option<Line>,
+    pub next: Option<Line>,
 }
 
 pub enum Response {
@@ -27,6 +27,33 @@ pub enum Response {
 
 impl Buf {
     pub fn new() -> Buf {
+        Buf {
+            first_line: Line::new(),
+            last_line: Line::new(),
+        }
+    }
+    
+    pub fn new_from_file(filename: &String) -> Buf {
+        let path = Path::new(filename.to_string());
+        let file = match File::open(&path) {
+            Ok(f) => f,
+            Err(_) => fail!("Not implemented!"),
+        };
+
+        let mut br = BufferedReader::new(file);
+        
+        loop {
+            match br.read_line() {
+                Ok(l) => {
+                    // create a Line instance
+                    let line = Line { data: l };
+                },
+                Err(_) => {
+                    break;
+                },
+            }
+        }
+       
         Buf {
             first_line: Line::new(),
             last_line: Line::new(),
@@ -45,12 +72,20 @@ impl Line {
 }
 
 impl Editor {
-    pub fn new() -> Editor {
+    pub fn new(filenames: Vec<String>) -> Editor {
+        let mut buffers = Vec::new();
+
+        if filenames.len() > 1 {
+            for filename in filenames.iter() {
+                buffers.push(Buf::new_from_file(filename));
+            }
+        }
+
         let (send, recv) = channel();
         Editor {
             sender: send,
             events: recv,
-            buffers: Vec::new(),
+            buffers: buffers,
         }
     }
 
