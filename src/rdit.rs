@@ -1,7 +1,17 @@
+#![feature(macro_rules)]
+
 extern crate rustbox;
 use std::comm::{Receiver, Sender};
 use std::io::{File, BufferedReader};
 
+macro_rules! some {
+    ($e:expr) => (
+        match $e {
+            Some(e) => e,
+            None => return None
+        }
+    )
+}
 
 pub struct Editor {
     pub sender: Sender<rustbox::Event>,
@@ -14,10 +24,11 @@ pub struct Buf {
     pub last_line: Line,
 }
 
+#[deriving(Clone)]
 pub struct Line {
     pub data: Vec<u8>,
-    pub prev: Option<Line>,
-    pub next: Option<Line>,
+    pub prev: Option<Box<Line>>,
+    pub next: Option<Box<Line>>,
 }
 
 pub enum Response {
@@ -40,24 +51,32 @@ impl Buf {
             Err(_) => fail!("Not implemented!"),
         };
 
+        let mut new_buffer = Buf {
+            first_line: Line::new(),
+            last_line: Line::new(),
+        };
+
         let mut br = BufferedReader::new(file);
+        let mut blank_line = Line::new();
         
+        new_buffer.first_line = blank_line.clone();
         loop {
             match br.read_line() {
                 Ok(l) => {
-                    // create a Line instance
-                    let line = Line { data: l };
+                    blank_line.data = l.into_bytes();
+                    blank_line.next = Some(box Line::new());
                 },
                 Err(_) => {
                     break;
                 },
             }
+            blank_line = *match blank_line.next {
+                Some(l) => l.clone(),
+                None => box Line::new(),
+            };
         }
-       
-        Buf {
-            first_line: Line::new(),
-            last_line: Line::new(),
-        }
+        new_buffer.last_line = blank_line;
+        new_buffer
     }
 }
 
@@ -95,6 +114,10 @@ impl Editor {
             _ => Continue,
         }
     }
+    
+    pub fn draw(&self) {
+
+    }
 
     pub fn start(&self) -> bool {
         loop {
@@ -111,6 +134,8 @@ impl Editor {
             if status == false {
                 return false;
             }
+            self.draw();
+            rustbox::present();
         }
     }
 
