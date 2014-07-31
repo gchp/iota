@@ -6,9 +6,6 @@ use std::os;
 fn main() {
     rustbox::init();
 
-    rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, "Hello, world!".to_string());
-    rustbox::present();
-
     // TODO: perhaps only pass in a slice?
     let editor = rdit::Editor::new(os::args());
     

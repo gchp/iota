@@ -64,6 +64,10 @@ impl Buf {
             match br.read_line() {
                 Ok(l) => {
                     blank_line.data = l.into_bytes();
+
+                    // FIXME: this *needs* to be removed
+                    new_buffer.first_line.data = blank_line.data;
+
                     blank_line.next = Some(box Line::new());
                 },
                 Err(_) => {
@@ -116,11 +120,18 @@ impl Editor {
     }
     
     pub fn draw(&self) {
-
+        for b in self.buffers.iter() {
+            // FIXME: this seems wrong to me, but not sure why
+            // TODO: find a better way of doing this
+            let line_data = std::str::from_utf8(b.first_line.data.as_slice());
+            rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, line_data.to_string());
+        }
     }
 
     pub fn start(&self) -> bool {
         loop {
+            self.draw();
+            rustbox::present();
             let status = match self.events.recv() {
                 rustbox::KeyEvent(_, _, ch) => {
                     let status = self.handle_key_event(ch);
@@ -134,8 +145,6 @@ impl Editor {
             if status == false {
                 return false;
             }
-            self.draw();
-            rustbox::present();
         }
     }
 
