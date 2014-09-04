@@ -6,7 +6,7 @@ authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 [dependencies.rustbox]
 git = "https://github.com/gchp/rustbox.git"
 
-[[lib]]
+[lib]
 name = "rdit"
 
 [[bin]]
