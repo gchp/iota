@@ -22,6 +22,7 @@ pub struct Editor {
 pub struct Buf {
     pub first_line: Line,
     pub last_line: Line,
+    pub active: bool,
 }
 
 #[deriving(Clone)]
@@ -41,9 +42,10 @@ impl Buf {
         Buf {
             first_line: Line::new(),
             last_line: Line::new(),
+            active: false,
         }
     }
-    
+
     pub fn new_from_file(filename: &String) -> Buf {
         let path = Path::new(filename.to_string());
         let file = match File::open(&path) {
@@ -54,19 +56,21 @@ impl Buf {
         let mut new_buffer = Buf {
             first_line: Line::new(),
             last_line: Line::new(),
+            active: false,
         };
 
         let mut br = BufferedReader::new(file);
         let mut blank_line = Line::new();
-        
+
         new_buffer.first_line = blank_line.clone();
         loop {
             match br.read_line() {
                 Ok(l) => {
                     blank_line.data = l.into_bytes();
 
-                    // FIXME: this *needs* to be removed
-                    new_buffer.first_line.data = blank_line.data;
+                    if new_buffer.first_line.data.len() == 0 {
+                        new_buffer.first_line.data = blank_line.data
+                    }
 
                     blank_line.next = Some(box Line::new());
                 },
@@ -100,7 +104,9 @@ impl Editor {
 
         if filenames.len() > 1 {
             for filename in filenames.iter() {
-                buffers.push(Buf::new_from_file(filename));
+                let mut b = Buf::new_from_file(filename);
+                b.active = true;
+                buffers.push(b);
             }
         }
 
@@ -118,17 +124,23 @@ impl Editor {
             _ => Continue,
         }
     }
-    
-    pub fn draw(&self) {
-        for b in self.buffers.iter() {
-            // FIXME: this seems wrong to me, but not sure why
-            // TODO: find a better way of doing this
-            let line_data = std::str::from_utf8(b.first_line.data.as_slice());
-            rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, line_data.to_string());
-        }
+
+    pub fn draw(&mut self) {
+        for mut b in self.buffers.iter() {
+            if b.active {
+                let ref line = b.first_line;
+                let line_data = std::str::from_utf8(line.data.as_slice());
+                match line_data {
+                    Some(text) => {
+                        rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, text.to_string());
+                    },
+                    None => {}
+                }
+            }
+       }
     }
 
-    pub fn start(&self) -> bool {
+    pub fn start(&mut self) -> bool {
         loop {
             self.draw();
             rustbox::present();
