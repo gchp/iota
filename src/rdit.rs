@@ -3,6 +3,7 @@
 extern crate rustbox;
 use std::comm::{Receiver, Sender};
 use std::io::{File, BufferedReader};
+use std::str::from_utf8;
 
 macro_rules! some {
     ($e:expr) => (
@@ -20,9 +21,10 @@ pub struct Editor {
 }
 
 pub struct Buf {
-    pub first_line: Line,
-    pub last_line: Line,
+    pub first_line: Option<Box<Line>>,
+    pub last_line: Option<Box<Line>>,
     pub active: bool,
+    pub num_lines: int,
 }
 
 #[deriving(Clone)]
@@ -40,9 +42,10 @@ pub enum Response {
 impl Buf {
     pub fn new() -> Buf {
         Buf {
-            first_line: Line::new(),
-            last_line: Line::new(),
+            first_line: Some(box Line::new()),
+            last_line: Some(box Line::new()),
             active: false,
+            num_lines: 0,
         }
     }
 
@@ -53,34 +56,30 @@ impl Buf {
             Err(_) => fail!("Not implemented!"),
         };
 
-        let mut new_buffer = Buf {
-            first_line: Line::new(),
-            last_line: Line::new(),
-            active: false,
-        };
-
+        let mut new_buffer = Buf::new();
         let mut br = BufferedReader::new(file);
-        let mut blank_line = Line::new();
+        let mut blank_line = Some(box Line::new());
 
         new_buffer.first_line = blank_line.clone();
         loop {
             match br.read_line() {
-                Ok(l) => {
-                    blank_line.data = l.into_bytes();
+                Ok(ln) => {
+                    match blank_line {
+                        Some(ref mut line) => {
+                            line.data = ln.into_bytes();
+                            line.next = Some(box Line::new());
 
-                    if new_buffer.first_line.data.len() == 0 {
-                        new_buffer.first_line.data = blank_line.data
+                            // rustbox::print(1, 10, rustbox::Bold, rustbox::White, rustbox::Black, line.data.to_string());
+                        },
+                        None => {}
                     }
-
-                    blank_line.next = Some(box Line::new());
                 },
-                Err(_) => {
-                    break;
-                },
+                Err(_) => { break; },
             }
-            blank_line = *match blank_line.next {
-                Some(l) => l.clone(),
-                None => box Line::new(),
+            new_buffer.num_lines += 1;
+            blank_line = match blank_line {
+                Some(line) => line.next,
+                None => None
             };
         }
         new_buffer.last_line = blank_line;
@@ -127,17 +126,38 @@ impl Editor {
 
     pub fn draw(&mut self) {
         for mut b in self.buffers.iter() {
-            if b.active {
-                let ref line = b.first_line;
-                let line_data = std::str::from_utf8(line.data.as_slice());
-                match line_data {
-                    Some(text) => {
-                        rustbox::print(1, 1, rustbox::Bold, rustbox::White, rustbox::Black, text.to_string());
+            let ref mut line = b.first_line;
+            let i = 1;
+            loop {
+                match line {
+                    Some(ref mut l) => {
+                        let line_data = from_utf8(l.data.as_slice());
+                        match line_data {
+                            Some(text) => {
+                                rustbox::print(1, i, rustbox::Bold, rustbox::White, rustbox::Black, line_data.to_string());
+                            },
+                            None => {}
+                        }
+                        let line = l.next;
+                        i += 1;
                     },
-                    None => {}
+                    None => { break; }
                 }
             }
-       }
+            // match b.first_line {
+            //     Some(ref l) => {
+            //         let line_data = from_utf8(l.data.as_slice());
+            //         match line_data {
+            //             Some(text) => {
+            //                 rustbox::print(1, 8, rustbox::Bold, rustbox::White, rustbox::Black, b.num_lines.to_string());
+            //                 rustbox::print(1, 9, rustbox::Bold, rustbox::White, rustbox::Black, line_data.to_string());
+            //             },
+            //             None => {}
+            //         }
+            //     },
+            //     None => {}
+            // }
+        }
     }
 
     pub fn start(&mut self) -> bool {
