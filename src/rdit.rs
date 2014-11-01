@@ -88,10 +88,13 @@ impl Editor {
 
     pub fn draw(&mut self) {
         for buffer in self.buffers.iter() {
-            for (index, line) in buffer.lines.iter().enumerate() {
-                rustbox::print(1, index, rustbox::Bold, rustbox::White, rustbox::Black, line.data.clone());
+            if buffer.active {
+                for (index, line) in buffer.lines.iter().enumerate() {
+                    rustbox::print(1, index, rustbox::Bold, rustbox::White, rustbox::Black, line.data.clone());
+                }
             }
         }
+        rustbox::set_cursor(0, 1);
     }
 
     pub fn start(&mut self) -> bool {
