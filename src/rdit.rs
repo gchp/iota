@@ -90,31 +90,28 @@ impl Editor {
         for buffer in self.buffers.iter() {
             if buffer.active {
                 for (index, line) in buffer.lines.iter().enumerate() {
-                    rustbox::print(1, index, rustbox::Bold, rustbox::White, rustbox::Black, line.data.clone());
+                    rustbox::print(0, index, rustbox::Bold, rustbox::White, rustbox::Black, line.data.clone());
                 }
             }
         }
-        rustbox::set_cursor(0, 1);
+        rustbox::set_cursor(0, 0);
     }
 
     pub fn start(&mut self) -> bool {
         loop {
             self.draw();
             rustbox::present();
-            let status = match self.events.recv() {
-                rustbox::KeyEvent(_, _, ch) => {
-                    let status = self.handle_key_event(ch);
-                    match status {
-                        Quit => { false },
-                        _ => { true },
+            match self.events.try_recv() {
+                Ok(rustbox::KeyEvent(_, _, ch)) => {
+                    match self.handle_key_event(ch) {
+                        Quit => break,
+                        _ => {}
                     }
                 },
-                _ => { true }
-            };
-            if status == false {
-                return false;
+                TryRecvError => {}
             }
         }
+        return false
     }
 
 }
