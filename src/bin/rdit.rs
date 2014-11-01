@@ -6,8 +6,7 @@ use std::os;
 fn main() {
     rustbox::init();
 
-    // TODO: perhaps only pass in a slice?
-    let mut editor = rdit::Editor::new(os::args());
+    let mut editor = rdit::Editor::new(os::args().slice(1, 2));
     
     // clone the sender so that we can use it in the proc
     let sender = editor.sender.clone();
