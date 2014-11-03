@@ -86,15 +86,20 @@ impl Editor {
     pub fn handle_key_event(&mut self, ch: u32) -> Response {
         match std::char::from_u32(ch) {
             Some('q') => Quit,
+
+            // cursor movement
             Some('h') => { self.cursor_x -= 1; Continue },
             Some('j') => { self.cursor_y += 1; Continue },
             Some('k') => { self.cursor_y -= 1; Continue },
             Some('l') => { self.cursor_x += 1; Continue },
+
+            // default
             _ => Continue,
         }
     }
 
     pub fn draw(&mut self) {
+        // TODO: change this to only draw the active buffer
         for buffer in self.buffers.iter() {
             if buffer.active {
                 for (index, line) in buffer.lines.iter().enumerate() {
