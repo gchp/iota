@@ -5,7 +5,6 @@ extern crate rustbox;
 use std::collections::dlist::DList;
 use std::comm::{Receiver, Sender};
 use std::io::{File, BufferedReader};
-use std::str::from_utf8;
 
 pub struct Editor {
     pub sender: Sender<rustbox::Event>,
@@ -121,7 +120,7 @@ impl Editor {
                         _ => {}
                     }
                 },
-                TryRecvError => {}
+                _ => {}
             }
         }
         return false
