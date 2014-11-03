@@ -10,12 +10,12 @@ use std::str::from_utf8;
 pub struct Editor {
     pub sender: Sender<rustbox::Event>,
     pub events: Receiver<rustbox::Event>,
-    pub buffers: Vec<Buf>,
+    pub buffers: Vec<Buffer>,
     pub cursor_x: int,
     pub cursor_y: int,
 }
 
-pub struct Buf {
+pub struct Buffer {
     pub lines: DList<Line>,
     pub active: bool,
     pub num_lines: int,
@@ -31,19 +31,19 @@ pub enum Response {
     Quit,
 }
 
-impl Buf {
-    pub fn new() -> Buf {
-        Buf {
+impl Buffer {
+    pub fn new() -> Buffer {
+        Buffer {
             lines: DList::new(),
             active: false,
             num_lines: 0,
         }
     }
 
-    pub fn new_from_file(filename: String) -> Buf {
+    pub fn new_from_file(filename: String) -> Buffer {
         let path = Path::new(filename.to_string());
 
-        let mut new_buffer = Buf::new();
+        let mut new_buffer = Buffer::new();
         let mut file = BufferedReader::new(File::open(&path));
         let lines: Vec<String> = file.lines().map(|x| x.unwrap()).collect();
 
@@ -68,7 +68,7 @@ impl Editor {
         let mut buffers = Vec::new();
 
         for filename in filenames.iter() {
-            let mut b = Buf::new_from_file(filename.clone());
+            let mut b = Buffer::new_from_file(filename.clone());
             b.active = true;
             buffers.push(b);
         }
