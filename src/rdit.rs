@@ -10,7 +10,9 @@ use std::str::from_utf8;
 pub struct Editor {
     pub sender: Sender<rustbox::Event>,
     pub events: Receiver<rustbox::Event>,
-    pub buffers: Vec<Buf>
+    pub buffers: Vec<Buf>,
+    pub cursor_x: int,
+    pub cursor_y: int,
 }
 
 pub struct Buf {
@@ -76,12 +78,18 @@ impl Editor {
             sender: send,
             events: recv,
             buffers: buffers,
+            cursor_x: 0,
+            cursor_y: 0,
         }
     }
 
-    pub fn handle_key_event(&self, ch: u32) -> Response {
+    pub fn handle_key_event(&mut self, ch: u32) -> Response {
         match std::char::from_u32(ch) {
             Some('q') => Quit,
+            Some('h') => { self.cursor_x -= 1; Continue },
+            Some('j') => { self.cursor_y += 1; Continue },
+            Some('k') => { self.cursor_y -= 1; Continue },
+            Some('l') => { self.cursor_x += 1; Continue },
             _ => Continue,
         }
     }
@@ -94,7 +102,7 @@ impl Editor {
                 }
             }
         }
-        rustbox::set_cursor(0, 0);
+        rustbox::set_cursor(self.cursor_x, self.cursor_y);
     }
 
     pub fn start(&mut self) -> bool {
