@@ -7,8 +7,6 @@ use rdit::Response;
 use rdit::Buffer;
 use cursor::Direction;
 
-use utils;
-
 
 pub struct Editor {
     pub sender: Sender<rustbox::Event>,
@@ -57,9 +55,7 @@ impl Editor {
     }
 
     pub fn draw(&mut self) {
-        for (index, line) in self.active_buffer.lines.iter().enumerate() {
-            utils::draw(index, line.data.clone());
-        }
+        self.active_buffer.draw_contents();
         self.active_buffer.cursor.draw();
     }
 

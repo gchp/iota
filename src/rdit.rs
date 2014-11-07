@@ -2,6 +2,8 @@ use std::collections::dlist::DList;
 use std::io::{File, BufferedReader};
 
 use cursor::Cursor;
+use utils;
+
 
 pub enum Response {
     Continue,
@@ -37,6 +39,12 @@ impl Buffer {
         }
 
         new_buffer
+    }
+
+    pub fn draw_contents(&self) {
+        for (index, line) in self.lines.iter().enumerate() {
+            utils::draw(index, line.data.clone());
+        }
     }
 
 }
