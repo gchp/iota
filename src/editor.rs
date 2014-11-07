@@ -5,15 +5,15 @@ use std::comm::{Receiver, Sender};
 
 use rdit::Response;
 use rdit::Buffer;
+use rdit::Direction;
 
 use utils;
+
 
 pub struct Editor {
     pub sender: Sender<rustbox::Event>,
     events: Receiver<rustbox::Event>,
     active_buffer: Buffer,
-    cursor_x: int,
-    cursor_y: int,
 }
 
 impl Editor {
@@ -26,8 +26,6 @@ impl Editor {
             sender: send,
             events: recv,
             active_buffer: buffer,
-            cursor_x: 0,
-            cursor_y: 0,
         }
     }
 
@@ -36,10 +34,22 @@ impl Editor {
             Some('q') => Response::Quit,
 
             // cursor movement
-            Some('h') => { self.cursor_x -= 1; Response::Continue },
-            Some('j') => { self.cursor_y += 1; Response::Continue },
-            Some('k') => { self.cursor_y -= 1; Response::Continue },
-            Some('l') => { self.cursor_x += 1; Response::Continue },
+            Some('h') => {
+                self.active_buffer.move_cursor(Direction::Left);
+                Response::Continue
+            },
+            Some('j') => {
+                self.active_buffer.move_cursor(Direction::Down);
+                Response::Continue
+            },
+            Some('k') => {
+                self.active_buffer.move_cursor(Direction::Up);
+                Response::Continue
+            },
+            Some('l') => {
+                self.active_buffer.move_cursor(Direction::Right);
+                Response::Continue
+            },
 
             // default
             _ => Response::Continue,
@@ -50,7 +60,7 @@ impl Editor {
         for (index, line) in self.active_buffer.lines.iter().enumerate() {
             utils::draw(index, line.data.clone());
         }
-        rustbox::set_cursor(self.cursor_x, self.cursor_y);
+        rustbox::set_cursor(self.active_buffer.cursor_x, self.active_buffer.cursor_y);
     }
 
     pub fn start(&mut self) -> bool {
