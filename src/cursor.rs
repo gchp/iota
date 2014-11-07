@@ -1,4 +1,4 @@
-extern crate rustbox;
+use utils;
 
 pub enum Direction {
     Up,
@@ -15,7 +15,7 @@ pub struct Cursor {
 
 impl Cursor {
     pub fn draw(&self) {
-        rustbox::set_cursor(self.x, self.y);        
+        utils::draw_cursor(self.x, self.y);
     }
 
     pub fn adjust(&mut self, direction: Direction) {
