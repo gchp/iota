@@ -1,13 +1,7 @@
 use std::collections::dlist::DList;
 use std::io::{File, BufferedReader};
 
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
+use cursor::Cursor;
 
 pub enum Response {
     Continue,
@@ -18,8 +12,7 @@ pub struct Buffer {
     pub lines: DList<Line>,
     pub active: bool,
     pub num_lines: int,
-    pub cursor_x: int,
-    pub cursor_y: int,
+    pub cursor: Cursor,
 }
 
 impl Buffer {
@@ -28,8 +21,7 @@ impl Buffer {
             lines: DList::new(),
             active: false,
             num_lines: 0,
-            cursor_x: 0,
-            cursor_y: 0,
+            cursor: Cursor{x:0,y:0},
         }
     }
 
@@ -47,14 +39,6 @@ impl Buffer {
         new_buffer
     }
 
-    pub fn move_cursor(&mut self, direction: Direction) {
-        match direction {
-            Up =>  self.cursor_y -= 1,
-            Down => self.cursor_y += 1,
-            Left => self.cursor_x -= 1,
-            Right => self.cursor_x += 1,
-        }
-    }
 }
 
 pub struct Line {

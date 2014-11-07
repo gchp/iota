@@ -5,7 +5,7 @@ use std::comm::{Receiver, Sender};
 
 use rdit::Response;
 use rdit::Buffer;
-use rdit::Direction;
+use cursor::Direction;
 
 use utils;
 
@@ -35,19 +35,19 @@ impl Editor {
 
             // cursor movement
             Some('h') => {
-                self.active_buffer.move_cursor(Direction::Left);
+                self.active_buffer.cursor.adjust(Direction::Left);
                 Response::Continue
             },
             Some('j') => {
-                self.active_buffer.move_cursor(Direction::Down);
+                self.active_buffer.cursor.adjust(Direction::Down);
                 Response::Continue
             },
             Some('k') => {
-                self.active_buffer.move_cursor(Direction::Up);
+                self.active_buffer.cursor.adjust(Direction::Up);
                 Response::Continue
             },
             Some('l') => {
-                self.active_buffer.move_cursor(Direction::Right);
+                self.active_buffer.cursor.adjust(Direction::Right);
                 Response::Continue
             },
 
@@ -60,7 +60,7 @@ impl Editor {
         for (index, line) in self.active_buffer.lines.iter().enumerate() {
             utils::draw(index, line.data.clone());
         }
-        rustbox::set_cursor(self.active_buffer.cursor_x, self.active_buffer.cursor_y);
+        self.active_buffer.cursor.draw();
     }
 
     pub fn start(&mut self) -> bool {
