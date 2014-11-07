@@ -57,15 +57,6 @@ impl Buffer {
     }
 }
 
-#[deriving(Clone)]
 pub struct Line {
     pub data: String,
-}
-
-impl Line {
-    pub fn new() -> Line {
-        Line {
-            data: String::new(),
-        }
-    }
 }
