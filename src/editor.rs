@@ -9,27 +9,22 @@ use rdit::Buffer;
 
 pub struct Editor {
     pub sender: Sender<rustbox::Event>,
-    pub events: Receiver<rustbox::Event>,
-    pub buffers: Vec<Buffer>,
-    pub cursor_x: int,
-    pub cursor_y: int,
+    events: Receiver<rustbox::Event>,
+    active_buffer: Buffer,
+    cursor_x: int,
+    cursor_y: int,
 }
 
 impl Editor {
-    pub fn new(filenames: &[String]) -> Editor {
-        let mut buffers = Vec::new();
-
-        for filename in filenames.iter() {
-            let mut b = Buffer::new_from_file(filename.clone());
-            b.active = true;
-            buffers.push(b);
-        }
+    pub fn new(filename: String) -> Editor {
+        let mut buffer = Buffer::new_from_file(filename);
+        buffer.active = true;
 
         let (send, recv) = channel();
         Editor {
             sender: send,
             events: recv,
-            buffers: buffers,
+            active_buffer: buffer,
             cursor_x: 0,
             cursor_y: 0,
         }
@@ -51,13 +46,8 @@ impl Editor {
     }
 
     pub fn draw(&mut self) {
-        // TODO: change this to only draw the active buffer
-        for buffer in self.buffers.iter() {
-            if buffer.active {
-                for (index, line) in buffer.lines.iter().enumerate() {
-                    rustbox::print(0, index, rustbox::Bold, rustbox::White, rustbox::Black, line.data.clone());
-                }
-            }
+        for (index, line) in self.active_buffer.lines.iter().enumerate() {
+            rustbox::print(0, index, rustbox::Bold, rustbox::White, rustbox::Black, line.data.clone());
         }
         rustbox::set_cursor(self.cursor_x, self.cursor_y);
     }
