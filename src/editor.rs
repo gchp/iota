@@ -6,6 +6,7 @@ use std::comm::{Receiver, Sender};
 use rdit::Response;
 use rdit::Buffer;
 
+use utils;
 
 pub struct Editor {
     pub sender: Sender<rustbox::Event>,
@@ -47,7 +48,7 @@ impl Editor {
 
     pub fn draw(&mut self) {
         for (index, line) in self.active_buffer.lines.iter().enumerate() {
-            rustbox::print(0, index, rustbox::Bold, rustbox::White, rustbox::Black, line.data.clone());
+            utils::draw(index, line.data.clone());
         }
         rustbox::set_cursor(self.cursor_x, self.cursor_y);
     }
