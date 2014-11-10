@@ -1,4 +1,5 @@
 use utils;
+use buffer::Link;
 
 pub enum Direction {
     Up,
@@ -8,9 +9,12 @@ pub enum Direction {
 }
 
 
+#[deriving(Clone)]
 pub struct Cursor {
-    pub x: int,
-    pub y: int,
+    pub x: uint,
+    pub y: uint,
+
+    pub line: Link,
 }
 
 impl Cursor {
@@ -18,6 +22,7 @@ impl Cursor {
         Cursor {
             x: 0,
             y: 0,
+            line: None,
         }
     }
 
@@ -26,11 +31,31 @@ impl Cursor {
     }
 
     pub fn adjust(&mut self, direction: Direction) {
+        let mut line = self.line.clone().unwrap();
         match direction {
-            Up => self.y -= 1,
-            Down => self.y += 1,
-            Left => self.x -= 1,
-            Right => self.x += 1,
+            Up => {
+                let prev_line = line.prev.resolve().map(|prev| prev);
+                if prev_line.is_some() {
+                    self.line = Some(box prev_line.unwrap().clone());
+                    self.y -= 1
+                }
+            },
+            Down => {
+                if line.next.is_some() {
+                    self.y += 1;
+                    self.line = line.next;
+                }
+            },
+            Left => {
+                if self.x > 0 {
+                    self.x -= 1
+                }
+            },
+            Right => {
+                if self.x < line.len() {
+                    self.x += 1
+                }
+            },
         }
     }
 }

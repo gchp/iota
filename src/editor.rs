@@ -17,7 +17,7 @@ pub struct Editor {
 impl Editor {
     pub fn new(filename: String) -> Editor {
         let path = Path::new(filename);
-        let mut buffer = Buffer::new_from_file(&path);
+        let buffer = Buffer::new_from_file(&path);
 
         let (send, recv) = channel();
         Editor {
@@ -30,6 +30,12 @@ impl Editor {
     pub fn handle_key_event(&mut self, ch: u32) -> Response {
         match char::from_u32(ch) {
             Some('q') => Response::Quit,
+            Some('d') => {
+                let line = self.active_buffer.cursor.line.clone();
+                print!("Cursor X {}\n", self.active_buffer.cursor.x);
+                print!("Line len {}\n", line.unwrap().len());
+                Response::Continue
+            },
 
             // cursor movement
             Some('h') => {

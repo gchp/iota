@@ -1,6 +1,5 @@
 use std::mem;
 use std::ptr;
-
 use std::io::{File, BufferedReader};
 
 use utils;
@@ -28,12 +27,17 @@ impl Buffer {
     pub fn new_from_file(path: &Path) -> Buffer {
         let mut file = BufferedReader::new(File::open(path));
         let lines: Vec<String> = file.lines().map(|x| x.unwrap()).collect();
-
         let mut buffer = Buffer::new();
 
         for line in lines.iter() {
             buffer.add_line(line.clone());
         }
+
+        // FIXME: This doesn't seem like a good idea..
+        // Update the `cursor.line` to point to the `buffer.first_line`
+        let b = buffer.first_line.clone();
+        let cursor = Cursor{x:0, y:0, line: b};
+        mem::replace(&mut buffer.cursor, cursor);
 
         buffer
     }
@@ -72,7 +76,7 @@ impl Buffer {
     }
 
     pub fn add_line(&mut self, elt: String) {
-        self.push_back_line(box Line::new(elt))
+        self.push_back_line(box Line::new(elt));
     }
 
     pub fn len(&self) -> uint {
@@ -109,9 +113,10 @@ impl<'a> Iterator<&'a Line> for Items<'a> {
     }
 }
 
+#[deriving(Clone)]
 pub struct Line {
-    next: Link,
-    prev: Rawlink,
+    pub next: Link,
+    pub prev: Rawlink,
     value: String,
 }
 
@@ -119,10 +124,15 @@ impl Line {
     pub fn new(v: String) -> Line {
         Line{value: v, next: None, prev: Rawlink::none()}
     }
+
+    pub fn len(&self) -> uint {
+        self.value.len()
+    }
 }
 
-type Link = Option<Box<Line>>;
+pub type Link = Option<Box<Line>>;
 
+#[deriving(Clone)]
 struct Rawlink {
     p: *mut Line,
 }
@@ -136,7 +146,7 @@ impl Rawlink {
         Rawlink{p: n}
     }
 
-    fn resolve<'a>(&mut self) -> Option<&'a mut Line> {
+    pub fn resolve<'a>(&mut self) -> Option<&'a mut Line> {
         if self.p.is_null() {
             None
         } else {
