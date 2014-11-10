@@ -14,6 +14,13 @@ pub struct Cursor {
 }
 
 impl Cursor {
+    pub fn new() -> Cursor {
+        Cursor {
+            x: 0,
+            y: 0,
+        }
+    }
+
     pub fn draw(&self) {
         utils::draw_cursor(self.x, self.y);
     }

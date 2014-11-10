@@ -4,7 +4,7 @@ use std::char;
 use std::comm::{Receiver, Sender};
 
 use rdit::Response;
-use rdit::Buffer;
+use buffer::Buffer;
 use cursor::Direction;
 
 
@@ -16,8 +16,8 @@ pub struct Editor {
 
 impl Editor {
     pub fn new(filename: String) -> Editor {
-        let mut buffer = Buffer::new_from_file(filename);
-        buffer.active = true;
+        let path = Path::new(filename);
+        let mut buffer = Buffer::new_from_file(&path);
 
         let (send, recv) = channel();
         Editor {
