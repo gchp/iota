@@ -62,6 +62,7 @@ impl Editor {
 
     pub fn draw(&mut self) {
         self.active_buffer.draw_contents();
+        self.active_buffer.draw_status();
         self.active_buffer.cursor.draw();
     }
 

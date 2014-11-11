@@ -9,3 +9,7 @@ pub fn draw_cursor(x: uint, y: uint) {
     let y = y.to_int().unwrap();
     rustbox::set_cursor(x, y);
 }
+
+pub fn get_term_height() -> uint {
+    rustbox::height()
+}

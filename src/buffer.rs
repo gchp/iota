@@ -8,6 +8,7 @@ use cursor::Cursor;
 
 pub struct Buffer {
     length: uint,
+    pub file_path: String,
     pub first_line: Link,
     pub last_line: Rawlink,
 
@@ -19,6 +20,7 @@ impl Buffer {
     pub fn new() -> Buffer {
         Buffer {
             length: 0,
+            file_path: String::new(),
             first_line: None,
             last_line: Rawlink::none(),
             cursor: Cursor::new(),
@@ -30,6 +32,8 @@ impl Buffer {
         let mut file = BufferedReader::new(File::open(path));
         let lines: Vec<String> = file.lines().map(|x| x.unwrap()).collect();
         let mut buffer = Buffer::new();
+
+        buffer.file_path = path.as_str().unwrap().to_string();
 
         // for every line in the file we add a corresponding line to the buffer
         for line in lines.iter() {
@@ -52,6 +56,11 @@ impl Buffer {
         for (index, line) in self.iter_lines().enumerate() {
             utils::draw(index, line.value.clone());
         }
+    }
+
+    pub fn draw_status(&self) {
+        let height = utils::get_term_height();
+        utils::draw(height - 1, self.file_path.clone());
     }
 
     /// Add a line to the buffer
