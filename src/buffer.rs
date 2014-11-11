@@ -54,8 +54,23 @@ impl Buffer {
         }
     }
 
+    /// Add a line to the buffer
+    pub fn add_line(&mut self, elt: String) {
+        self.push_back_line(box Line::new(elt));
+    }
+
+    /// Get the length of the buffer - number of lines
+    pub fn len(&self) -> uint {
+        self.length
+    }
+
+    /// Iterate over each line in the buffer
+    pub fn iter_lines<'a>(&'a self) -> Items<'a> {
+        Items { nelem: self.len(), head: &self.first_line, tail: self.last_line }
+    }
+
     /// Add a line to the front/top of the buffer
-    pub fn push_front_line(&mut self, mut new_head: Box<Line>) {
+    fn push_front_line(&mut self, mut new_head: Box<Line>) {
         match self.first_line {
             None => {
                 self.last_line = Rawlink::some(&mut *new_head);
@@ -75,7 +90,7 @@ impl Buffer {
     ///
     /// If there is no last_line, ie the buffer is empty, then it will
     /// defer to `push_front_line`.
-    pub fn push_back_line(&mut self, mut new_tail: Box<Line>) {
+    fn push_back_line(&mut self, mut new_tail: Box<Line>) {
         match self.last_line.resolve() {
             None => return self.push_front_line(new_tail),
             Some(tail) => {
@@ -86,20 +101,6 @@ impl Buffer {
         self.length += 1
     }
 
-    /// Add a line to the buffer
-    pub fn add_line(&mut self, elt: String) {
-        self.push_back_line(box Line::new(elt));
-    }
-
-    /// Get the length of the buffer - number of lines
-    pub fn len(&self) -> uint {
-        self.length
-    }
-
-    /// Iterate over each line in the buffer
-    pub fn iter_lines<'a>(&'a self) -> Items<'a> {
-        Items { nelem: self.len(), head: &self.first_line, tail: self.last_line }
-    }
 }
 
 fn link_with_prev(mut next: Box<Line>, prev: Rawlink) -> Link {
