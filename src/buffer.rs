@@ -15,6 +15,7 @@ pub struct Buffer {
 }
 
 impl Buffer {
+    /// Create a new buffer instance
     pub fn new() -> Buffer {
         Buffer {
             length: 0,
@@ -24,11 +25,13 @@ impl Buffer {
         }
     }
 
+    /// Create a new buffer instance and load the given file
     pub fn new_from_file(path: &Path) -> Buffer {
         let mut file = BufferedReader::new(File::open(path));
         let lines: Vec<String> = file.lines().map(|x| x.unwrap()).collect();
         let mut buffer = Buffer::new();
 
+        // for every line in the file we add a corresponding line to the buffer
         for line in lines.iter() {
             buffer.add_line(line.clone());
         }
@@ -42,12 +45,16 @@ impl Buffer {
         buffer
     }
 
+    /// Draw the contents of the buffer
+    ///
+    /// Loops over each line in the buffer and draws it to the screen
     pub fn draw_contents(&self) {
         for (index, line) in self.iter_lines().enumerate() {
             utils::draw(index, line.value.clone());
         }
     }
 
+    /// Add a line to the front/top of the buffer
     pub fn push_front_line(&mut self, mut new_head: Box<Line>) {
         match self.first_line {
             None => {
@@ -64,6 +71,10 @@ impl Buffer {
         self.length += 1;
     }
 
+    /// Add a line to the back/end of the buffer
+    ///
+    /// If there is no last_line, ie the buffer is empty, then it will
+    /// defer to `push_front_line`.
     pub fn push_back_line(&mut self, mut new_tail: Box<Line>) {
         match self.last_line.resolve() {
             None => return self.push_front_line(new_tail),
@@ -75,14 +86,17 @@ impl Buffer {
         self.length += 1
     }
 
+    /// Add a line to the buffer
     pub fn add_line(&mut self, elt: String) {
         self.push_back_line(box Line::new(elt));
     }
 
+    /// Get the length of the buffer - number of lines
     pub fn len(&self) -> uint {
         self.length
     }
 
+    /// Iterate over each line in the buffer
     pub fn iter_lines<'a>(&'a self) -> Items<'a> {
         Items { nelem: self.len(), head: &self.first_line, tail: self.last_line }
     }
@@ -121,10 +135,12 @@ pub struct Line {
 }
 
 impl Line {
+    /// Create a new line instance
     pub fn new(v: String) -> Line {
         Line{value: v, next: None, prev: Rawlink::none()}
     }
 
+    /// Get the length of the current line
     pub fn len(&self) -> uint {
         self.value.len()
     }
