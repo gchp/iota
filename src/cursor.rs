@@ -82,7 +82,8 @@ impl Cursor {
     /// Move the cursor right by one character
     fn move_right(&mut self) {
         let line = self.get_line();
-        if self.x < line.len() {
+        // we use -1 here so the cursor never ends up on the \n character
+        if self.x < (line.len() - 1) {
             self.x += 1
         }
     }
@@ -97,7 +98,8 @@ impl Cursor {
     }
 
     fn goto_end_line(&mut self) {
-        self.x = self.get_line().len()
+        // move to the end of the line, minus the \n character
+        self.x = self.get_line().len() - 1
     }
 
 }
