@@ -1,5 +1,4 @@
 use utils;
-use buffer::{Line, Link};
 
 pub enum Direction {
     Up,
@@ -8,98 +7,40 @@ pub enum Direction {
     Right,
 }
 
+#[deriving(Clone)]
+pub enum CursorPos {
+    Place(uint, uint),
+}
+
+impl CursorPos {
+    pub fn expand(&self) -> (uint, uint) {
+        match  self {
+            &Place(x, y) => return (x, y)
+        }
+    }
+}
 
 #[deriving(Clone)]
 pub struct Cursor {
-    pub x: uint,
-    pub y: uint,
-
-    pub line: Link,
+    pub buffer_pos: CursorPos,
 }
 
 impl Cursor {
     /// Create a new cursor instance
     pub fn new() -> Cursor {
         Cursor {
-            x: 0,
-            y: 0,
-            line: None,
+            buffer_pos: Place(0, 0)
         }
     }
 
     /// Draw the cursor based on the `x` and `y` values
     pub fn draw(&self) {
-        utils::draw_cursor(self.x, self.y);
-    }
-
-    /// Adjust the cursor position
-    pub fn adjust(&mut self, direction: Direction) {
-        match direction {
-            Up => { self.move_up() },
-            Down => { self.move_down() },
-            Left => { self.move_left() },
-            Right => { self.move_right() },
+        match self.buffer_pos {
+            Place(x, y) => utils::draw_cursor(x, y)
         }
     }
 
-    /// Get the current line
-    ///
-    /// Returns a clone of the line from within the Link structure
-    fn get_line(&mut self) -> Box<Line> {
-        self.line.clone().unwrap()
+    pub fn adjust_buffer_pos(&mut self, x: uint, y: uint) {
+        self.buffer_pos = Place(x, y);
     }
-
-    /// Move the cursor up one line
-    fn move_up(&mut self) {
-        let mut line = self.get_line();
-
-        let prev_line = line.prev.resolve().map(|prev| prev);
-        if prev_line.is_some() {
-            self.line = Some(box prev_line.unwrap().clone());
-            self.y -= 1;
-            self.maybe_goto_end_line();
-        }
-    }
-
-    /// Move the cursor down one line
-    fn move_down(&mut self) {
-        let line = self.get_line();
-        if line.next.is_some() {
-            self.y += 1;
-            self.line = line.next;
-            self.maybe_goto_end_line();
-        }
-
-    }
-
-    /// Move the cursor left by one character
-    fn move_left(&mut self) {
-        if self.x > 0 {
-            self.x -= 1
-        }
-    }
-
-    /// Move the cursor right by one character
-    fn move_right(&mut self) {
-        let line = self.get_line();
-        // we use -1 here so the cursor never ends up on the \n character
-        if self.x < (line.len() - 1) {
-            self.x += 1
-        }
-    }
-
-    /// Check if the cursors `x` position is greater than the length of the
-    /// current line. If so, move it back to the end of the line.
-    fn maybe_goto_end_line(&mut self) {
-        let line = self.get_line();
-        if line.len() < self.x {
-            self.goto_end_line();
-        }
-    }
-
-    fn goto_end_line(&mut self) {
-        // move to the end of the line, minus the \n character
-        self.x = self.get_line().len() - 1
-    }
-
 }

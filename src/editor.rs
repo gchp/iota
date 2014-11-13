@@ -30,28 +30,22 @@ impl Editor {
     pub fn handle_key_event(&mut self, ch: u32) -> Response {
         match char::from_u32(ch) {
             Some('q') => Response::Quit,
-            Some('d') => {
-                let line = self.active_buffer.cursor.line.clone();
-                print!("Cursor X {}\n", self.active_buffer.cursor.x);
-                print!("Line len {}\n", line.unwrap().len());
-                Response::Continue
-            },
 
             // cursor movement
             Some('h') => {
-                self.active_buffer.cursor.adjust(Direction::Left);
+                self.active_buffer.adjust_cursor(Direction::Left);
                 Response::Continue
             },
             Some('j') => {
-                self.active_buffer.cursor.adjust(Direction::Down);
+                self.active_buffer.adjust_cursor(Direction::Down);
                 Response::Continue
             },
             Some('k') => {
-                self.active_buffer.cursor.adjust(Direction::Up);
+                self.active_buffer.adjust_cursor(Direction::Up);
                 Response::Continue
             },
             Some('l') => {
-                self.active_buffer.cursor.adjust(Direction::Right);
+                self.active_buffer.adjust_cursor(Direction::Right);
                 Response::Continue
             },
 
