@@ -82,6 +82,30 @@ impl Buffer {
         self.cursor.adjust_buffer_pos(x, y);
     }
 
+    pub fn insert_char(&mut self, ch: char) {
+       let (mut x, y) = self.cursor.buffer_pos.expand();
+       {
+           let line = &self.get_line_at(y);
+
+           // get Vec<u8> from the current line contents
+           let mut data = line.unwrap().borrow().data.clone().into_bytes();
+
+           // add the new character to the Vec at the cursors `x` position
+           data.insert(x, ch as u8);
+
+           // convery to Vec back into a string
+           let new_data = String::from_utf8(data);
+
+           if new_data.is_ok() {
+               // update the line
+               line.unwrap().borrow_mut().data = new_data.unwrap();
+           }
+           x += 1;
+       }
+       self.cursor.adjust_buffer_pos(x, y);
+
+    }
+
     fn get_line_at(&self, line_num: uint) -> Option<&RefCell<Line>> {
         for line in self.lines.iter() {
             if line.borrow().num == line_num {

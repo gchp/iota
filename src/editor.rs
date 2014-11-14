@@ -49,6 +49,11 @@ impl Editor {
                 Response::Continue
             },
 
+            Some(c) => {
+                self.active_buffer.insert_char(c);
+                Response::Continue
+            }
+
             // default
             _ => Response::Continue,
         }
