@@ -21,3 +21,11 @@ Then to start the editor run `./target/rdit /path/to/file.txt`.
 You can move the cursor around with `h`, `j`, `k`, `l`.
 
 To exit, press `q`.
+
+## TODO list
+
+- [ ] Fix buffer clearing
+- [ ] Add ability to insert new lines
+- [ ] Allow characters to be deleted
+- [ ] File saving
+- [ ] Creating new files
