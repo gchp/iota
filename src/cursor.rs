@@ -15,7 +15,7 @@ pub enum CursorPos {
 impl CursorPos {
     pub fn expand(&self) -> (uint, uint) {
         match  self {
-            &Place(x, y) => return (x, y)
+            &CursorPos::Place(x, y) => return (x, y)
         }
     }
 }
@@ -29,18 +29,18 @@ impl Cursor {
     /// Create a new cursor instance
     pub fn new() -> Cursor {
         Cursor {
-            buffer_pos: Place(0, 0)
+            buffer_pos: CursorPos::Place(0, 0)
         }
     }
 
     /// Draw the cursor based on the `x` and `y` values
     pub fn draw(&self) {
         match self.buffer_pos {
-            Place(x, y) => utils::draw_cursor(x, y)
+            CursorPos::Place(x, y) => utils::draw_cursor(x, y)
         }
     }
 
     pub fn adjust_buffer_pos(&mut self, x: uint, y: uint) {
-        self.buffer_pos = Place(x, y);
+        self.buffer_pos = CursorPos::Place(x, y);
     }
 }

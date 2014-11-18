@@ -1,5 +1,5 @@
 use std::io::{File, BufferedReader};
-use std::collections::DList;
+//use std::collections::DList;
 use std::cell::RefCell;
 
 use utils;
@@ -8,7 +8,7 @@ use cursor::{Direction, Cursor};
 
 pub struct Buffer {
     pub file_path: String,
-    pub lines: DList<RefCell<Line>>,
+    pub lines: Vec<RefCell<Line>>,
 
     pub cursor: Cursor,
 }
@@ -18,7 +18,7 @@ impl Buffer {
     pub fn new() -> Buffer {
         Buffer {
             file_path: String::new(),
-            lines: DList::new(),
+            lines: Vec::new(),
             cursor: Cursor::new(),
         }
     }
@@ -33,7 +33,10 @@ impl Buffer {
 
         // for every line in the file we add a corresponding line to the buffer
         for (index, line) in lines.iter().enumerate() {
-            buffer.lines.push_back(RefCell::new(Line::new(line.clone(), index)));
+            let mut data = line.clone();
+            // remove \n chars
+            data.pop();
+            buffer.lines.push(RefCell::new(Line::new(data, index)));
         }
 
         buffer
@@ -43,14 +46,21 @@ impl Buffer {
     ///
     /// Loops over each line in the buffer and draws it to the screen
     pub fn draw_contents(&self) {
-        for (index, line) in self.lines.iter().enumerate() {
-            utils::draw(index, line.borrow().data.clone());
+        for line in self.lines.iter() {
+            let ln = line.borrow();
+            utils::draw(ln.num, ln.data.clone());
         }
     }
 
     pub fn draw_status(&self) {
         let height = utils::get_term_height();
-        utils::draw(height - 1, self.file_path.clone());
+        let (cursor_x, cursor_y) = self.cursor.buffer_pos.expand();
+        let data = self.file_path.clone();
+        let line_count = self.lines.len();
+        utils::draw(
+            height - 1,
+            format!("{}, cursor: {}-{}, termwidth: {}, termheight: {}, lines: {}",
+                    data, cursor_x, cursor_y, utils::get_term_height(), utils::get_term_width(), line_count));
     }
 
     pub fn adjust_cursor(&mut self, dir: Direction) {
@@ -104,6 +114,17 @@ impl Buffer {
        }
        self.cursor.adjust_buffer_pos(x, y);
 
+    }
+
+    pub fn new_line_below(&mut self) {
+        let (x, y) = self.cursor.buffer_pos.expand();
+        self.lines.insert(y, RefCell::new(Line::new(String::from_str("\n"), y)));
+        for line in self.lines.iter() {
+            if line.borrow().num > y {
+                line.borrow_mut().num += 1;
+            }
+        }
+        self.cursor.adjust_buffer_pos(x, y+1);
     }
 
     fn get_line_at(&self, line_num: uint) -> Option<&RefCell<Line>> {

@@ -27,9 +27,19 @@ impl Editor {
         }
     }
 
-    pub fn handle_key_event(&mut self, ch: u32) -> Response {
+    pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
+
+        if key == 0x0D {
+            self.active_buffer.new_line_below();
+            return Response::Continue
+        }
+
         match char::from_u32(ch) {
             Some('q') => Response::Quit,
+            Some('c') => {
+                rustbox::present();
+                Response::Continue
+            }
 
             // cursor movement
             Some('h') => {
@@ -48,7 +58,6 @@ impl Editor {
                 self.active_buffer.adjust_cursor(Direction::Right);
                 Response::Continue
             },
-
             Some(c) => {
                 self.active_buffer.insert_char(c);
                 Response::Continue
@@ -67,13 +76,17 @@ impl Editor {
 
     pub fn start(&mut self) -> bool {
         loop {
+            rustbox::clear();
             self.draw();
             rustbox::present();
             match self.events.try_recv() {
-                Ok(rustbox::KeyEvent(_, _, ch)) => {
-                    match self.handle_key_event(ch) {
+                Ok(rustbox::KeyEvent(_, key, ch)) => {
+                    match self.handle_key_event(key, ch) {
                         Response::Quit => break,
-                        _ => {}
+                        Response::Continue => {
+                            rustbox::clear();
+                            rustbox::present();
+                        }
                     }
                 },
                 _ => {}
