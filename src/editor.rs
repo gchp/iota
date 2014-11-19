@@ -30,7 +30,7 @@ impl Editor {
     pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
 
         if key == 0x0D {
-            self.active_buffer.new_line_below();
+            self.active_buffer.insert_new_line();
             return Response::Continue
         }
 

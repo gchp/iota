@@ -32,11 +32,11 @@ impl Buffer {
         buffer.file_path = path.as_str().unwrap().to_string();
 
         // for every line in the file we add a corresponding line to the buffer
-        for (index, line) in lines.iter().enumerate() {
+        for line in lines.iter() {
             let mut data = line.clone();
             // remove \n chars
             data.pop();
-            buffer.lines.push(RefCell::new(Line::new(data, index)));
+            buffer.lines.push(RefCell::new(Line::new(data)));
         }
 
         buffer
@@ -46,9 +46,9 @@ impl Buffer {
     ///
     /// Loops over each line in the buffer and draws it to the screen
     pub fn draw_contents(&self) {
-        for line in self.lines.iter() {
+        for (index, line) in self.lines.iter().enumerate() {
             let ln = line.borrow();
-            utils::draw(ln.num, ln.data.clone());
+            utils::draw(index, ln.data.clone());
         }
     }
 
@@ -103,7 +103,7 @@ impl Buffer {
            // add the new character to the Vec at the cursors `x` position
            data.insert(x, ch as u8);
 
-           // convery to Vec back into a string
+           // convert to Vec back into a string
            let new_data = String::from_utf8(data);
 
            if new_data.is_ok() {
@@ -116,20 +116,45 @@ impl Buffer {
 
     }
 
-    pub fn new_line_below(&mut self) {
-        let (x, y) = self.cursor.buffer_pos.expand();
-        self.lines.insert(y, RefCell::new(Line::new(String::from_str("\n"), y)));
-        for line in self.lines.iter() {
-            if line.borrow().num > y {
-                line.borrow_mut().num += 1;
-            }
-        }
-        self.cursor.adjust_buffer_pos(x, y+1);
+    pub fn insert_new_line(&mut self) {
+        let (_, y) = self.cursor.buffer_pos.expand();
+
+        // split the current line at the cursor position
+        let bits = &self.split_line();
+        self.update_line(bits.clone());
+
+        // move the cursor down and to the start of the next line
+        self.cursor.adjust_buffer_pos(0, y + 1);
     }
 
-    fn get_line_at(&self, line_num: uint) -> Option<&RefCell<Line>> {
-        for line in self.lines.iter() {
-            if line.borrow().num == line_num {
+    fn update_line(&mut self, mut bits: Vec<String>) {
+        let (_, y) = self.cursor.buffer_pos.expand();
+        {
+            let line = &self.get_line_at(y);
+            line.unwrap().borrow_mut().data = bits.remove(0).unwrap();
+        }
+        utils::clear_line(y+1);
+        self.lines.insert(y+1, RefCell::new(Line::new(bits.remove(0).unwrap())));
+    }
+
+    fn split_line(&mut self) -> Vec<String> {
+        let (x, y) = self.cursor.buffer_pos.expand();
+        let line = &self.get_line_at(y);
+
+
+        let data = line.unwrap().borrow().data.clone().into_bytes();
+        let old_data = data.slice_to(x);
+        let new_data = data.slice_from(x);
+
+        vec!(
+            String::from_utf8_lossy(old_data).into_string(),
+            String::from_utf8_lossy(new_data).into_string(),
+        )
+    }
+
+    fn get_line_at(&mut self, line_num: uint) -> Option<&RefCell<Line>> {
+        for (index, line) in self.lines.iter().enumerate() {
+            if index == line_num {
                 return Some(line)
             }
         }
@@ -141,15 +166,13 @@ impl Buffer {
 
 pub struct Line {
     data: String,
-    num: uint,
 }
 
 impl Line {
     /// Create a new line instance
-    pub fn new(data: String, n: uint) -> Line {
+    pub fn new(data: String) -> Line {
         Line{
             data: data,
-            num: n
         }
     }
 

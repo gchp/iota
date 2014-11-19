@@ -24,7 +24,6 @@ To exit, press `q`.
 
 ## TODO list
 
-- [ ] Add ability to insert new lines
 - [ ] Allow characters to be deleted
 - [ ] File saving
 - [ ] Creating new files
