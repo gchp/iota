@@ -1,7 +1,7 @@
 extern crate rustbox;
 
 pub fn draw(index: uint, data: String) {
-//    clear_line(index);
+    // clear_line(index);
     rustbox::print(0, index, rustbox::Bold, rustbox::White, rustbox::Black, data);
 }
 

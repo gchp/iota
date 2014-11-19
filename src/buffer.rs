@@ -67,13 +67,27 @@ impl Buffer {
         let (mut x, mut y) = self.cursor.get_position();
         match dir {
             Direction::Up => {
-                if self.get_line_at(y-1).is_some() {
+                let line = self.get_line_at(y-1);
+                if line.is_some() {
                     y -= 1;
+                    // if the current cursor offset is after the end of the
+                    // next line, move the offset back to the end of the line
+                    let line_len = line.unwrap().borrow().data.len();
+                    if x > line_len {
+                        x = line_len;
+                    }
                 }
             }
             Direction::Down => {
-                if self.get_line_at(y+1).is_some() {
-                    y += 1
+                let line = self.get_line_at(y+1);
+                if line.is_some() {
+                    y += 1;
+                    // if the current cursor offset is after the end of the
+                    // next line, move the offset back to the end of the line
+                    let line_len = line.unwrap().borrow().data.len();
+                    if x > line_len {
+                        x = line_len;
+                    }
                 }
             }
             Direction::Right => {
