@@ -71,7 +71,7 @@ impl Buffer {
                 if line.is_some() {
                     y -= 1;
                     // if the current cursor offset is after the end of the
-                    // next line, move the offset back to the end of the line
+                    // previous line, move the offset back to the end of the line
                     let line_len = line.unwrap().borrow().data.len();
                     if x > line_len {
                         x = line_len;
