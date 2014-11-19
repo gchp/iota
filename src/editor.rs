@@ -2,11 +2,12 @@ extern crate rustbox;
 
 use std::char;
 use std::comm::{Receiver, Sender};
+use std::num::from_u64;
 
 use rdit::Response;
 use buffer::Buffer;
 use cursor::Direction;
-use keyboard::key;
+use keyboard::Key;
 
 
 pub struct Editor {
@@ -29,8 +30,10 @@ impl Editor {
     }
 
     pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
-        match key {
-            key::ENTER => {
+        let input_key: Option<Key> = from_u64(key as u64);
+
+        match input_key {
+            Some(Key::Enter) => {
                 self.active_buffer.insert_new_line();
                 return Response::Continue
             }
