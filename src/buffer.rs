@@ -54,7 +54,7 @@ impl Buffer {
 
     pub fn draw_status(&self) {
         let height = utils::get_term_height();
-        let (cursor_x, cursor_y) = self.cursor.buffer_pos.expand();
+        let (cursor_x, cursor_y) = self.cursor.get_position();
         let data = self.file_path.clone();
         let line_count = self.lines.len();
         utils::draw(
@@ -64,7 +64,7 @@ impl Buffer {
     }
 
     pub fn adjust_cursor(&mut self, dir: Direction) {
-        let (mut x, mut y) = self.cursor.buffer_pos.expand();
+        let (mut x, mut y) = self.cursor.get_position();
         match dir {
             Direction::Up => {
                 if self.get_line_at(y-1).is_some() {
@@ -89,11 +89,11 @@ impl Buffer {
                 }
             }
         }
-        self.cursor.adjust_buffer_pos(x, y);
+        self.cursor.set_position(x, y);
     }
 
     pub fn insert_char(&mut self, ch: char) {
-       let (mut x, y) = self.cursor.buffer_pos.expand();
+       let (mut x, y) = self.cursor.get_position();
        {
            let line = &self.get_line_at(y);
 
@@ -112,35 +112,37 @@ impl Buffer {
            }
            x += 1;
        }
-       self.cursor.adjust_buffer_pos(x, y);
+       self.cursor.set_position(x, y);
 
     }
 
     pub fn insert_new_line(&mut self) {
-        let (_, y) = self.cursor.buffer_pos.expand();
+        let line_num = self.cursor.get_linenum();
 
         // split the current line at the cursor position
         let bits = &self.split_line();
         self.update_line(bits.clone());
 
         // move the cursor down and to the start of the next line
-        self.cursor.adjust_buffer_pos(0, y + 1);
+        self.cursor.set_position(0, line_num + 1);
     }
 
     fn update_line(&mut self, mut bits: Vec<String>) {
-        let (_, y) = self.cursor.buffer_pos.expand();
+        let line_num = self.cursor.get_linenum();
         {
-            let line = &self.get_line_at(y);
+            // truncate the current line
+            let line = &self.get_line_at(line_num);
             line.unwrap().borrow_mut().data = bits.remove(0).unwrap();
         }
-        utils::clear_line(y+1);
-        self.lines.insert(y+1, RefCell::new(Line::new(bits.remove(0).unwrap())));
+
+        // add new line below current
+        utils::clear_line(line_num+1);
+        self.lines.insert(line_num+1, RefCell::new(Line::new(bits.remove(0).unwrap())));
     }
 
     fn split_line(&mut self) -> Vec<String> {
-        let (x, y) = self.cursor.buffer_pos.expand();
+        let (x, y) = self.cursor.get_position();
         let line = &self.get_line_at(y);
-
 
         let data = line.unwrap().borrow().data.clone().into_bytes();
         let old_data = data.slice_to(x);
