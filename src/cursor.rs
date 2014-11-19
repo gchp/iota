@@ -7,34 +7,32 @@ pub enum Direction {
     Right,
 }
 
-#[deriving(Clone)]
-pub enum CursorPos {
+enum CursorPos {
     Place(uint, uint),
 }
 
 impl CursorPos {
-    pub fn expand(&self) -> (uint, uint) {
+    fn expand(&self) -> (uint, uint) {
         match self {
             &CursorPos::Place(x, y) => return (x, y)
         }
     }
 
-    pub fn get_offset(&self) -> uint {
+    fn get_offset(&self) -> uint {
         match self {
             &CursorPos::Place(x, _) => return x
         }
     }
 
-    pub fn get_linenum(&self) -> uint {
+    fn get_linenum(&self) -> uint {
         match self {
             &CursorPos::Place(_, y) => return y
         }
     }
 }
 
-#[deriving(Clone)]
 pub struct Cursor {
-    pub buffer_pos: CursorPos,
+    buffer_pos: CursorPos,
 }
 
 impl Cursor {
@@ -45,11 +43,10 @@ impl Cursor {
         }
     }
 
-    /// Draw the cursor based on the `x` and `y` values
+    /// Draw the cursor
     pub fn draw(&self) {
-        match self.buffer_pos {
-            CursorPos::Place(x, y) => utils::draw_cursor(x, y)
-        }
+        let (offset, line_num) = self.get_position();
+        utils::draw_cursor(offset, line_num)
     }
 
     pub fn set_position(&mut self, x: uint, y: uint) {
