@@ -5,3 +5,4 @@ mod rdit;
 mod buffer;
 mod editor;
 mod cursor;
+mod keyboard;

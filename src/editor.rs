@@ -6,6 +6,7 @@ use std::comm::{Receiver, Sender};
 use rdit::Response;
 use buffer::Buffer;
 use cursor::Direction;
+use keyboard::key;
 
 
 pub struct Editor {
@@ -28,10 +29,12 @@ impl Editor {
     }
 
     pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
-
-        if key == 0x0D {
-            self.active_buffer.insert_new_line();
-            return Response::Continue
+        match key {
+            key::ENTER => {
+                self.active_buffer.insert_new_line();
+                return Response::Continue
+            }
+            _ => {}
         }
 
         match char::from_u32(ch) {
