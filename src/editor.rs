@@ -2,8 +2,8 @@ extern crate rustbox;
 
 use std::char;
 use std::comm::{Receiver, Sender};
-use std::num::from_u16;
-use std::num::from_u32;
+use std::num;
+use std::io::{File, FileMode, FileAccess};
 
 use rdit::Response;
 use buffer::Buffer;
@@ -31,7 +31,7 @@ impl Editor {
     }
 
     pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
-        let input_key: Option<Key> = from_u16(key);
+        let input_key: Option<Key> = num::from_u16(key);
 
         match input_key {
             Some(Key::Enter) => {
@@ -54,11 +54,22 @@ impl Editor {
                 self.active_buffer.adjust_cursor(Direction::Right);
                 return Response::Continue
             }
+            Some(Key::Space) => {
+                self.active_buffer.insert_char(' ');
+                return Response::Continue
+            }
+            Some(Key::CtrlS) => {
+                self.save_active_buffer();
+                return Response::Continue
+            }
             Some(Key::Esc) => {
                 return Response::Quit
             }
             _ => {}
         }
+
+        print!("k: {} ", key);
+        print!("c: {} **", ch);
 
         match char::from_u32(ch) {
             Some(c) => {
@@ -68,10 +79,26 @@ impl Editor {
             _ => {}
         }
 
-        print!("k: {} ", key);
-        print!("c: {} ", ch);
-
         Response::Continue
+    }
+
+    pub fn save_active_buffer(&mut self) {
+        let lines = &self.active_buffer.lines;
+        let path = Path::new(&self.active_buffer.file_path);
+
+        let mut file = match File::open_mode(&path, FileMode::Open, FileAccess::Write) {
+            Ok(f) => f,
+            Err(e) => panic!("file error: {}", e),
+        };
+
+        for line in lines.iter() {
+            let data = format!("{}\n", line.borrow().data);
+            let result = file.write(data.as_bytes());
+
+            if result.is_err() {
+                // TODO: figure out what to do here.
+            }
+        }
     }
 
     pub fn draw(&mut self) {

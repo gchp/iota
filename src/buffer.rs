@@ -180,7 +180,7 @@ impl Buffer {
 
 
 pub struct Line {
-    data: String,
+    pub data: String,
 }
 
 impl Line {
