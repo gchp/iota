@@ -131,15 +131,25 @@ impl Buffer {
 
     }
 
-    pub fn insert_new_line(&mut self) {
-        let line_num = self.cursor.get_linenum();
+    pub fn insert_line(&mut self) {
+        let (offset, mut line_num) = self.cursor.get_position();
 
         // split the current line at the cursor position
         let bits = &self.split_line();
-        self.update_line(bits.clone());
+        {
+            // truncate the current line
+            let line = &self.get_line_at(line_num);
+            line.unwrap().borrow_mut().data.truncate(offset);
+        }
+
+        line_num += 1;
+
+        // add new line below current
+        utils::clear_line(line_num);
+        self.lines.insert(line_num, RefCell::new(Line::new(bits.clone().remove(1).unwrap())));
 
         // move the cursor down and to the start of the next line
-        self.cursor.set_position(0, line_num + 1);
+        self.cursor.set_position(0, line_num);
     }
 
     /// Join the line identified by `line_num` with the one at `line_num - 1 `.
@@ -172,20 +182,6 @@ impl Buffer {
         utils::clear_line(line_num);
         self.lines.remove(line_num);
         self.cursor.set_position(line_len, line_num - 1);
-    }
-
-    // FIXME: rename this method - it is confusing and doesn't match its behaviour
-    fn update_line(&mut self, mut bits: Vec<String>) {
-        let line_num = self.cursor.get_linenum();
-        {
-            // truncate the current line
-            let line = &self.get_line_at(line_num);
-            line.unwrap().borrow_mut().data = bits.remove(0).unwrap();
-        }
-
-        // add new line below current
-        utils::clear_line(line_num+1);
-        self.lines.insert(line_num+1, RefCell::new(Line::new(bits.remove(0).unwrap())));
     }
 
     fn split_line(&mut self) -> Vec<String> {

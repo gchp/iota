@@ -17,18 +17,6 @@ impl CursorPos {
             &CursorPos::Place(x, y) => return (x, y)
         }
     }
-
-    fn get_offset(&self) -> uint {
-        match self {
-            &CursorPos::Place(x, _) => return x
-        }
-    }
-
-    fn get_linenum(&self) -> uint {
-        match self {
-            &CursorPos::Place(_, y) => return y
-        }
-    }
 }
 
 pub struct Cursor {
@@ -55,13 +43,5 @@ impl Cursor {
 
     pub fn get_position(&self) -> (uint, uint) {
         self.buffer_pos.expand()
-    }
-
-    pub fn get_offset(&self) -> uint {
-        self.buffer_pos.get_offset()
-    }
-
-    pub fn get_linenum(&self) -> uint {
-        self.buffer_pos.get_linenum()
     }
 }

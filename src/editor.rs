@@ -35,7 +35,7 @@ impl Editor {
 
         match input_key {
             Some(Key::Enter) => {
-                self.active_buffer.insert_new_line();
+                self.active_buffer.insert_line();
                 return Response::Continue
             }
             Some(Key::Up) => {
