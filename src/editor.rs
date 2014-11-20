@@ -2,7 +2,7 @@ extern crate rustbox;
 
 use std::char;
 use std::comm::{Receiver, Sender};
-use std::num::from_u64;
+use std::num::from_u16;
 
 use rdit::Response;
 use buffer::Buffer;
@@ -30,7 +30,7 @@ impl Editor {
     }
 
     pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
-        let input_key: Option<Key> = from_u64(key as u64);
+        let input_key: Option<Key> = from_u16(key);
 
         match input_key {
             Some(Key::Enter) => {
