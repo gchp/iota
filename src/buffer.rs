@@ -121,26 +121,13 @@ impl Buffer {
     }
 
     pub fn insert_char(&mut self, ch: char) {
-       let (mut x, y) = self.cursor.get_position();
+       let (mut offset, line_num) = self.cursor.get_position();
        {
-           let line = &self.get_line_at(y);
-
-           // get Vec<u8> from the current line contents
-           let mut data = line.unwrap().borrow().data.clone().into_bytes();
-
-           // add the new character to the Vec at the cursors `x` position
-           data.insert(x, ch as u8);
-
-           // convert to Vec back into a string
-           let new_data = String::from_utf8(data);
-
-           if new_data.is_ok() {
-               // update the line
-               line.unwrap().borrow_mut().data = new_data.unwrap();
-           }
-           x += 1;
+           let line = &self.get_line_at(line_num);
+           line.unwrap().borrow_mut().data.insert(offset, ch);
        }
-       self.cursor.set_position(x, y);
+       offset += 1;
+       self.cursor.set_position(offset, line_num);
 
     }
 
