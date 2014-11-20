@@ -19,6 +19,10 @@ pub fn get_term_width() -> uint {
     rustbox::width()
 }
 
+pub fn get_term_stats() -> String {
+    format!("{}x{}", get_term_width(), get_term_height())
+}
+
 pub fn clear_line(line: uint) {
     let width = get_term_width();
     for index in range(0, width) {

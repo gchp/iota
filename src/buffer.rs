@@ -53,13 +53,13 @@ impl Buffer {
 
     pub fn draw_status(&self) {
         let height = utils::get_term_height();
-        let (cursor_x, cursor_y) = self.cursor.get_position();
+        let cursor = self.cursor.get_position();
         let data = self.file_path.clone();
         let line_count = self.lines.len();
         utils::draw(
             height - 1,
-            format!("{}, cursor: {}-{}, termwidth: {}, termheight: {}, lines: {}",
-                    data, cursor_x, cursor_y, utils::get_term_height(), utils::get_term_width(), line_count));
+            format!("{}, cursor: {}, term: {}, lines: {}",
+                    data, cursor, utils::get_term_stats(), line_count));
     }
 
     pub fn adjust_cursor(&mut self, dir: Direction) {
