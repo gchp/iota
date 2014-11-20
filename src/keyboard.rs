@@ -2,15 +2,23 @@ use std::num::FromPrimitive;
 
 pub enum Key {
     Enter = 13,
-    Down  = 1073741905,
+    Esc   = 27,
+    Right = 65514,
+    Left  = 65515,
+    Down  = 65516,
+    Up    = 65517,
 }
 
 impl FromPrimitive for Key {
     fn from_u64(n: u64) -> Option<Key> {
         match n {
-            13         => Some(Key::Enter),
-            1073741905 => Some(Key::Down),
-            _          => None
+            13    => Some(Key::Enter),
+            27    => Some(Key::Esc),
+            65514 => Some(Key::Right),
+            65515 => Some(Key::Left),
+            65516 => Some(Key::Down),
+            65517 => Some(Key::Up),
+            _     => None
         }
     }
 

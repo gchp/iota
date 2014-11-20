@@ -3,6 +3,7 @@ extern crate rustbox;
 use std::char;
 use std::comm::{Receiver, Sender};
 use std::num::from_u16;
+use std::num::from_u32;
 
 use rdit::Response;
 use buffer::Buffer;
@@ -37,41 +38,40 @@ impl Editor {
                 self.active_buffer.insert_new_line();
                 return Response::Continue
             }
+            Some(Key::Up) => {
+                self.active_buffer.adjust_cursor(Direction::Up);
+                return Response::Continue
+            }
+            Some(Key::Down) => {
+                self.active_buffer.adjust_cursor(Direction::Down);
+                return Response::Continue
+            }
+            Some(Key::Left) => {
+                self.active_buffer.adjust_cursor(Direction::Left);
+                return Response::Continue
+            }
+            Some(Key::Right) => {
+                self.active_buffer.adjust_cursor(Direction::Right);
+                return Response::Continue
+            }
+            Some(Key::Esc) => {
+                return Response::Quit
+            }
             _ => {}
         }
 
         match char::from_u32(ch) {
-            Some('q') => Response::Quit,
-            Some('c') => {
-                rustbox::present();
-                Response::Continue
-            }
-
-            // cursor movement
-            Some('h') => {
-                self.active_buffer.adjust_cursor(Direction::Left);
-                Response::Continue
-            },
-            Some('j') => {
-                self.active_buffer.adjust_cursor(Direction::Down);
-                Response::Continue
-            },
-            Some('k') => {
-                self.active_buffer.adjust_cursor(Direction::Up);
-                Response::Continue
-            },
-            Some('l') => {
-                self.active_buffer.adjust_cursor(Direction::Right);
-                Response::Continue
-            },
             Some(c) => {
                 self.active_buffer.insert_char(c);
-                Response::Continue
+                return Response::Continue
             }
-
-            // default
-            _ => Response::Continue,
+            _ => {}
         }
+
+        print!("k: {} ", key);
+        print!("c: {} ", ch);
+
+        Response::Continue
     }
 
     pub fn draw(&mut self) {

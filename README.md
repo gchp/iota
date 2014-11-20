@@ -18,9 +18,9 @@ Clone the project and run `cargo build`.
 
 Then to start the editor run `./target/rdit /path/to/file.txt`.
 
-You can move the cursor around with `h`, `j`, `k`, `l`.
+You can move the cursor around with the arrow keys.
 
-To exit, press `q`.
+To exit, press escape on your keyboard, followed by `Ctrl-c`.
 
 ## TODO list
 
