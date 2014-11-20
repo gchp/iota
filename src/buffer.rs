@@ -169,14 +169,12 @@ impl Buffer {
             prev_line.borrow_mut().data = new_data;
         }
 
-        // clear the line
         utils::clear_line(line_num);
-        // remove current line
         self.lines.remove(line_num);
-        // move the cursor
         self.cursor.set_position(line_len, line_num - 1);
     }
 
+    // FIXME: rename this method - it is confusing and doesn't match its behaviour
     fn update_line(&mut self, mut bits: Vec<String>) {
         let line_num = self.cursor.get_linenum();
         {
