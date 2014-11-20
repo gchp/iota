@@ -24,6 +24,4 @@ To exit, press escape on your keyboard, followed by `Ctrl-c`.
 
 ## TODO list
 
-- [ ] Allow characters to be deleted
-- [ ] File saving
 - [ ] Creating new files

@@ -58,6 +58,10 @@ impl Editor {
                 self.active_buffer.insert_char(' ');
                 return Response::Continue
             }
+            Some(Key::Backspace) => {
+                self.active_buffer.delete_char();
+                return Response::Continue
+            }
             Some(Key::CtrlS) => {
                 self.save_active_buffer();
                 return Response::Continue

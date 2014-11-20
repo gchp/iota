@@ -105,6 +105,26 @@ impl Buffer {
         self.cursor.set_position(x, y);
     }
 
+    pub fn delete_char(&mut self) {
+        let (offset, line_num) = self.cursor.get_position();
+
+        if offset == 0 {
+            return self.join_line_with_previous(line_num);
+        }
+
+        let bits = self.split_line();
+        let mut data = bits[0].clone();
+        data.pop();
+
+        let new_data = format!("{}{}", data, bits[1]);
+
+        {
+            let line = self.get_line_at(line_num);
+            line.unwrap().borrow_mut().data = new_data;
+        }
+        self.cursor.set_position(offset - 1, line_num);
+    }
+
     pub fn insert_char(&mut self, ch: char) {
        let (mut x, y) = self.cursor.get_position();
        {
@@ -138,6 +158,41 @@ impl Buffer {
 
         // move the cursor down and to the start of the next line
         self.cursor.set_position(0, line_num + 1);
+    }
+
+    /// Join the line identified by `line_num` with the one at `line_num - 1 `.
+    fn join_line_with_previous(&mut self, line_num: uint) {
+        let mut current_line_data: String;
+        let mut prev_line_data: String;
+        let line_len: uint;
+        {
+            let prev_line = self.get_line_at(line_num - 1);
+            if prev_line.is_none() {
+                return
+            }
+            prev_line_data = prev_line.unwrap().borrow().data.clone();
+            line_len = prev_line_data.len();
+        }
+        {
+            // get current line data
+            let current_line = self.get_line_at(line_num);
+            current_line_data = current_line.unwrap().borrow().data.clone();
+        }
+        {
+            // append current line data to prev line
+            // FIXME: this is duplicated above in a different scope...
+            let prev_line = self.get_line_at(line_num - 1).unwrap();
+
+            let new_data = format!("{}{}", prev_line_data, current_line_data);
+            prev_line.borrow_mut().data = new_data;
+        }
+
+        // clear the line
+        utils::clear_line(line_num);
+        // remove current line
+        self.lines.remove(line_num);
+        // move the cursor
+        self.cursor.set_position(line_len, line_num - 1);
     }
 
     fn update_line(&mut self, mut bits: Vec<String>) {
