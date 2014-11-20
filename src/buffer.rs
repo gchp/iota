@@ -106,17 +106,18 @@ impl Buffer {
     }
 
     pub fn delete_char(&mut self) {
-        let (offset, line_num) = self.cursor.get_position();
+        let (mut offset, line_num) = self.cursor.get_position();
 
         if offset == 0 {
             return self.join_line_with_previous(line_num);
         }
 
+        offset -= 1;
         {
             let line = self.get_line_at(line_num);
             line.unwrap().borrow_mut().data.remove(offset);
         }
-        self.cursor.set_position(offset - 1, line_num);
+        self.cursor.set_position(offset, line_num);
     }
 
     pub fn insert_char(&mut self, ch: char) {
