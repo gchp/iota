@@ -112,15 +112,9 @@ impl Buffer {
             return self.join_line_with_previous(line_num);
         }
 
-        let bits = self.split_line();
-        let mut data = bits[0].clone();
-        data.pop();
-
-        let new_data = format!("{}{}", data, bits[1]);
-
         {
             let line = self.get_line_at(line_num);
-            line.unwrap().borrow_mut().data = new_data;
+            line.unwrap().borrow_mut().data.remove(offset);
         }
         self.cursor.set_position(offset - 1, line_num);
     }
