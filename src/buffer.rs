@@ -105,7 +105,7 @@ impl<'b> Buffer<'b> {
         self.lines.insert(line_num, RefCell::new(Line::new(bits.clone().remove(1).unwrap())));
 
         // move the cursor down and to the start of the next line
-        self.cursor.set_position(0, line_num);
+        self.move_cursor_to(line_num);
     }
 
     /// Join the line identified by `line_num` with the one at `line_num - 1 `.
