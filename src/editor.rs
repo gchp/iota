@@ -11,14 +11,14 @@ use cursor::Direction;
 use keyboard::Key;
 
 
-pub struct Editor {
+pub struct Editor<'e> {
     pub sender: Sender<rustbox::Event>,
     events: Receiver<rustbox::Event>,
-    active_buffer: Buffer,
+    active_buffer: Buffer<'e>,
 }
 
-impl Editor {
-    pub fn new(filename: String) -> Editor {
+impl<'e> Editor<'e> {
+    pub fn new(filename: String) -> Editor<'e> {
         let path = Path::new(filename);
         let buffer = Buffer::new_from_file(&path);
 

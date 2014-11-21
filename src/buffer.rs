@@ -5,16 +5,16 @@ use utils;
 use cursor::{Direction, Cursor};
 
 
-pub struct Buffer {
+pub struct Buffer<'b> {
     pub file_path: String,
     pub lines: Vec<RefCell<Line>>,
 
-    pub cursor: Cursor,
+    pub cursor: Cursor<'b>,
 }
 
-impl Buffer {
+impl<'b> Buffer<'b> {
     /// Create a new buffer instance
-    pub fn new() -> Buffer {
+    pub fn new() -> Buffer<'b> {
         Buffer {
             file_path: String::new(),
             lines: Vec::new(),
@@ -23,7 +23,7 @@ impl Buffer {
     }
 
     /// Create a new buffer instance and load the given file
-    pub fn new_from_file(path: &Path) -> Buffer {
+    pub fn new_from_file(path: &Path) -> Buffer<'b> {
         let mut file = BufferedReader::new(File::open(path));
         let lines: Vec<String> = file.lines().map(|x| x.unwrap()).collect();
         let mut buffer = Buffer::new();
@@ -37,6 +37,7 @@ impl Buffer {
             data.pop();
             buffer.lines.push(RefCell::new(Line::new(data)));
         }
+        buffer.cursor.set_line(Some(&buffer.lines[0]));
 
         buffer
     }
@@ -90,14 +91,13 @@ impl Buffer {
                 }
             }
             Direction::Right => {
-                let line = &self.get_line_at(y);
-                if line.is_some() && line.unwrap().borrow().len() > x {
+                let line = self.cursor.get_line();
+                if line.borrow().len() > x {
                     x += 1
                 }
             }
             Direction::Left => {
-                let line = &self.get_line_at(y);
-                if line.is_some() && x > 0 {
+                if x > 0 {
                     x -= 1
                 }
             }
@@ -106,29 +106,17 @@ impl Buffer {
     }
 
     pub fn delete_char(&mut self) {
-        let (mut offset, line_num) = self.cursor.get_position();
+        let (offset, line_num) = self.cursor.get_position();
 
         if offset == 0 {
             return self.join_line_with_previous(line_num);
         }
 
-        offset -= 1;
-        {
-            let line = self.get_line_at(line_num);
-            line.unwrap().borrow_mut().data.remove(offset);
-        }
-        self.cursor.set_position(offset, line_num);
+        self.cursor.delete_char()
     }
 
     pub fn insert_char(&mut self, ch: char) {
-       let (mut offset, line_num) = self.cursor.get_position();
-       {
-           let line = &self.get_line_at(line_num);
-           line.unwrap().borrow_mut().data.insert(offset, ch);
-       }
-       offset += 1;
-       self.cursor.set_position(offset, line_num);
-
+        self.cursor.insert_char(ch);
     }
 
     pub fn insert_line(&mut self) {
@@ -165,11 +153,11 @@ impl Buffer {
             prev_line_data = prev_line.unwrap().borrow().data.clone();
             line_len = prev_line_data.len();
         }
-        {
-            // get current line data
-            let current_line = self.get_line_at(line_num);
-            current_line_data = current_line.unwrap().borrow().data.clone();
-        }
+
+        // get current line data
+        let current_line = self.cursor.get_line();
+        current_line_data = current_line.borrow().data.clone();
+
         {
             // append current line data to prev line
             // FIXME: this is duplicated above in a different scope...
@@ -185,10 +173,10 @@ impl Buffer {
     }
 
     fn split_line(&mut self) -> Vec<String> {
-        let (x, y) = self.cursor.get_position();
-        let line = &self.get_line_at(y);
+        let (x, _) = self.cursor.get_position();
+        let line = self.cursor.get_line();
 
-        let data = line.unwrap().borrow().data.clone().into_bytes();
+        let data = line.borrow().data.clone().into_bytes();
         let old_data = data.slice_to(x);
         let new_data = data.slice_from(x);
 
