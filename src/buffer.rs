@@ -64,45 +64,13 @@ impl<'b> Buffer<'b> {
     }
 
     pub fn adjust_cursor(&mut self, dir: Direction) {
-        let (mut x, mut y) = self.cursor.get_position();
+        let y = self.cursor.get_linenum();
         match dir {
-            Direction::Up => {
-                let line = self.move_cursor_to(y-1);
-                if line.is_some() {
-                    y -= 1;
-                    // if the current cursor offset is after the end of the
-                    // previous line, move the offset back to the end of the line
-                    let line_len = line.unwrap().borrow().data.len();
-                    if x > line_len {
-                        x = line_len;
-                    }
-                }
-            }
-            Direction::Down => {
-                let line = self.move_cursor_to(y+1);
-                if line.is_some() {
-                    y += 1;
-                    // if the current cursor offset is after the end of the
-                    // next line, move the offset back to the end of the line
-                    let line_len = line.unwrap().borrow().data.len();
-                    if x > line_len {
-                        x = line_len;
-                    }
-                }
-            }
-            Direction::Right => {
-                let line = self.cursor.get_line();
-                if line.borrow().len() > x {
-                    x += 1
-                }
-            }
-            Direction::Left => {
-                if x > 0 {
-                    x -= 1
-                }
-            }
+            Direction::Up    => { self.move_cursor_to(y-1); },
+            Direction::Down  => { self.move_cursor_to(y+1); },
+            Direction::Right => { self.cursor.move_right(); },
+            Direction::Left  => { self.cursor.move_left(); },
         }
-        self.cursor.set_position(x, y);
     }
 
     pub fn delete_char(&mut self) {
@@ -193,11 +161,10 @@ impl<'b> Buffer<'b> {
         let line = &self.lines[line_num];
 
         // set it on the cursor
-        let mut cursor = self.cursor.clone();
-        cursor.set_line(Some(line));
-        self.cursor = cursor;
+        self.cursor.set_line(Some(line));
+        self.cursor.set_linenum(line_num);
 
-        Some(cursor.get_line())
+        Some(self.cursor.get_line())
     }
 
 }

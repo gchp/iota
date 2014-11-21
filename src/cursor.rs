@@ -21,6 +21,16 @@ impl CursorPos {
             &CursorPos::Place(x, y) => return (x, y)
         }
     }
+
+    fn get_linenum(&self) -> uint {
+        let (_, line_num) = self.expand();
+        line_num
+    }
+
+    fn get_offset(&self) -> uint {
+        let (offset, _) = self.expand();
+        offset
+    }
 }
 
 #[deriving(Clone)]
@@ -52,8 +62,33 @@ impl<'c> Cursor<'c> {
         self.buffer_pos.expand()
     }
 
+    pub fn get_linenum(&self) -> uint {
+        self.buffer_pos.get_linenum()
+    }
+
+    pub fn set_linenum(&mut self, line_num: uint) {
+        let offset = self.get_offset();
+        self.buffer_pos = CursorPos::Place(offset, line_num);
+    }
+
+    pub fn get_offset(&self) -> uint {
+        self.buffer_pos.get_offset()
+    }
+
+    pub fn set_offset(&mut self, offset: uint) {
+        let line_num = self.get_linenum();
+        self.buffer_pos = CursorPos::Place(offset, line_num);
+    }
+
     pub fn set_line(&mut self, line: Option<&'c RefCell<Line>>) {
-        self.line = line
+        self.line = line;
+
+        // check that the current offset is longer than the length of the line
+        let offset = self.get_offset();
+        let line_length = self.get_line().borrow().len();
+        if offset > line_length {
+            self.set_offset(line_length);
+        }
     }
 
     pub fn get_line(&self) -> &'c RefCell<Line> {
@@ -74,5 +109,20 @@ impl<'c> Cursor<'c> {
         line.borrow_mut().data.insert(offset, ch);
         offset += 1;
         self.set_position(offset, line_num);
+    }
+
+    pub fn move_right(&mut self) {
+        let line_len = self.get_line().borrow().len();
+        let current_offset = self.get_offset();
+        if line_len > current_offset {
+            self.set_offset(current_offset + 1);
+        }
+    }
+
+    pub fn move_left(&mut self) {
+        let current_offset = self.get_offset();
+        if current_offset > 0 {
+            self.set_offset(current_offset - 1);
+        }
     }
 }
