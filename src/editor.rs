@@ -11,6 +11,12 @@ use cursor::Direction;
 use keyboard::Key;
 
 
+enum EventStatus {
+    Handled(Response),
+    NotHandled,
+}
+
+
 pub struct Editor<'e> {
     pub sender: Sender<rustbox::Event>,
     events: Receiver<rustbox::Event>,
@@ -33,43 +39,10 @@ impl<'e> Editor<'e> {
     pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
         let input_key: Option<Key> = num::from_u16(key);
 
-        match input_key {
-            Some(Key::Enter) => {
-                self.active_buffer.insert_line();
-                return Response::Continue
-            }
-            Some(Key::Up) => {
-                self.active_buffer.adjust_cursor(Direction::Up);
-                return Response::Continue
-            }
-            Some(Key::Down) => {
-                self.active_buffer.adjust_cursor(Direction::Down);
-                return Response::Continue
-            }
-            Some(Key::Left) => {
-                self.active_buffer.adjust_cursor(Direction::Left);
-                return Response::Continue
-            }
-            Some(Key::Right) => {
-                self.active_buffer.adjust_cursor(Direction::Right);
-                return Response::Continue
-            }
-            Some(Key::Space) => {
-                self.active_buffer.insert_char(' ');
-                return Response::Continue
-            }
-            Some(Key::Backspace) => {
-                self.active_buffer.delete_char();
-                return Response::Continue
-            }
-            Some(Key::CtrlS) => {
-                self.save_active_buffer();
-                return Response::Continue
-            }
-            Some(Key::CtrlQ) => {
-                return Response::Quit
-            }
-            _ => {}
+        let event_status = self.handle_system_event(input_key.unwrap());
+        match event_status {
+            EventStatus::Handled(r) => { return r }
+            EventStatus::NotHandled => { /* keep going */ }
         }
 
         print!("k: {} ", key);
@@ -130,6 +103,23 @@ impl<'e> Editor<'e> {
             }
         }
         return false
+    }
+
+    fn handle_system_event(&mut self, key: Key) -> EventStatus {
+        match key {
+            Key::Up        => { self.active_buffer.adjust_cursor(Direction::Up); }
+            Key::Down      => { self.active_buffer.adjust_cursor(Direction::Down); }
+            Key::Left      => { self.active_buffer.adjust_cursor(Direction::Left); }
+            Key::Right     => { self.active_buffer.adjust_cursor(Direction::Right); }
+            Key::Enter     => { self.active_buffer.insert_line(); }
+            Key::Space     => { self.active_buffer.insert_char(' '); }
+            Key::Backspace => { self.active_buffer.delete_char(); }
+            Key::CtrlS     => { self.save_active_buffer(); }
+            Key::CtrlQ     => { return EventStatus::Handled(Response::Quit) }
+            _              => { return EventStatus::NotHandled }
+        }
+        // event is handled and we want to keep the editor running
+        EventStatus::Handled(Response::Continue)
     }
 
 }
