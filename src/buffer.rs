@@ -94,7 +94,7 @@ impl<'b> Buffer<'b> {
         let bits = &self.split_line();
         {
             // truncate the current line
-            let line = &self.move_cursor_to(line_num);
+            let line = &self.get_line_at(line_num);
             line.unwrap().borrow_mut().data.truncate(offset);
         }
 
@@ -114,7 +114,7 @@ impl<'b> Buffer<'b> {
         let mut prev_line_data: String;
         let line_len: uint;
         {
-            let prev_line = self.move_cursor_to(line_num - 1);
+            let prev_line = self.get_line_at(line_num - 1);
             if prev_line.is_none() {
                 return
             }
@@ -129,7 +129,7 @@ impl<'b> Buffer<'b> {
         {
             // append current line data to prev line
             // FIXME: this is duplicated above in a different scope...
-            let prev_line = self.move_cursor_to(line_num - 1).unwrap();
+            let prev_line = self.get_line_at(line_num - 1).unwrap();
 
             let new_data = format!("{}{}", prev_line_data, current_line_data);
             prev_line.borrow_mut().data = new_data;
@@ -152,6 +152,12 @@ impl<'b> Buffer<'b> {
             String::from_utf8_lossy(old_data).into_string(),
             String::from_utf8_lossy(new_data).into_string(),
         )
+    }
+
+    fn get_line_at(&self, line_num: uint) -> Option<&RefCell<Line>> {
+        let num_lines = self.lines.len() -1;
+        if line_num > num_lines { return None }
+        Some(&self.lines[line_num])
     }
 
     fn move_cursor_to(&mut self, line_num: uint) -> Option<&RefCell<Line>> {
