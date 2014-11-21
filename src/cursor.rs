@@ -10,6 +10,7 @@ pub enum Direction {
     Right,
 }
 
+#[deriving(Clone)]
 enum CursorPos {
     Place(uint, uint),
 }
@@ -22,6 +23,7 @@ impl CursorPos {
     }
 }
 
+#[deriving(Clone)]
 pub struct Cursor<'c> {
     buffer_pos: CursorPos,
     line: Option<&'c RefCell<Line>>,

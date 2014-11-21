@@ -67,7 +67,7 @@ impl<'b> Buffer<'b> {
         let (mut x, mut y) = self.cursor.get_position();
         match dir {
             Direction::Up => {
-                let line = self.get_line_at(y-1);
+                let line = self.move_cursor_to(y-1);
                 if line.is_some() {
                     y -= 1;
                     // if the current cursor offset is after the end of the
@@ -79,7 +79,7 @@ impl<'b> Buffer<'b> {
                 }
             }
             Direction::Down => {
-                let line = self.get_line_at(y+1);
+                let line = self.move_cursor_to(y+1);
                 if line.is_some() {
                     y += 1;
                     // if the current cursor offset is after the end of the
@@ -126,7 +126,7 @@ impl<'b> Buffer<'b> {
         let bits = &self.split_line();
         {
             // truncate the current line
-            let line = &self.get_line_at(line_num);
+            let line = &self.move_cursor_to(line_num);
             line.unwrap().borrow_mut().data.truncate(offset);
         }
 
@@ -146,7 +146,7 @@ impl<'b> Buffer<'b> {
         let mut prev_line_data: String;
         let line_len: uint;
         {
-            let prev_line = self.get_line_at(line_num - 1);
+            let prev_line = self.move_cursor_to(line_num - 1);
             if prev_line.is_none() {
                 return
             }
@@ -161,7 +161,7 @@ impl<'b> Buffer<'b> {
         {
             // append current line data to prev line
             // FIXME: this is duplicated above in a different scope...
-            let prev_line = self.get_line_at(line_num - 1).unwrap();
+            let prev_line = self.move_cursor_to(line_num - 1).unwrap();
 
             let new_data = format!("{}{}", prev_line_data, current_line_data);
             prev_line.borrow_mut().data = new_data;
@@ -186,13 +186,18 @@ impl<'b> Buffer<'b> {
         )
     }
 
-    fn get_line_at(&mut self, line_num: uint) -> Option<&RefCell<Line>> {
-        for (index, line) in self.lines.iter().enumerate() {
-            if index == line_num {
-                return Some(line)
-            }
-        }
-        None
+    fn move_cursor_to(&mut self, line_num: uint) -> Option<&RefCell<Line>> {
+        // get the line identified by line_num
+        let num_lines = self.lines.len() -1;
+        if line_num > num_lines { return None }
+        let line = &self.lines[line_num];
+
+        // set it on the cursor
+        let mut cursor = self.cursor.clone();
+        cursor.set_line(Some(line));
+        self.cursor = cursor;
+
+        Some(cursor.get_line())
     }
 
 }
