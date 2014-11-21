@@ -20,7 +20,8 @@ Then to start the editor run `./target/rdit /path/to/file.txt`.
 
 You can move the cursor around with the arrow keys.
 
-To exit, press escape on your keyboard, followed by `Ctrl-c`.
+To save, press `Ctrl-s`.
+To exit, press `Ctrl-q`, followed by `Ctrl-c`.
 
 ## TODO list
 

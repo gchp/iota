@@ -66,7 +66,7 @@ impl<'e> Editor<'e> {
                 self.save_active_buffer();
                 return Response::Continue
             }
-            Some(Key::Esc) => {
+            Some(Key::CtrlQ) => {
                 return Response::Quit
             }
             _ => {}

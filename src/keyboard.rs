@@ -3,6 +3,7 @@ use std::num::FromPrimitive;
 pub enum Key {
     Unknown   = 0,
     Enter     = 13,
+    CtrlQ    = 17,
     CtrlS     = 19,
     Esc       = 27,
     Space     = 32,
@@ -18,6 +19,7 @@ impl FromPrimitive for Key {
         match n {
             0     => Some(Key::Unknown),
             13    => Some(Key::Enter),
+            17    => Some(Key::CtrlQ),
             19    => Some(Key::CtrlS),
             27    => Some(Key::Esc),
             32    => Some(Key::Space),
