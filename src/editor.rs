@@ -73,7 +73,7 @@ impl<'e> Editor<'e> {
             let result = file.write(data.as_bytes());
 
             if result.is_err() {
-                // TODO: figure out what to do here.
+                // TODO(greg): figure out what to do here.
             }
         }
     }
