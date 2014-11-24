@@ -125,4 +125,9 @@ impl<'c> Cursor<'c> {
             self.set_offset(current_offset - 1);
         }
     }
+
+    pub fn get_status_text(&self) -> String {
+        let (offset, line_num) = self.get_position();
+        format!("({}, {})", offset, line_num)
+    }
 }

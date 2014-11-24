@@ -1,7 +1,5 @@
-use std::cell::RefCell;
-
 use cursor::Direction;
-use buffer::{Buffer, Line};
+use buffer::Buffer;
 use cursor::Cursor;
 
 use utils;
@@ -31,14 +29,23 @@ impl<'v> View<'v> {
         }
     }
 
+    /// Get the height of the view in which content can be drawn
+    ///
+    /// Excludes the status bar height
+    pub fn get_internal_height(&self) -> uint {
+        let term_height = utils::get_term_height();
+
+        term_height - 2
+    }
+
     pub fn draw(&self) {
-        let term_height = utils::get_term_height()-2;
+        let height = self.get_internal_height();
 
         let num_lines = self.buffer.lines.len();
         let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines);
 
         for (index, line) in lines_to_draw.iter().enumerate() {
-            if index <= term_height {
+            if index <= height {
                 let ln = line.borrow();
                 utils::draw(index, ln.data.clone());
             }
@@ -47,9 +54,12 @@ impl<'v> View<'v> {
 
     pub fn draw_status(&self) {
         let buffer_status = self.buffer.get_status_text();
+        let cursor_status = self.cursor.get_status_text();
         let term_height = utils::get_term_height();
 
-        utils::draw(term_height-1, buffer_status);
+        let status_text = format!("{} {}", buffer_status, cursor_status);
+
+        utils::draw(term_height-1, status_text);
     }
 
     pub fn move_cursor(&mut self, direction: Direction) {
@@ -62,17 +72,22 @@ impl<'v> View<'v> {
         }
     }
 
-    pub fn move_cursor_to(&mut self, line_num: uint) -> Option<&RefCell<Line>> {
-        // get the line identified by line_num
-        let num_lines = self.buffer.lines.len() -1;
-        if line_num > num_lines { return None }
-        let line = &self.buffer.lines[line_num];
+    pub fn move_cursor_to(&mut self, line_num: uint) {
+        let internal_height = self.get_internal_height();
+        let total_view_heigh = internal_height + self.top_line_num;
 
-        // set it on the cursor
-        self.cursor.set_line(Some(line));
-        self.cursor.set_linenum(line_num);
+        let num_lines = self.buffer.lines.len() - 1;
+        if line_num > num_lines { return }
 
-        Some(self.cursor.get_line())
+        // if the desired line is below the top of the view
+        // and above the bottom of the view
+        if line_num >= self.top_line_num && line_num <= total_view_heigh {
+            let line = &self.buffer.lines[line_num];
+            self.cursor.set_line(Some(line));
+            self.cursor.set_linenum(line_num);
+        }
+
+
     }
 
     pub fn delete_char(&mut self) {
