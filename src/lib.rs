@@ -6,3 +6,4 @@ mod buffer;
 mod editor;
 mod cursor;
 mod keyboard;
+mod view;

@@ -6,9 +6,9 @@ use std::num;
 use std::io::{File, FileMode, FileAccess};
 
 use rdit::Response;
-use buffer::Buffer;
 use cursor::Direction;
 use keyboard::Key;
+use view::View;
 
 
 enum EventStatus {
@@ -20,19 +20,19 @@ enum EventStatus {
 pub struct Editor<'e> {
     pub sender: Sender<rustbox::Event>,
     events: Receiver<rustbox::Event>,
-    active_buffer: Buffer<'e>,
+    view: View<'e>,
 }
 
 impl<'e> Editor<'e> {
     pub fn new(filename: String) -> Editor<'e> {
         let path = Path::new(filename);
-        let buffer = Buffer::new_from_file(&path);
+        let view = View::new(&path);
 
         let (send, recv) = channel();
         Editor {
             sender: send,
             events: recv,
-            active_buffer: buffer,
+            view: view,
         }
     }
 
@@ -50,7 +50,7 @@ impl<'e> Editor<'e> {
 
         match char::from_u32(ch) {
             Some(c) => {
-                self.active_buffer.insert_char(c);
+                self.view.insert_char(c);
                 return Response::Continue
             }
             _ => {}
@@ -60,8 +60,8 @@ impl<'e> Editor<'e> {
     }
 
     pub fn save_active_buffer(&mut self) {
-        let lines = &self.active_buffer.lines;
-        let path = Path::new(&self.active_buffer.file_path);
+        let lines = &self.view.buffer.lines;
+        let path = Path::new(&self.view.buffer.file_path);
 
         let mut file = match File::open_mode(&path, FileMode::Open, FileAccess::Write) {
             Ok(f) => f,
@@ -79,9 +79,9 @@ impl<'e> Editor<'e> {
     }
 
     pub fn draw(&mut self) {
-        self.active_buffer.draw_contents();
-        self.active_buffer.draw_status();
-        self.active_buffer.cursor.draw();
+        self.view.draw();
+        self.view.draw_status();
+        self.view.cursor.draw();
     }
 
     pub fn start(&mut self) -> bool {
@@ -104,13 +104,13 @@ impl<'e> Editor<'e> {
 
     fn handle_system_event(&mut self, key: Key) -> EventStatus {
         match key {
-            Key::Up        => { self.active_buffer.adjust_cursor(Direction::Up); }
-            Key::Down      => { self.active_buffer.adjust_cursor(Direction::Down); }
-            Key::Left      => { self.active_buffer.adjust_cursor(Direction::Left); }
-            Key::Right     => { self.active_buffer.adjust_cursor(Direction::Right); }
-            Key::Enter     => { self.active_buffer.insert_line(); }
-            Key::Space     => { self.active_buffer.insert_char(' '); }
-            Key::Backspace => { self.active_buffer.delete_char(); }
+            Key::Up        => { self.view.move_cursor(Direction::Up); }
+            Key::Down      => { self.view.move_cursor(Direction::Down); }
+            Key::Left      => { self.view.move_cursor(Direction::Left); }
+            Key::Right     => { self.view.move_cursor(Direction::Right); }
+            Key::Enter     => { self.view.insert_line(); }
+            Key::Space     => { self.view.insert_char(' '); }
+            Key::Backspace => { self.view.delete_char(); }
             Key::CtrlS     => { self.save_active_buffer(); }
             Key::CtrlQ     => { return EventStatus::Handled(Response::Quit) }
             _              => { return EventStatus::NotHandled }

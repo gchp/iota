@@ -2,14 +2,11 @@ use std::io::{File, BufferedReader};
 use std::cell::RefCell;
 
 use utils;
-use cursor::{Direction, Cursor};
 
 
 pub struct Buffer<'b> {
     pub file_path: String,
     pub lines: Vec<RefCell<Line>>,
-
-    pub cursor: Cursor<'b>,
 }
 
 impl<'b> Buffer<'b> {
@@ -18,7 +15,6 @@ impl<'b> Buffer<'b> {
         Buffer {
             file_path: String::new(),
             lines: Vec::new(),
-            cursor: Cursor::new(),
         }
     }
 
@@ -37,61 +33,19 @@ impl<'b> Buffer<'b> {
             data.pop();
             buffer.lines.push(RefCell::new(Line::new(data)));
         }
-        buffer.cursor.set_line(Some(&buffer.lines[0]));
 
         buffer
     }
 
-    /// Draw the contents of the buffer
-    ///
-    /// Loops over each line in the buffer and draws it to the screen
-    pub fn draw_contents(&self) {
-        for (index, line) in self.lines.iter().enumerate() {
-            let ln = line.borrow();
-            utils::draw(index, ln.data.clone());
-        }
-    }
-
-    pub fn draw_status(&self) {
-        let height = utils::get_term_height();
-        let cursor = self.cursor.get_position();
-        let data = self.file_path.clone();
+    pub fn get_status_text(&self) -> String {
+        let file_path = self.file_path.clone();
         let line_count = self.lines.len();
-        utils::draw(
-            height - 1,
-            format!("{}, cursor: {}, term: {}, lines: {}",
-                    data, cursor, utils::get_term_stats(), line_count));
+        format!("{}, lines: {}", file_path, line_count)
     }
 
-    pub fn adjust_cursor(&mut self, dir: Direction) {
-        let y = self.cursor.get_linenum();
-        match dir {
-            Direction::Up    => { self.move_cursor_to(y-1); },
-            Direction::Down  => { self.move_cursor_to(y+1); },
-            Direction::Right => { self.cursor.move_right(); },
-            Direction::Left  => { self.cursor.move_left(); },
-        }
-    }
-
-    pub fn delete_char(&mut self) {
-        let (offset, line_num) = self.cursor.get_position();
-
-        if offset == 0 {
-            return self.join_line_with_previous(line_num);
-        }
-
-        self.cursor.delete_char()
-    }
-
-    pub fn insert_char(&mut self, ch: char) {
-        self.cursor.insert_char(ch);
-    }
-
-    pub fn insert_line(&mut self) {
-        let (offset, mut line_num) = self.cursor.get_position();
-
+    pub fn insert_line(&mut self, offset: uint, mut line_num: uint) -> (uint, uint) {
         // split the current line at the cursor position
-        let bits = &self.split_line();
+        let bits = &self.split_line(offset, line_num);
         {
             // truncate the current line
             let line = &self.get_line_at(line_num);
@@ -104,28 +58,28 @@ impl<'b> Buffer<'b> {
         utils::clear_line(line_num);
         self.lines.insert(line_num, RefCell::new(Line::new(bits.clone().remove(1).unwrap())));
 
-        // move the cursor down and to the start of the next line
-        self.move_cursor_to(line_num);
-        self.cursor.set_offset(0);
+        return (0, line_num)
     }
 
     /// Join the line identified by `line_num` with the one at `line_num - 1 `.
-    fn join_line_with_previous(&mut self, line_num: uint) {
+    pub fn join_line_with_previous(&mut self, offset: uint, line_num: uint) -> (uint, uint ) {
         let mut current_line_data: String;
         let mut prev_line_data: String;
         let line_len: uint;
         {
             let prev_line = self.get_line_at(line_num - 1);
             if prev_line.is_none() {
-                return
+                return (offset, line_num)
             }
             prev_line_data = prev_line.unwrap().borrow().data.clone();
             line_len = prev_line_data.len();
         }
 
-        // get current line data
-        let current_line = self.cursor.get_line();
-        current_line_data = current_line.borrow().data.clone();
+        {
+            // get current line data
+            let current_line = self.get_line_at(line_num).unwrap();
+            current_line_data = current_line.borrow().data.clone();
+        }
 
         {
             // append current line data to prev line
@@ -138,16 +92,16 @@ impl<'b> Buffer<'b> {
 
         utils::clear_line(line_num);
         self.lines.remove(line_num);
-        self.cursor.set_position(line_len, line_num - 1);
+
+        return (line_len, line_num - 1)
     }
 
-    fn split_line(&mut self) -> Vec<String> {
-        let (x, _) = self.cursor.get_position();
-        let line = self.cursor.get_line();
+    fn split_line(&mut self, offset: uint, line_num: uint) -> Vec<String> {
+        let line = self.get_line_at(line_num).unwrap();
 
         let data = line.borrow().data.clone().into_bytes();
-        let old_data = data.slice_to(x);
-        let new_data = data.slice_from(x);
+        let old_data = data.slice_to(offset);
+        let new_data = data.slice_from(offset);
 
         vec!(
             String::from_utf8_lossy(old_data).into_string(),
@@ -159,19 +113,6 @@ impl<'b> Buffer<'b> {
         let num_lines = self.lines.len() -1;
         if line_num > num_lines { return None }
         Some(&self.lines[line_num])
-    }
-
-    fn move_cursor_to(&mut self, line_num: uint) -> Option<&RefCell<Line>> {
-        // get the line identified by line_num
-        let num_lines = self.lines.len() -1;
-        if line_num > num_lines { return None }
-        let line = &self.lines[line_num];
-
-        // set it on the cursor
-        self.cursor.set_line(Some(line));
-        self.cursor.set_linenum(line_num);
-
-        Some(self.cursor.get_line())
     }
 
 }
