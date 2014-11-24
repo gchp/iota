@@ -106,6 +106,7 @@ impl<'b> Buffer<'b> {
 
         // move the cursor down and to the start of the next line
         self.move_cursor_to(line_num);
+        self.cursor.set_offset(0);
     }
 
     /// Join the line identified by `line_num` with the one at `line_num - 1 `.
