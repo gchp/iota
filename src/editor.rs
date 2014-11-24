@@ -92,11 +92,8 @@ impl<'e> Editor<'e> {
             match self.events.try_recv() {
                 Ok(rustbox::KeyEvent(_, key, ch)) => {
                     match self.handle_key_event(key, ch) {
-                        Response::Quit => break,
-                        Response::Continue => {
-                            rustbox::clear();
-                            rustbox::present();
-                        }
+                        Response::Continue => { /* keep going*/ }
+                        Response::Quit     => break,
                     }
                 },
                 _ => {}
