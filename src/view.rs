@@ -57,7 +57,11 @@ impl<'v> View<'v> {
         let cursor_status = self.cursor.get_status_text();
         let term_height = utils::get_term_height();
 
-        let status_text = format!("{} {}", buffer_status, cursor_status);
+        let status_text = format!("{} {} {} {}",
+                                  buffer_status,
+                                  cursor_status,
+                                  self.top_line_num,
+                                  self.get_internal_height());
 
         utils::draw(term_height-1, status_text);
     }
@@ -74,19 +78,15 @@ impl<'v> View<'v> {
 
     pub fn move_cursor_to(&mut self, line_num: uint) {
         let internal_height = self.get_internal_height();
-        let total_view_heigh = internal_height + self.top_line_num;
+        let calculated_height = internal_height + self.top_line_num;
 
         let num_lines = self.buffer.lines.len() - 1;
-        if line_num > num_lines { return }
 
-        // if the desired line is below the top of the view
-        // and above the bottom of the view
-        if line_num >= self.top_line_num && line_num <= total_view_heigh {
+        if line_num <= calculated_height {
             let line = &self.buffer.lines[line_num];
             self.cursor.set_line(Some(line));
             self.cursor.set_linenum(line_num);
         }
-
 
     }
 
