@@ -101,6 +101,7 @@ impl<'e> Editor<'e> {
             match self.events.try_recv() {
                 Ok(rustbox::KeyEvent(_, key, ch)) => {
                     match self.handle_key_event(key, ch) {
+                        // TODO(greg): refactor event handling responses
                         Response::Continue => { /* keep going*/ }
                         Response::Quit     => self.running = false,
                     }
