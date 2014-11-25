@@ -27,11 +27,11 @@ impl<'b> Buffer<'b> {
         buffer.file_path = path.as_str().unwrap().to_string();
 
         // for every line in the file we add a corresponding line to the buffer
-        for line in lines.iter() {
+        for (index, line) in lines.iter().enumerate() {
             let mut data = line.clone();
             // remove \n chars
             data.pop();
-            buffer.lines.push(RefCell::new(Line::new(data)));
+            buffer.lines.push(RefCell::new(Line::new(data, index)));
         }
 
         buffer
@@ -43,7 +43,13 @@ impl<'b> Buffer<'b> {
         format!("{}, lines: {}", file_path, line_count)
     }
 
-    pub fn insert_line(&mut self, offset: uint, mut line_num: uint) -> (uint, uint) {
+    fn fix_linenums(&mut self) {
+        for (index, line) in self.lines.iter().enumerate() {
+            line.borrow_mut().linenum = index;
+        }
+    }
+
+    pub fn insert_line(&mut self, offset: uint, mut line_num: uint) {
         // split the current line at the cursor position
         let bits = &self.split_line(offset, line_num);
         {
@@ -56,20 +62,20 @@ impl<'b> Buffer<'b> {
 
         // add new line below current
         utils::clear_line(line_num);
-        self.lines.insert(line_num, RefCell::new(Line::new(bits.clone().remove(1).unwrap())));
+        self.lines.insert(line_num, RefCell::new(Line::new(bits.clone().remove(1).unwrap(), line_num)));
 
-        return (0, line_num)
+        self.fix_linenums();
     }
 
     /// Join the line identified by `line_num` with the one at `line_num - 1 `.
-    pub fn join_line_with_previous(&mut self, offset: uint, line_num: uint) -> (uint, uint ) {
+    pub fn join_line_with_previous(&mut self, offset: uint, line_num: uint) -> uint {
         let mut current_line_data: String;
         let mut prev_line_data: String;
         let line_len: uint;
         {
             let prev_line = self.get_line_at(line_num - 1);
             if prev_line.is_none() {
-                return (offset, line_num)
+                return offset
             }
             prev_line_data = prev_line.unwrap().borrow().data.clone();
             line_len = prev_line_data.len();
@@ -93,7 +99,10 @@ impl<'b> Buffer<'b> {
         utils::clear_line(line_num);
         self.lines.remove(line_num);
 
-        return (line_len, line_num - 1)
+        self.fix_linenums();
+
+        // return cursor offset
+        return line_len
     }
 
     fn split_line(&mut self, offset: uint, line_num: uint) -> Vec<String> {
@@ -120,13 +129,15 @@ impl<'b> Buffer<'b> {
 
 pub struct Line {
     pub data: String,
+    pub linenum: uint,
 }
 
 impl Line {
     /// Create a new line instance
-    pub fn new(data: String) -> Line {
+    pub fn new(data: String, line_num: uint) -> Line {
         Line{
             data: data,
+            linenum: line_num,
         }
     }
 

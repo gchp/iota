@@ -66,36 +66,102 @@ impl<'v> View<'v> {
         utils::draw(term_height-1, status_text);
     }
 
+    pub fn draw_cursor(&self) {
+        let offset = self.cursor.get_offset();
+        let linenum = self.cursor.get_linenum();
+
+        utils::draw_cursor(offset, linenum-self.top_line_num);
+    }
+
     pub fn move_cursor(&mut self, direction: Direction) {
-        let y = self.cursor.get_linenum();
         match direction {
-            Direction::Up    => { self.move_cursor_to(y-1); },
-            Direction::Down  => { self.move_cursor_to(y+1); },
+            Direction::Up    => { self.move_cursor_up(); },
+            Direction::Down  => { self.move_cursor_down(); },
             Direction::Right => { self.cursor.move_right(); },
             Direction::Left  => { self.cursor.move_left(); },
         }
     }
 
-    pub fn move_cursor_to(&mut self, line_num: uint) {
-        let internal_height = self.get_internal_height();
-        let calculated_height = internal_height + self.top_line_num;
+    // TODO(greg): refactor this method with move_cursor_down
+    pub fn move_cursor_up(&mut self) {
+        let cursor_linenum = self.cursor.get_linenum();
+        let prev_linenum = cursor_linenum - 1;
 
         let num_lines = self.buffer.lines.len() - 1;
+        if prev_linenum > num_lines { return }
 
-        if line_num <= calculated_height {
-            let line = &self.buffer.lines[line_num];
+        {
+            let line = &self.buffer.lines[prev_linenum];
             self.cursor.set_line(Some(line));
-            self.cursor.set_linenum(line_num);
         }
 
+        let cursor_linenum = self.cursor.get_linenum() as int;
+        let cursor_offset = cursor_linenum - self.top_line_num as int;
+
+        // TODO(greg) move this value
+        let threshold: int = 5;
+
+        if cursor_offset < threshold {
+            self.move_top_line_n_times(cursor_offset - threshold);
+        }
+
+    }
+
+    // TODO(greg): refactor this method with move_cursor_up
+    pub fn move_cursor_down(&mut self) {
+        let cursor_linenum = self.cursor.get_linenum();
+        let next_linenum = cursor_linenum + 1;
+
+        let num_lines = self.buffer.lines.len() - 1;
+        if next_linenum > num_lines { return }
+
+        {
+            let line = &self.buffer.lines[next_linenum];
+            self.cursor.set_line(Some(line));
+        }
+
+        let cursor_linenum = self.cursor.get_linenum() as int;
+        let cursor_offset = cursor_linenum - self.top_line_num as int;
+        let height = self.get_internal_height() as int;
+
+        // TODO(greg) move this value
+        let threshold = 5;
+
+        if cursor_offset >= (height - threshold) {
+            let times = (cursor_offset - (height - threshold) + 1);
+            self.move_top_line_n_times(times);
+        }
+    }
+
+    fn move_top_line_n_times(&mut self, mut num_times: int) {
+        if num_times == 0 { return }
+
+        // moving down
+        if num_times > 0 {
+            while num_times > 0 {
+                self.top_line_num += 1;
+                num_times -= 1;
+            }
+            return
+        }
+
+        // moving up
+        if num_times < 0 {
+            while num_times < 0 {
+                if self.top_line_num == 0 { return }
+                self.top_line_num -= 1;
+                num_times += 1;
+            }
+            return
+        }
     }
 
     pub fn delete_char(&mut self) {
         let (offset, line_num) = self.cursor.get_position();
 
         if offset == 0 {
-            let (offset, line_num) = self.buffer.join_line_with_previous(offset, line_num);
-            self.move_cursor_to(line_num);
+            let offset = self.buffer.join_line_with_previous(offset, line_num);
+            self.move_cursor_up();
             self.cursor.set_offset(offset);
             return
         }
@@ -109,9 +175,9 @@ impl<'v> View<'v> {
 
     pub fn insert_line(&mut self) {
         let (offset, line_num) = self.cursor.get_position();
-        let (offset, line_num) = self.buffer.insert_line(offset, line_num);
+        self.buffer.insert_line(offset, line_num);
 
-        self.move_cursor_to(line_num);
-        self.cursor.set_offset(offset);
+        self.move_cursor_down();
+        self.cursor.set_offset(0);
     }
 }

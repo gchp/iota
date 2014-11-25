@@ -81,7 +81,7 @@ impl<'e> Editor<'e> {
     pub fn draw(&mut self) {
         self.view.draw();
         self.view.draw_status();
-        self.view.cursor.draw();
+        self.view.draw_cursor();
     }
 
     pub fn start(&mut self) -> bool {
