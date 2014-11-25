@@ -2,6 +2,7 @@ extern crate rustbox;
 extern crate rdit;
 
 use std::os;
+use rdit::Editor;
 
 fn main() {
     rustbox::init();
@@ -10,17 +11,7 @@ fn main() {
         Some(f) => f,
         None => String::new(),
     };
-    let mut editor = rdit::Editor::new(filename);
-    
-    // clone the sender so that we can use it in the proc
-    let sender = editor.sender.clone();
-
-    spawn(proc() {
-        loop {
-            sender.send(rustbox::poll_event());
-        }
-    });
-
+    let mut editor = Editor::new(filename);
     editor.start();
 
     rustbox::shutdown();

@@ -128,7 +128,7 @@ impl<'v> View<'v> {
         let threshold = 5;
 
         if cursor_offset >= (height - threshold) {
-            let times = (cursor_offset - (height - threshold) + 1);
+            let times = cursor_offset - (height - threshold) + 1;
             self.move_top_line_n_times(times);
         }
     }

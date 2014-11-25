@@ -21,6 +21,8 @@ pub struct Editor<'e> {
     pub sender: Sender<rustbox::Event>,
     events: Receiver<rustbox::Event>,
     view: View<'e>,
+
+    pub running: bool,
 }
 
 impl<'e> Editor<'e> {
@@ -33,6 +35,7 @@ impl<'e> Editor<'e> {
             sender: send,
             events: recv,
             view: view,
+            running: false,
         }
     }
 
@@ -84,8 +87,14 @@ impl<'e> Editor<'e> {
         self.view.draw_cursor();
     }
 
-    pub fn start(&mut self) -> bool {
-        loop {
+    pub fn start(&mut self) {
+        self.running = true;
+        self.event_loop();
+        self.main_loop();
+    }
+
+    fn main_loop(&mut self) {
+        while self.running {
             rustbox::clear();
             self.draw();
             rustbox::present();
@@ -93,13 +102,23 @@ impl<'e> Editor<'e> {
                 Ok(rustbox::KeyEvent(_, key, ch)) => {
                     match self.handle_key_event(key, ch) {
                         Response::Continue => { /* keep going*/ }
-                        Response::Quit     => break,
+                        Response::Quit     => self.running = false,
                     }
                 },
                 _ => {}
             }
         }
-        return false
+    }
+
+    fn event_loop(&self) {
+        // clone the sender so that we can use it in the proc
+        let sender = self.sender.clone();
+
+        spawn(proc() {
+            loop {
+                sender.send(rustbox::poll_event());
+            }
+        });
     }
 
     fn handle_system_event(&mut self, key: Key) -> EventStatus {
