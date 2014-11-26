@@ -1,7 +1,11 @@
 pub use editor::Editor;
 
+pub enum Response {
+    Continue,
+    Quit,
+}
+
 mod utils;
-mod rdit;
 mod buffer;
 mod editor;
 mod cursor;

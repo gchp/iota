@@ -5,7 +5,7 @@ use std::comm::{Receiver, Sender};
 use std::num;
 use std::io::{File, FileMode, FileAccess};
 
-use rdit::Response;
+use super::Response;
 use cursor::Direction;
 use keyboard::Key;
 use view::View;
