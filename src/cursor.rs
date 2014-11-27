@@ -9,6 +9,21 @@ pub enum Direction {
     Right,
 }
 
+impl Direction {
+    pub fn is_right(&self) -> bool {
+        match *self {
+            Direction::Right => true,
+            _                => false
+        }
+    }
+    pub fn is_left(&self) -> bool {
+        match *self {
+            Direction::Left => true,
+            _               => false
+        }
+    }
+}
+
 #[deriving(Clone)]
 pub struct Cursor<'c> {
     pub offset: uint,
@@ -55,11 +70,22 @@ impl<'c> Cursor<'c> {
         self.line.unwrap()
     }
 
-    pub fn delete_char(&mut self) {
+    pub fn get_line_length(&self) -> uint {
+        self.get_line().borrow().len()
+    }
+
+    pub fn delete_backward_char(&mut self) {
         let offset = self.get_offset();
         let line = self.get_line();
         line.borrow_mut().data.remove(offset-1);
         self.set_offset(offset-1);
+    }
+
+    pub fn delete_forward_char(&mut self) {
+        let offset = self.get_offset();
+        let line = self.get_line();
+        line.borrow_mut().data.remove(offset);
+        self.set_offset(offset);
     }
 
     pub fn insert_char(&mut self, ch: char) {

@@ -156,17 +156,27 @@ impl<'v> View<'v> {
         }
     }
 
-    pub fn delete_char(&mut self) {
+    pub fn delete_char(&mut self, direction: Direction) {
         let (offset, line_num) = self.cursor.get_position();
 
-        if offset == 0 {
+        if offset == 0 && direction.is_left() {
             let offset = self.buffer.join_line_with_previous(offset, line_num);
             self.move_cursor_up();
             self.cursor.set_offset(offset);
             return
         }
 
-        self.cursor.delete_char()
+        let line_len = self.cursor.get_line_length();
+        if offset == line_len && direction.is_right() {
+            self.buffer.join_line_with_previous(offset, line_num+1);
+            return
+        }
+
+        match direction {
+            Direction::Left  => self.cursor.delete_backward_char(),
+            Direction::Right => self.cursor.delete_forward_char(),
+            _                => {}
+        }
     }
 
     pub fn insert_char(&mut self, ch: char) {

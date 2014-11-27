@@ -12,6 +12,7 @@ pub enum Key {
     Left      = 65515,
     Down      = 65516,
     Up        = 65517,
+    Delete    = 65522,
 }
 
 impl FromPrimitive for Key {
@@ -28,6 +29,7 @@ impl FromPrimitive for Key {
             65515 => Some(Key::Left),
             65516 => Some(Key::Down),
             65517 => Some(Key::Up),
+            65522 => Some(Key::Delete),
             _     => None
         }
     }
