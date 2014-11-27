@@ -98,8 +98,8 @@ impl<'e> Editor<'e> {
             rustbox::clear();
             self.draw();
             rustbox::present();
-            match self.events.try_recv() {
-                Ok(rustbox::KeyEvent(_, key, ch)) => {
+            match self.events.recv() {
+                rustbox::KeyEvent(_, key, ch) => {
                     match self.handle_key_event(key, ch) {
                         // TODO(greg): refactor event handling responses
                         Response::Continue => { /* keep going*/ }
