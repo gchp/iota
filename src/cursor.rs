@@ -115,3 +115,139 @@ impl<'c> Cursor<'c> {
         format!("({}, {})", offset, line_num)
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+
+    use std::cell::RefCell;
+
+    use cursor::Cursor;
+    use buffer::Line;
+
+    #[test]
+    fn test_moving_right() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+        cursor.set_line(Some(&line));
+
+        assert_eq!(cursor.offset, 0);
+        cursor.move_right();
+        assert_eq!(cursor.offset, 1);
+    }
+
+    #[test]
+    fn test_moving_left() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+        cursor.set_line(Some(&line));
+        cursor.set_offset(1);
+
+        assert_eq!(cursor.offset, 1);
+        cursor.move_left();
+        assert_eq!(cursor.offset, 0);
+    }
+
+    #[test]
+    fn test_get_position() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+        cursor.set_line(Some(&line));
+
+        assert_eq!(cursor.get_position(), (0, 1));
+    }
+
+    #[test]
+    fn test_get_linenum() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+        cursor.set_line(Some(&line));
+
+        assert_eq!(cursor.get_linenum(), 1);
+    }
+
+    #[test]
+    fn test_get_offset() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+        cursor.set_line(Some(&line));
+
+        assert_eq!(cursor.get_offset(), 0)
+    }
+
+    #[test]
+    fn test_set_offset() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+        cursor.set_line(Some(&line));
+        cursor.set_offset(3);
+
+        assert_eq!(cursor.offset, 3);
+    }
+
+
+    #[test]
+    fn test_moving_to_end_of_line_when_set() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+
+        cursor.set_offset(10);
+        cursor.set_line(Some(&line));
+
+        assert_eq!(cursor.offset, 4);
+    }
+
+    #[test]
+    fn test_get_line_length() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+
+        cursor.set_line(Some(&line));
+
+        assert_eq!(cursor.get_line_length(), 4);
+    }
+
+    #[test]
+    fn test_delete_backward_char() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+
+        cursor.set_line(Some(&line));
+        cursor.set_offset(1);
+        cursor.delete_backward_char();
+
+        assert_eq!(line.borrow().data, "est".to_string());
+    }
+
+    #[test]
+    fn test_delete_forward_char() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+
+        cursor.set_line(Some(&line));
+        cursor.delete_forward_char();
+
+        assert_eq!(line.borrow().data, "est".to_string());
+    }
+
+    #[test]
+    fn test_insert_char() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+
+        cursor.set_line(Some(&line));
+        cursor.insert_char('x');
+
+        assert_eq!(line.borrow().data, "xtest".to_string());
+    }
+
+    #[test]
+    fn test_get_status_text() {
+        let mut cursor = Cursor::new();
+        let line = RefCell::new(Line::new("test".to_string(), 1));
+        cursor.set_line(Some(&line));
+
+        assert_eq!(cursor.get_status_text(), "(0, 1)".to_string());
+    }
+
+}
