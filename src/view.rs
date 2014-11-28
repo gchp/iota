@@ -14,6 +14,8 @@ pub struct View<'v> {
     pub buffer: Buffer<'v>,
     pub top_line_num: uint,
     pub cursor: Cursor<'v>,
+
+    threshold: int,
 }
 
 impl<'v> View<'v> {
@@ -26,6 +28,7 @@ impl<'v> View<'v> {
             buffer: buffer,
             top_line_num: 0,
             cursor: cursor,
+            threshold: 5,
         }
     }
 
@@ -94,11 +97,9 @@ impl<'v> View<'v> {
         let cursor_linenum = self.cursor.get_linenum() as int;
         let cursor_offset = cursor_linenum - self.top_line_num as int;
 
-        // TODO(greg) move this value
-        let threshold: int = 5;
-
-        if cursor_offset < threshold {
-            self.move_top_line_n_times(cursor_offset - threshold);
+        if cursor_offset < self.threshold {
+            let times = cursor_offset - self.threshold;
+            self.move_top_line_n_times(times);
         }
 
     }
@@ -121,10 +122,10 @@ impl<'v> View<'v> {
         let height = self.get_internal_height() as int;
 
         // TODO(greg) move this value
-        let threshold = 5;
+        // let threshold: int = 5;
 
-        if cursor_offset >= (height - threshold) {
-            let times = cursor_offset - (height - threshold) + 1;
+        if cursor_offset >= (height - self.threshold) {
+            let times = cursor_offset - (height - self.threshold) + 1;
             self.move_top_line_n_times(times);
         }
     }
@@ -203,6 +204,7 @@ mod tests {
             buffer: Buffer::new(),
             top_line_num: 0,
             cursor: Cursor::new(),
+            threshold: 5,
         };
 
         let first_line = RefCell::new(Line::new("test".to_string(), 0));
