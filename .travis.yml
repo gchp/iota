@@ -1,0 +1,7 @@
+language: rust
+os:
+    - linux
+    - osx
+before_script:
+    - rustc -v
+    - cargo -V
