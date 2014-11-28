@@ -187,3 +187,109 @@ impl<'v> View<'v> {
         self.cursor.set_offset(0);
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use std::cell::RefCell;
+
+    use buffer::{Line, Buffer};
+    use cursor::{Cursor, Direction};
+    use view::View;
+    use utils;
+
+    fn setup_view<'v>() -> View<'v> {
+        let mut view = View {
+            buffer: Buffer::new(),
+            top_line_num: 0,
+            cursor: Cursor::new(),
+        };
+
+        let first_line = RefCell::new(Line::new("test".to_string(), 0));
+        let second_line = RefCell::new(Line::new("second".to_string(), 1));
+
+        view.buffer.lines = vec!(first_line, second_line);
+        view.cursor.set_line(Some(&view.buffer.lines[0]));
+
+        return view
+    }
+
+    #[test]
+    fn test_move_cursor_down() {
+        let mut view = setup_view();
+        view.move_cursor_down();
+
+        assert_eq!(view.cursor.get_linenum(), 1);
+        assert_eq!(view.cursor.get_line().borrow().data, "second".to_string());
+    }
+
+    #[test]
+    fn test_move_cursor_up() {
+        let mut view = setup_view();
+        view.move_cursor_down();
+        view.move_cursor_up();
+        assert_eq!(view.cursor.get_linenum(), 0);
+        assert_eq!(view.cursor.get_line().borrow().data, "test".to_string());
+    }
+
+    #[test]
+    fn test_insert_line() {
+        let mut view = setup_view();
+        view.cursor.move_right();
+        view.insert_line();
+
+        assert_eq!(view.buffer.lines.len(), 3);
+        assert_eq!(view.cursor.get_offset(), 0);
+        assert_eq!(view.cursor.get_line().borrow().linenum, 1);
+    }
+
+    #[test]
+    fn test_insert_char() {
+        let mut view = setup_view();
+        view.insert_char('t');
+
+        assert_eq!(view.cursor.get_line().borrow().data, "ttest".to_string());
+    }
+
+    #[test]
+    fn test_delete_char_to_right() {
+        let mut view = setup_view();
+        view.delete_char(Direction::Right);
+
+        assert_eq!(view.cursor.get_line().borrow().data, "est".to_string());
+    }
+
+    #[test]
+    fn test_delete_char_to_left() {
+        let mut view = setup_view();
+        view.cursor.move_right();
+        view.delete_char(Direction::Left);
+
+        assert_eq!(view.cursor.get_line().borrow().data, "est".to_string());
+    }
+
+    #[test]
+    fn test_delete_char_at_start_of_line() {
+        let mut view = setup_view();
+        view.move_cursor_down();
+        view.delete_char(Direction::Left);
+
+        assert_eq!(view.cursor.get_line().borrow().data, "testsecond".to_string());
+    }
+
+    #[test]
+    fn test_delete_char_at_end_of_line() {
+        let mut view = setup_view();
+        view.cursor.set_offset(4);
+        view.delete_char(Direction::Right);
+
+        assert_eq!(view.cursor.get_line().borrow().data, "testsecond".to_string());
+    }
+
+    #[test]
+    fn test_get_internal_height() {
+        let view = setup_view();
+        let term_height = utils::get_term_height();
+        assert_eq!(view.get_internal_height(), term_height - 2);
+    }
+}
