@@ -105,6 +105,7 @@ impl<'b> Buffer<'b> {
         return line_len
     }
 
+    /// Split the line identified by `line_num` at `offset`
     fn split_line(&mut self, offset: uint, line_num: uint) -> Vec<String> {
         let line = self.get_line_at(line_num).unwrap();
 
@@ -148,3 +149,76 @@ impl Line {
 }
 
 
+#[cfg(test)]
+mod tests {
+
+    use std::cell::RefCell;
+    use buffer::Buffer;
+    use buffer::Line;
+
+    fn setup_buffer<'b>() -> Buffer<'b> {
+        let mut buffer = Buffer::new();
+        buffer.file_path = String::from_str("/some/file.txt");
+        buffer.lines = vec!(
+            RefCell::new(Line::new("test".to_string(), 0)),
+            RefCell::new(Line::new("".to_string(), 1)),
+            RefCell::new(Line::new("text file".to_string(), 2)),
+            RefCell::new(Line::new("content".to_string(), 3)),
+        );
+        buffer
+    }
+
+    #[test]
+    fn test_get_status_text() {
+        let buffer = setup_buffer();
+        assert_eq!(buffer.get_status_text(), "/some/file.txt, lines: 4".to_string())
+    }
+
+    #[test]
+    fn test_insert_line() {
+        let mut buffer = setup_buffer();
+        buffer.insert_line(0, 0);
+        assert_eq!(buffer.lines.len(), 5);
+    }
+
+    #[test]
+    fn test_insert_line_in_middle_of_other_line() {
+        let mut buffer = setup_buffer();
+        buffer.insert_line(1, 0);
+        assert_eq!(buffer.lines.len(), 5);
+        
+        let ref line = buffer.lines[1];
+        assert_eq!(line.borrow().data, "est".to_string());
+    }
+
+    #[test]
+    fn test_line_numbers_are_fixed_after_adding_new_line() {
+        let mut buffer = setup_buffer();
+        buffer.insert_line(1, 2);
+        assert_eq!(buffer.lines.len(), 5);
+        
+        // check that all linenums are sequential
+        for (index, line) in buffer.lines.iter().enumerate() {
+            assert_eq!(index, line.borrow().linenum);
+        }
+    }
+
+    #[test]
+    fn test_join_line_with_previous() {
+        let mut buffer = setup_buffer();
+
+        let offset = buffer.join_line_with_previous(0, 3);
+
+        assert_eq!(buffer.lines.len(), 3);
+        assert_eq!(buffer.lines[2].borrow().data, "text filecontent".to_string());
+        assert_eq!(offset, 9);
+    }
+
+    #[test]
+    fn test_split_line() {
+        let mut buffer = setup_buffer();
+        let segments = buffer.split_line(3, 3);
+
+        assert_eq!(segments, vec!("con".to_string(), "tent".to_string()));
+    }
+}
