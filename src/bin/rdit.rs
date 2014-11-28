@@ -1,9 +1,10 @@
 extern crate rustbox;
 extern crate rdit;
 
-use std::os;
-use rdit::Editor;
+#[cfg(not(test))] use std::os;
+#[cfg(not(test))] use rdit::Editor;
 
+#[cfg(not(test))]
 fn main() {
     rustbox::init();
 

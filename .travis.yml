@@ -6,5 +6,5 @@ before_script:
     - rustc -v
     - cargo -V
 script:
-    #    - cargo build -v
+    - cargo build -v
     - cargo test -v
