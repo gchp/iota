@@ -125,11 +125,16 @@ mod tests {
     use cursor::Cursor;
     use buffer::Line;
 
-    #[test]
-    fn test_moving_right() {
+    fn setup_cursor<'c>() -> Cursor<'c> {
         let mut cursor = Cursor::new();
         let line = RefCell::new(Line::new("test".to_string(), 1));
         cursor.set_line(Some(&line));
+        return cursor
+    }
+
+    #[test]
+    fn test_moving_right() {
+        let mut cursor = setup_cursor();
 
         assert_eq!(cursor.offset, 0);
         cursor.move_right();
@@ -138,9 +143,7 @@ mod tests {
 
     #[test]
     fn test_moving_left() {
-        let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
-        cursor.set_line(Some(&line));
+        let mut cursor = setup_cursor();
         cursor.set_offset(1);
 
         assert_eq!(cursor.offset, 1);
@@ -153,7 +156,6 @@ mod tests {
         let mut cursor = Cursor::new();
         let line = RefCell::new(Line::new("test".to_string(), 1));
         cursor.set_line(Some(&line));
-
         assert_eq!(cursor.get_position(), (0, 1));
     }
 
@@ -168,18 +170,13 @@ mod tests {
 
     #[test]
     fn test_get_offset() {
-        let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
-        cursor.set_line(Some(&line));
-
+        let cursor = setup_cursor();
         assert_eq!(cursor.get_offset(), 0)
     }
 
     #[test]
     fn test_set_offset() {
-        let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
-        cursor.set_line(Some(&line));
+        let mut cursor = setup_cursor();
         cursor.set_offset(3);
 
         assert_eq!(cursor.offset, 3);
@@ -243,10 +240,7 @@ mod tests {
 
     #[test]
     fn test_get_status_text() {
-        let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
-        cursor.set_line(Some(&line));
-
+        let cursor = setup_cursor();
         assert_eq!(cursor.get_status_text(), "(0, 1)".to_string());
     }
 
