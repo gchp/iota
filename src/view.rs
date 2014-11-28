@@ -57,11 +57,7 @@ impl<'v> View<'v> {
         let cursor_status = self.cursor.get_status_text();
         let term_height = utils::get_term_height();
 
-        let status_text = format!("{} {} {} {}",
-                                  buffer_status,
-                                  cursor_status,
-                                  self.top_line_num,
-                                  self.get_internal_height());
+        let status_text = format!("{} {}", buffer_status, cursor_status);
 
         utils::draw(term_height-1, status_text);
     }
