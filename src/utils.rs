@@ -1,10 +1,5 @@
 extern crate rustbox;
 
-pub fn draw(index: uint, data: String) {
-    // clear_line(index);
-    rustbox::print(0, index, rustbox::Normal, rustbox::White, rustbox::Default, data);
-}
-
 pub fn draw_cursor(x: uint, y: uint) {
     let x = x.to_int().unwrap();
     let y = y.to_int().unwrap();

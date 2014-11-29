@@ -1,6 +1,9 @@
+extern crate rustbox;
+
 use cursor::Direction;
 use buffer::Buffer;
 use cursor::Cursor;
+use uibuf::UIBuffer;
 
 use utils;
 
@@ -15,12 +18,14 @@ pub struct View<'v> {
     pub top_line_num: uint,
     pub cursor: Cursor<'v>,
 
+    uibuf: UIBuffer,
     threshold: int,
 }
 
 impl<'v> View<'v> {
     pub fn new(path: &Path) -> View<'v> {
         let buffer = Buffer::new_from_file(path);
+        let uibuf = UIBuffer::new();
         let mut cursor = Cursor::new();
         cursor.set_line(Some(&buffer.lines[0]));
 
@@ -28,6 +33,7 @@ impl<'v> View<'v> {
             buffer: buffer,
             top_line_num: 0,
             cursor: cursor,
+            uibuf: uibuf,
             threshold: 5,
         }
     }
@@ -41,7 +47,11 @@ impl<'v> View<'v> {
         term_height - 2
     }
 
-    pub fn draw(&self) {
+    pub fn clear(&mut self) {
+        self.uibuf.fill(' ');
+    }
+
+    pub fn draw(&mut self) {
         let height = self.get_internal_height();
 
         let num_lines = self.buffer.lines.len();
@@ -50,19 +60,33 @@ impl<'v> View<'v> {
         for (index, line) in lines_to_draw.iter().enumerate() {
             if index <= height {
                 let ln = line.borrow();
-                utils::draw(index, ln.data.clone());
+                let data = ln.data.clone();
+                for (ch_index, ch) in data.into_bytes().iter().enumerate() {
+                    self.uibuf.update_cell_content(ch_index, index, *ch as char);
+                }
             }
         }
+        self.uibuf.draw_range(0, height+1);
     }
 
-    pub fn draw_status(&self) {
+    pub fn draw_status(&mut self) {
         let buffer_status = self.buffer.get_status_text();
         let cursor_status = self.cursor.get_status_text();
+        let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
+        let status_text_len = status_text.len();
         let term_height = utils::get_term_height();
+        let term_width = utils::get_term_width();
 
-        let status_text = format!("{} {}", buffer_status, cursor_status);
 
-        utils::draw(term_height-1, status_text);
+        for index in range(0, term_width) {
+            let mut ch: char = ' ';
+            if index < status_text_len {
+                ch = status_text[index] as char;
+            }
+            self.uibuf.update_cell(index, term_height-1, ch, rustbox::Color::Black, rustbox::Color::Blue);
+        }
+
+        self.uibuf.draw_range(term_height-1, term_height);
     }
 
     pub fn draw_cursor(&self) {
@@ -197,6 +221,7 @@ mod tests {
     use buffer::{Line, Buffer};
     use cursor::{Cursor, Direction};
     use view::View;
+    use uibuf::UIBuffer;
     use utils;
 
     fn setup_view<'v>() -> View<'v> {
@@ -204,6 +229,7 @@ mod tests {
             buffer: Buffer::new(),
             top_line_num: 0,
             cursor: Cursor::new(),
+            uibuf: UIBuffer::new(),
             threshold: 5,
         };
 

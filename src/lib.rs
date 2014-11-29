@@ -6,6 +6,7 @@ mod editor;
 mod cursor;
 mod keyboard;
 mod view;
+mod uibuf;
 
 pub enum Response {
     Continue,

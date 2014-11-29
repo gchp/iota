@@ -95,7 +95,7 @@ impl<'e> Editor<'e> {
 
     fn main_loop(&mut self) {
         while self.running {
-            rustbox::clear();
+            self.view.clear();
             self.draw();
             rustbox::present();
             match self.events.recv() {
