@@ -19,7 +19,7 @@ impl UIBuffer {
         let rows = self.cells.slice(start, stop);
         for row in rows.iter() {
             for cell in row.iter() {
-                rustbox::print(cell.x, cell.y, rustbox::Normal, cell.fg, cell.bg, String::from_char(1, cell.ch));
+                rustbox::print_char(cell.x, cell.y, rustbox::Normal, cell.fg, cell.bg, cell.ch);
             }
         }
     }
