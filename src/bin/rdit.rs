@@ -8,11 +8,15 @@ extern crate rdit;
 fn main() {
     rustbox::init();
 
-    let filename = match os::args().pop() {
-        Some(f) => f,
-        None => String::new(),
-    };
-    let mut editor = Editor::new(filename);
+    let args = os::args();
+    let mut editor: Editor;
+
+    if args.len() == 1 {
+        editor = Editor::new(None);
+    } else {
+        let filename = os::args().pop();
+        editor = Editor::new(filename);
+    }
     editor.start();
 
     rustbox::shutdown();

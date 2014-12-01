@@ -1,3 +1,4 @@
+use std::io::fs::PathExtensions;
 use std::io::{File, BufferedReader};
 use std::cell::RefCell;
 
@@ -18,22 +19,35 @@ impl<'b> Buffer<'b> {
         }
     }
 
+    /// Create a new buffer with a single line
+    pub fn new_empty() -> Buffer<'b> {
+        let mut buffer = Buffer::new();
+        buffer.lines.push(RefCell::new(Line::new(String::new(), 0)));
+        buffer.file_path = String::from_str("untitled");
+
+        buffer
+    }
+
     /// Create a new buffer instance and load the given file
     pub fn new_from_file(path: &Path) -> Buffer<'b> {
-        let mut file = BufferedReader::new(File::open(path));
-        let lines: Vec<String> = file.lines().map(|x| x.unwrap()).collect();
         let mut buffer = Buffer::new();
 
-        buffer.file_path = path.as_str().unwrap().to_string();
+        if path.exists() {
+            let mut file = BufferedReader::new(File::open(path));
+            let lines: Vec<String> = file.lines().map(|x| x.unwrap()).collect();
 
-        // for every line in the file we add a corresponding line to the buffer
-        for (index, line) in lines.iter().enumerate() {
-            let mut data = line.clone();
-            // remove \n chars
-            data.pop();
-            buffer.lines.push(RefCell::new(Line::new(data, index)));
+            // for every line in the file we add a corresponding line to the buffer
+            for (index, line) in lines.iter().enumerate() {
+                let mut data = line.clone();
+                // remove \n chars
+                data.pop();
+                buffer.lines.push(RefCell::new(Line::new(data, index)));
+            }
+        } else {
+            buffer.lines.push(RefCell::new(Line::new(String::new(), 0)));
         }
 
+        buffer.file_path = path.as_str().unwrap().to_string();
         buffer
     }
 

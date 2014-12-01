@@ -22,13 +22,10 @@ Here's what it looks like right now, editing itself.
 
 Clone the project and run `cargo build`.
 
-Then to start the editor run `./target/rdit /path/to/file.txt`.
+Then to start the editor run `./target/rdit /path/to/file.txt`. Or simply `./target/rdit`
+to open an empty buffer.
 
 You can move the cursor around with the arrow keys.
 
 To save, press `Ctrl-s`.
 To exit, press `Ctrl-q`, followed by `Ctrl-c`.
-
-## TODO list
-
-- [ ] Creating new files

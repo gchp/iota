@@ -23,8 +23,13 @@ pub struct View<'v> {
 }
 
 impl<'v> View<'v> {
-    pub fn new(path: &Path) -> View<'v> {
-        let buffer = Buffer::new_from_file(path);
+    pub fn new(path: Option<String>) -> View<'v> {
+        let buffer = match path {
+            Some(s) => Buffer::new_from_file(&Path::new(s)),
+            None    => Buffer::new_empty(),
+        };
+        //buffer = Buffer::new_from_file(path);
+
         let uibuf = UIBuffer::new();
         let mut cursor = Cursor::new();
         cursor.set_line(Some(&buffer.lines[0]));

@@ -26,9 +26,8 @@ pub struct Editor<'e> {
 }
 
 impl<'e> Editor<'e> {
-    pub fn new(filename: String) -> Editor<'e> {
-        let path = Path::new(filename);
-        let view = View::new(&path);
+    pub fn new(filename: Option<String>) -> Editor<'e> {
+        let view = View::new(filename);
 
         let (send, recv) = channel();
         Editor {
