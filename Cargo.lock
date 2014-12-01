@@ -1,0 +1,12 @@
+[root]
+name = "rdit"
+version = "0.1.0"
+dependencies = [
+ "rustbox 0.1.0 (git+https://github.com/gchp/rustbox.git)",
+]
+
+[[package]]
+name = "rustbox"
+version = "0.1.0"
+source = "git+https://github.com/gchp/rustbox.git#3e85d59154adb87a9c3d41246f37f38929a141ab"
+
