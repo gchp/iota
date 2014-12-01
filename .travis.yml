@@ -1,13 +1,14 @@
 language: rust
 os:
     - linux
-    - osx
+      #    - osx
 install:
     - git clone git://github.com/nsf/termbox.git termbox
     - cd termbox
     - ./waf configure --prefix=/usr
     - ./waf
     - sudo ./waf install
+    - cd ../ && rm -rf termbox
 before_script:
     - rustc -v
     - cargo -V
