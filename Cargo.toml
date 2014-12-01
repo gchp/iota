@@ -8,7 +8,7 @@ git = "https://github.com/gchp/rustbox.git"
 
 [lib]
 name = "rdit"
-path = "src/lib.rs"
+path = "src/rdit/lib.rs"
 
 [[bin]]
 name = "rdit"
