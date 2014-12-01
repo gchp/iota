@@ -42,7 +42,7 @@ impl<'e> Editor<'e> {
     pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
         let input_key: Option<Key> = num::from_u16(key);
 
-        let event_status = self.handle_system_event(input_key.unwrap());
+        let event_status = self.handle_system_event(input_key);
         match event_status {
             EventStatus::Handled(r) => { return r }
             EventStatus::NotHandled => { /* keep going */ }
@@ -122,7 +122,12 @@ impl<'e> Editor<'e> {
         });
     }
 
-    fn handle_system_event(&mut self, key: Key) -> EventStatus {
+    fn handle_system_event(&mut self, k: Option<Key>) -> EventStatus {
+        if k.is_none() {
+            return EventStatus::NotHandled
+        }
+
+        let key = k.unwrap();
         match key {
             Key::Up        => { self.view.move_cursor(Direction::Up); }
             Key::Down      => { self.view.move_cursor(Direction::Down); }
