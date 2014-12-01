@@ -7,7 +7,7 @@ install:
     - cd termbox
     - ./waf configure --prefix=/usr
     - ./waf
-    - ./waf install
+    - sudo ./waf install
 before_script:
     - rustc -v
     - cargo -V
