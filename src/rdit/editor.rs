@@ -133,6 +133,7 @@ impl<'e> Editor<'e> {
             Key::Right     => { self.view.move_cursor(Direction::Right); }
             Key::Enter     => { self.view.insert_line(); }
             Key::Space     => { self.view.insert_char(' '); }
+            Key::Tab       => { self.view.insert_tab(); }
             Key::Backspace => { self.view.delete_char(Direction::Left); }
             Key::Delete    => { self.view.delete_char(Direction::Right); }
             Key::CtrlS     => { self.save_active_buffer(); }

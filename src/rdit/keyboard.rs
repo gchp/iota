@@ -2,8 +2,9 @@ use std::num::FromPrimitive;
 
 pub enum Key {
     Unknown   = 0,
+    Tab       = 9,
     Enter     = 13,
-    CtrlQ    = 17,
+    CtrlQ     = 17,
     CtrlS     = 19,
     Esc       = 27,
     Space     = 32,
@@ -19,6 +20,7 @@ impl FromPrimitive for Key {
     fn from_u64(n: u64) -> Option<Key> {
         match n {
             0     => Some(Key::Unknown),
+            9     => Some(Key::Tab),
             13    => Some(Key::Enter),
             17    => Some(Key::CtrlQ),
             19    => Some(Key::CtrlS),
