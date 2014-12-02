@@ -1,6 +1,5 @@
 extern crate rustbox;
 
-use std::char;
 use std::comm::{Receiver, Sender};
 use std::num;
 use std::io::{File, FileMode, FileAccess};
@@ -39,25 +38,13 @@ impl<'e> Editor<'e> {
     }
 
     pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
-        let input_key: Option<Key> = num::from_u16(key);
+        let key_code = key as u32 + ch;
+        let input_key: Option<Key> = num::from_u32(key_code);
 
         match self.handle_system_event(input_key) {
-            EventStatus::Handled(r) => { return r }
-            EventStatus::NotHandled => { /* keep going */ }
+            EventStatus::Handled(response) => { response }
+            EventStatus::NotHandled        => { Response::Continue }
         }
-
-        print!("k: {} ", key);
-        print!("c: {} **", ch);
-
-        match char::from_u32(ch) {
-            Some(c) => {
-                self.view.insert_char(c);
-                return Response::Continue
-            }
-            _ => {}
-        }
-
-        Response::Continue
     }
 
     pub fn save_active_buffer(&mut self) {
@@ -132,12 +119,45 @@ impl<'e> Editor<'e> {
             Key::Left      => { self.view.move_cursor(Direction::Left); }
             Key::Right     => { self.view.move_cursor(Direction::Right); }
             Key::Enter     => { self.view.insert_line(); }
-            Key::Space     => { self.view.insert_char(' '); }
+
+            // Tab inserts 4 spaces, rather than a \t
             Key::Tab       => { self.view.insert_tab(); }
+
             Key::Backspace => { self.view.delete_char(Direction::Left); }
             Key::Delete    => { self.view.delete_char(Direction::Right); }
             Key::CtrlS     => { self.save_active_buffer(); }
             Key::CtrlQ     => { return EventStatus::Handled(Response::Quit) }
+
+            // TODO(greg): move these keys to event handlers of each mode
+            // This block is for matching keys which will insert a char to the buffer
+            Key::Exclaim   |  Key::Hash |
+            Key::Dollar    | Key::Percent |
+            Key::Ampersand | Key::Quote |
+            Key::LeftParen | Key::RightParen |
+            Key::Asterisk  | Key::Plus |
+            Key::Comma     | Key::Minus |
+            Key::Period    | Key::Slash |
+            Key::D0 | Key::D1 | Key::D2 |
+            Key::D3 | Key::D4 | Key::D5 |
+            Key::D6 | Key::D7 | Key::D8 |
+            Key::D9 | Key::Colon |
+            Key::Semicolon | Key::Less |
+            Key::Equals    | Key::Greater |
+            Key::Question  | Key::At |
+            Key::LeftBracket  | Key::Backslash |
+            Key::RightBracket | Key::Caret |
+            Key::Underscore   | Key::Backquote |
+            Key::A | Key::B | Key::C | Key::D |
+            Key::E | Key::F | Key::G | Key::H |
+            Key::I | Key::J | Key::K | Key::L |
+            Key::M | Key::N | Key::O | Key::P |
+            Key::Q | Key::R | Key::S | Key::T |
+            Key::U | Key::V | Key::W | Key::X |
+            Key::Y | Key::Z | Key::LeftBrace |
+            Key::Pipe       | Key::RightBrace |
+            Key::Tilde      | Key::Space => { self.view.insert_char(key.get_char().unwrap()) }
+
+            // default
             _              => { return EventStatus::NotHandled }
         }
         // event is handled and we want to keep the editor running
