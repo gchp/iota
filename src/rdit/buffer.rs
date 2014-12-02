@@ -2,8 +2,6 @@ use std::io::fs::PathExtensions;
 use std::io::{File, BufferedReader};
 use std::cell::RefCell;
 
-use utils;
-
 
 pub struct Buffer {
     pub file_path: String,
@@ -74,8 +72,6 @@ impl Buffer {
 
         line_num += 1;
 
-        // add new line below current
-        utils::clear_line(line_num);
         self.lines.insert(line_num, RefCell::new(Line::new(bits.clone().remove(1).unwrap(), line_num)));
 
         self.fix_linenums();
@@ -110,7 +106,6 @@ impl Buffer {
             prev_line.borrow_mut().data = new_data;
         }
 
-        utils::clear_line(line_num);
         self.lines.remove(line_num);
 
         self.fix_linenums();

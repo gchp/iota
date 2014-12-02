@@ -13,10 +13,3 @@ pub fn get_term_height() -> uint {
 pub fn get_term_width() -> uint {
     rustbox::width()
 }
-
-pub fn clear_line(line: uint) {
-    let width = get_term_width();
-    for index in range(0, width) {
-        rustbox::print(index, line, rustbox::Style::Normal, rustbox::Color::White, rustbox::Color::Black, String::from_str(""));
-    }
-}
