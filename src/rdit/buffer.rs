@@ -5,14 +5,14 @@ use std::cell::RefCell;
 use utils;
 
 
-pub struct Buffer<'b> {
+pub struct Buffer {
     pub file_path: String,
     pub lines: Vec<RefCell<Line>>,
 }
 
-impl<'b> Buffer<'b> {
+impl Buffer {
     /// Create a new buffer instance
-    pub fn new() -> Buffer<'b> {
+    pub fn new() -> Buffer {
         Buffer {
             file_path: String::new(),
             lines: Vec::new(),
@@ -20,7 +20,7 @@ impl<'b> Buffer<'b> {
     }
 
     /// Create a new buffer with a single line
-    pub fn new_empty() -> Buffer<'b> {
+    pub fn new_empty() -> Buffer {
         let mut buffer = Buffer::new();
         buffer.lines.push(RefCell::new(Line::new(String::new(), 0)));
         buffer.file_path = String::from_str("untitled");
@@ -29,7 +29,7 @@ impl<'b> Buffer<'b> {
     }
 
     /// Create a new buffer instance and load the given file
-    pub fn new_from_file(path: &Path) -> Buffer<'b> {
+    pub fn new_from_file(path: &Path) -> Buffer {
         let mut buffer = Buffer::new();
 
         if path.exists() {
@@ -170,7 +170,7 @@ mod tests {
     use buffer::Buffer;
     use buffer::Line;
 
-    fn setup_buffer<'b>() -> Buffer<'b> {
+    fn setup_buffer() -> Buffer {
         let mut buffer = Buffer::new();
         buffer.file_path = String::from_str("/some/file.txt");
         buffer.lines = vec!(
@@ -200,7 +200,7 @@ mod tests {
         let mut buffer = setup_buffer();
         buffer.insert_line(1, 0);
         assert_eq!(buffer.lines.len(), 5);
-        
+
         let ref line = buffer.lines[1];
         assert_eq!(line.borrow().data, "est".to_string());
     }

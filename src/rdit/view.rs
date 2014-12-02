@@ -14,7 +14,7 @@ use utils;
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
 pub struct View<'v> {
-    pub buffer: Buffer<'v>,
+    pub buffer: Buffer,
     pub top_line_num: uint,
     pub cursor: Cursor<'v>,
 
