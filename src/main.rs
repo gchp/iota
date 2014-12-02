@@ -30,8 +30,8 @@ fn main() {
                             .and_then(|d| d.decode())
                             .unwrap_or_else(|e| e.exit());
 
-    let mut editor = Editor::new(args.arg_filename);
     rustbox::init();
+    let mut editor = Editor::new(args.arg_filename);
     editor.start();
     rustbox::shutdown();
 }
