@@ -28,7 +28,6 @@ impl<'v> View<'v> {
             Some(s) => Buffer::new_from_file(&Path::new(s)),
             None    => Buffer::new_empty(),
         };
-        //buffer = Buffer::new_from_file(path);
 
         let uibuf = UIBuffer::new();
         let mut cursor = Cursor::new();
