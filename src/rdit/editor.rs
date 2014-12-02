@@ -97,7 +97,7 @@ impl<'e> Editor<'e> {
             self.draw();
             rustbox::present();
             match self.events.recv() {
-                rustbox::KeyEvent(_, key, ch) => {
+                rustbox::Event::KeyEvent(_, key, ch) => {
                     match self.handle_key_event(key, ch) {
                         // TODO(greg): refactor event handling responses
                         Response::Continue => { /* keep going*/ }

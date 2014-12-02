@@ -2,22 +2,14 @@
 name = "rdit"
 version = "0.1.0"
 dependencies = [
- "docopt_macros 0.6.8 (git+git://github.com/docopt/docopt.rs)",
+ "docopt 0.6.10 (git+git://github.com/docopt/docopt.rs)",
  "rustbox 0.1.0 (git+https://github.com/gchp/rustbox.git)",
 ]
 
 [[package]]
 name = "docopt"
-version = "0.6.8"
-source = "git+git://github.com/docopt/docopt.rs#d64e31bf7ec44660bb4f98f5ab79c42758ea6b90"
-
-[[package]]
-name = "docopt_macros"
-version = "0.6.8"
-source = "git+git://github.com/docopt/docopt.rs#d64e31bf7ec44660bb4f98f5ab79c42758ea6b90"
-dependencies = [
- "docopt 0.6.8 (git+git://github.com/docopt/docopt.rs)",
-]
+version = "0.6.10"
+source = "git+git://github.com/docopt/docopt.rs#2e969ec5ff0480acc8f4f9e8b0e56715d5be1b6a"
 
 [[package]]
 name = "rustbox"
