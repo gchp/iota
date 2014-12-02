@@ -117,10 +117,7 @@ impl<'v> View<'v> {
         let num_lines = self.buffer.lines.len() - 1;
         if prev_linenum > num_lines { return }
 
-        {
-            let line = &self.buffer.lines[prev_linenum];
-            self.cursor.set_line(Some(line));
-        }
+        self.set_cursor_line(prev_linenum);
 
         let cursor_linenum = self.cursor.get_linenum() as int;
         let cursor_offset = cursor_linenum - self.top_line_num as int;
@@ -140,10 +137,7 @@ impl<'v> View<'v> {
         let num_lines = self.buffer.lines.len() - 1;
         if next_linenum > num_lines { return }
 
-        {
-            let line = &self.buffer.lines[next_linenum];
-            self.cursor.set_line(Some(line));
-        }
+        self.set_cursor_line(next_linenum);
 
         let cursor_linenum = self.cursor.get_linenum() as int;
         let cursor_offset = cursor_linenum - self.top_line_num as int;
@@ -156,6 +150,11 @@ impl<'v> View<'v> {
             let times = cursor_offset - (height - self.threshold) + 1;
             self.move_top_line_n_times(times);
         }
+    }
+
+    fn set_cursor_line(&mut self, linenum: uint) {
+        let line = &self.buffer.lines[linenum];
+        self.cursor.set_line(Some(line));
     }
 
     fn move_top_line_n_times(&mut self, mut num_times: int) {

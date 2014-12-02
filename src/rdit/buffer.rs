@@ -205,7 +205,7 @@ mod tests {
         let mut buffer = setup_buffer();
         buffer.insert_line(1, 2);
         assert_eq!(buffer.lines.len(), 5);
-        
+
         // check that all linenums are sequential
         for (index, line) in buffer.lines.iter().enumerate() {
             assert_eq!(index, line.borrow().linenum);
