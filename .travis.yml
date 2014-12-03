@@ -1,7 +1,7 @@
 language: rust
 os:
     - linux
-      #    - osx
+    - osx
 install:
     - git clone git://github.com/nsf/termbox.git termbox
     - cd termbox
