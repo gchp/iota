@@ -3,12 +3,9 @@ extern crate rustbox;
 extern crate docopt;
 extern crate iota;
 
-use docopt::Docopt;
-
+#[cfg(not(test))] use docopt::Docopt;
 #[cfg(not(test))] use iota::Editor;
-
-
-static USAGE: &'static str = "
+#[cfg(not(test))] static USAGE: &'static str = "
 Usage: iota [<filename>]
        iota --help
 
