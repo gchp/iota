@@ -29,7 +29,9 @@ impl<'v> View<'v> {
             None    => Buffer::new_empty(),
         };
 
-        let uibuf = UIBuffer::new();
+        let term_width = utils::get_term_width();
+        let term_height = utils::get_term_height();
+        let uibuf = UIBuffer::new(term_width, term_height);
         let mut cursor = Cursor::new();
         cursor.set_line(Some(&buffer.lines[0]));
 
@@ -232,14 +234,13 @@ mod tests {
     use cursor::{Cursor, Direction};
     use view::View;
     use uibuf::UIBuffer;
-    use utils;
 
     fn setup_view<'v>() -> View<'v> {
         let mut view = View {
             buffer: Buffer::new(),
             top_line_num: 0,
             cursor: Cursor::new(),
-            uibuf: UIBuffer::new(),
+            uibuf: UIBuffer::new(50, 50),
             threshold: 5,
         };
 
@@ -322,12 +323,5 @@ mod tests {
         view.delete_char(Direction::Right);
 
         assert_eq!(view.cursor.get_line().borrow().data, "testsecond".to_string());
-    }
-
-    #[test]
-    fn test_get_internal_height() {
-        let view = setup_view();
-        let term_height = utils::get_term_height();
-        assert_eq!(view.get_internal_height(), term_height - 2);
     }
 }

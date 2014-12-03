@@ -1,16 +1,19 @@
 extern crate rustbox;
 
-use utils;
 
 pub struct UIBuffer {
+    width: uint,
+    height: uint,
     cells: Vec<Vec<Cell>>
 }
 
 impl UIBuffer {
-    pub fn new() -> UIBuffer {
-        let cells = Cell::create_grid(' ');
+    pub fn new(width: uint, height: uint) -> UIBuffer {
+        let cells = Cell::create_grid(width, height, ' ');
 
         UIBuffer {
+            width: width,
+            height: height,
             cells: cells,
         }
     }
@@ -26,7 +29,7 @@ impl UIBuffer {
 
     /// Recreated the entire grid, will cells containing `ch`.
     pub fn fill(&mut self, ch: char) {
-        self.cells = Cell::create_grid(ch);
+        self.cells = Cell::create_grid(self.width, self.height, ch);
     }
 
     /// Update the `ch` attribute of an individual cell
@@ -64,14 +67,11 @@ impl Cell {
         }
     }
 
-    pub fn create_grid(ch: char) -> Vec<Vec<Cell>> {
-        let term_height = utils::get_term_height();
-        let term_width = utils::get_term_width();
-
+    pub fn create_grid(width: uint, height: uint, ch: char) -> Vec<Vec<Cell>> {
         let mut rows = Vec::new();
-        for voffset in range(0, term_height) {
+        for voffset in range(0, height) {
             let mut cells = Vec::new();
-            for boffset in range(0, term_width) {
+            for boffset in range(0, width) {
                 let mut cell = Cell::new();
                 cell.x = boffset;
                 cell.y = voffset;
