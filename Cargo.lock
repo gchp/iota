@@ -1,5 +1,5 @@
 [root]
-name = "rdit"
+name = "iota"
 version = "0.1.0"
 dependencies = [
  "docopt 0.6.10 (git+git://github.com/docopt/docopt.rs)",

@@ -1,16 +1,16 @@
 extern crate serialize;
 extern crate rustbox;
 extern crate docopt;
-extern crate rdit;
+extern crate iota;
 
 use docopt::Docopt;
 
-#[cfg(not(test))] use rdit::Editor;
+#[cfg(not(test))] use iota::Editor;
 
 
 static USAGE: &'static str = "
-Usage: rdit [<filename>]
-       rdit --help
+Usage: iota [<filename>]
+       iota --help
 
 Options:
     -h, --help     Show this message.

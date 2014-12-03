@@ -1,5 +1,5 @@
 [project]
-name = "rdit"
+name = "iota"
 version = "0.1.0"
 authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
@@ -10,9 +10,9 @@ git = "https://github.com/gchp/rustbox.git"
 git = "git://github.com/docopt/docopt.rs"
 
 [lib]
-name = "rdit"
-path = "src/rdit/lib.rs"
+name = "iota"
+path = "src/iota/lib.rs"
 
 [[bin]]
-name = "rdit"
+name = "iota"
 doc = false
