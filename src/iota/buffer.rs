@@ -64,7 +64,7 @@ impl Buffer {
         let (_, new_data) = self.split_line(offset, line_num);
         {
             // truncate the current line
-            let line = &self.get_line_at(line_num);
+            let line = self.get_line_at(line_num);
             line.unwrap().borrow_mut().data.truncate(offset);
         }
 
@@ -78,39 +78,26 @@ impl Buffer {
     /// Join the line identified by `line_num` with the one at `line_num - 1 `.
     pub fn join_line_with_previous(&mut self, offset: uint, line_num: uint) -> uint {
         let mut current_line_data: Vec<u8>;
-        let mut prev_line_data: Vec<u8>;
-        let line_len: uint;
-        {
-            let prev_line = self.get_line_at(line_num - 1);
-            if prev_line.is_none() {
-                return offset
-            }
-            prev_line_data = prev_line.unwrap().borrow().data.clone();
-            line_len = prev_line_data.len();
-        }
-
         {
             // get current line data
             let current_line = self.get_line_at(line_num).unwrap();
             current_line_data = current_line.borrow().data.clone();
         }
 
-        {
-            // append current line data to prev line
-            // FIXME: this is duplicated above in a different scope...
-            let prev_line = self.get_line_at(line_num - 1).unwrap();
-
-            //let new_data = format!("{}{}", prev_line_data, current_line_data);
-            prev_line_data.push_all(current_line_data.as_slice());
-            prev_line.borrow_mut().data = prev_line_data;
-        }
+        // update the previous line
+        let new_cursor_offset = match self.get_line_at(line_num -1) {
+            None => offset,
+            Some(line) => {
+                let line_len = line.borrow().data.len();
+                line.borrow_mut().data.push_all(current_line_data.as_slice());
+                line_len
+            }
+        };
 
         self.lines.remove(line_num);
-
         self.fix_linenums();
 
-        // return cursor offset
-        return line_len
+        return new_cursor_offset
     }
 
     // TODO(greg): refactor this to use Vec::partition
