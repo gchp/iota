@@ -329,4 +329,13 @@ mod tests {
 
         assert_eq!(view.cursor.get_line().borrow().data, data_from_str("testsecond"));
     }
+
+    #[test]
+    fn deleting_backward_at_start_of_first_line_does_nothing() {
+        let mut view = setup_view();
+        view.delete_char(Direction::Left);
+
+        assert_eq!(view.buffer.lines.len(), 2);
+        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("test"));
+    }
 }
