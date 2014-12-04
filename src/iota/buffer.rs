@@ -20,7 +20,7 @@ impl Buffer {
     /// Create a new buffer with a single line
     pub fn new_empty() -> Buffer {
         let mut buffer = Buffer::new();
-        buffer.lines.push(RefCell::new(Line::new(String::new(), 0)));
+        buffer.lines.push(RefCell::new(Line::new(Vec::new(), 0)));
         buffer.file_path = String::from_str("untitled");
 
         buffer
@@ -32,17 +32,15 @@ impl Buffer {
 
         if path.exists() {
             let mut file = BufferedReader::new(File::open(path));
-            let lines: Vec<String> = file.lines().map(|x| x.unwrap()).collect();
 
             // for every line in the file we add a corresponding line to the buffer
-            for (index, line) in lines.iter().enumerate() {
-                let mut data = line.clone();
-                // remove \n chars
-                data.pop();
+            for (index, line) in file.lines().enumerate() {
+                let mut data = line.unwrap().into_bytes();
+                data.pop(); // remove \n chars
                 buffer.lines.push(RefCell::new(Line::new(data, index)));
             }
         } else {
-            buffer.lines.push(RefCell::new(Line::new(String::new(), 0)));
+            buffer.lines.push(RefCell::new(Line::new(Vec::new(), 0)));
         }
 
         buffer.file_path = path.as_str().unwrap().to_string();
@@ -63,7 +61,7 @@ impl Buffer {
 
     pub fn insert_line(&mut self, offset: uint, mut line_num: uint) {
         // split the current line at the cursor position
-        let bits = &self.split_line(offset, line_num);
+        let (_, new_data) = self.split_line(offset, line_num);
         {
             // truncate the current line
             let line = &self.get_line_at(line_num);
@@ -72,15 +70,15 @@ impl Buffer {
 
         line_num += 1;
 
-        self.lines.insert(line_num, RefCell::new(Line::new(bits.clone().remove(1).unwrap(), line_num)));
+        self.lines.insert(line_num, RefCell::new(Line::new(new_data, line_num)));
 
         self.fix_linenums();
     }
 
     /// Join the line identified by `line_num` with the one at `line_num - 1 `.
     pub fn join_line_with_previous(&mut self, offset: uint, line_num: uint) -> uint {
-        let mut current_line_data: String;
-        let mut prev_line_data: String;
+        let mut current_line_data: Vec<u8>;
+        let mut prev_line_data: Vec<u8>;
         let line_len: uint;
         {
             let prev_line = self.get_line_at(line_num - 1);
@@ -102,8 +100,9 @@ impl Buffer {
             // FIXME: this is duplicated above in a different scope...
             let prev_line = self.get_line_at(line_num - 1).unwrap();
 
-            let new_data = format!("{}{}", prev_line_data, current_line_data);
-            prev_line.borrow_mut().data = new_data;
+            //let new_data = format!("{}{}", prev_line_data, current_line_data);
+            prev_line_data.push_all(current_line_data.as_slice());
+            prev_line.borrow_mut().data = prev_line_data;
         }
 
         self.lines.remove(line_num);
@@ -114,18 +113,19 @@ impl Buffer {
         return line_len
     }
 
+    // TODO(greg): refactor this to use Vec::partition
     /// Split the line identified by `line_num` at `offset`
-    fn split_line(&mut self, offset: uint, line_num: uint) -> Vec<String> {
+    fn split_line(&mut self, offset: uint, line_num: uint) -> (Vec<u8>, Vec<u8>) {
         let line = self.get_line_at(line_num).unwrap();
 
-        let data = line.borrow().data.clone().into_bytes();
+        let data = line.borrow().data.clone();
         let old_data = data.slice_to(offset);
         let new_data = data.slice_from(offset);
 
-        vec!(
-            String::from_utf8_lossy(old_data).into_string(),
-            String::from_utf8_lossy(new_data).into_string(),
-        )
+        let mut new = Vec::new(); new.push_all(new_data);
+        let mut old = Vec::new(); old.push_all(old_data);
+
+        return (old, new)
     }
 
     fn get_line_at(&self, line_num: uint) -> Option<&RefCell<Line>> {
@@ -138,13 +138,13 @@ impl Buffer {
 
 
 pub struct Line {
-    pub data: String,
+    pub data: Vec<u8>,
     pub linenum: uint,
 }
 
 impl Line {
     /// Create a new line instance
-    pub fn new(data: String, line_num: uint) -> Line {
+    pub fn new(data: Vec<u8>, line_num: uint) -> Line {
         Line{
             data: data,
             linenum: line_num,
@@ -164,15 +164,16 @@ mod tests {
     use std::cell::RefCell;
     use buffer::Buffer;
     use buffer::Line;
+    use utils::data_from_str;
 
     fn setup_buffer() -> Buffer {
         let mut buffer = Buffer::new();
         buffer.file_path = String::from_str("/some/file.txt");
         buffer.lines = vec!(
-            RefCell::new(Line::new("test".to_string(), 0)),
-            RefCell::new(Line::new("".to_string(), 1)),
-            RefCell::new(Line::new("text file".to_string(), 2)),
-            RefCell::new(Line::new("content".to_string(), 3)),
+            RefCell::new(Line::new(data_from_str("test"), 0)),
+            RefCell::new(Line::new(Vec::new(), 1)),
+            RefCell::new(Line::new(data_from_str("text file"), 2)),
+            RefCell::new(Line::new(data_from_str("content"), 3)),
         );
         buffer
     }
@@ -197,7 +198,7 @@ mod tests {
         assert_eq!(buffer.lines.len(), 5);
 
         let ref line = buffer.lines[1];
-        assert_eq!(line.borrow().data, "est".to_string());
+        assert_eq!(line.borrow().data, data_from_str("est"));
     }
 
     #[test]
@@ -219,15 +220,18 @@ mod tests {
         let offset = buffer.join_line_with_previous(0, 3);
 
         assert_eq!(buffer.lines.len(), 3);
-        assert_eq!(buffer.lines[2].borrow().data, "text filecontent".to_string());
+        assert_eq!(buffer.lines[2].borrow().data, data_from_str("text filecontent"));
         assert_eq!(offset, 9);
     }
 
     #[test]
     fn test_split_line() {
         let mut buffer = setup_buffer();
-        let segments = buffer.split_line(3, 3);
+        let (old, new) = buffer.split_line(3, 3);
 
-        assert_eq!(segments, vec!("con".to_string(), "tent".to_string()));
+        assert_eq!(old, data_from_str("con"));
+        assert_eq!(new, data_from_str("tent"));
     }
+
 }
+

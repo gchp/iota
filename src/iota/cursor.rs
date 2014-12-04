@@ -91,7 +91,7 @@ impl<'c> Cursor<'c> {
     pub fn insert_char(&mut self, ch: char) {
         let offset = self.get_offset();
         let line = self.get_line();
-        line.borrow_mut().data.insert(offset, ch);
+        line.borrow_mut().data.insert(offset, ch as u8);
         self.set_offset(offset+1)
     }
 
@@ -124,10 +124,11 @@ mod tests {
 
     use cursor::Cursor;
     use buffer::Line;
+    use utils::data_from_str;
 
     fn setup_cursor<'c>() -> Cursor<'c> {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
+        let line = RefCell::new(Line::new(data_from_str("test"), 1));
         cursor.set_line(Some(&line));
         return cursor
     }
@@ -154,7 +155,7 @@ mod tests {
     #[test]
     fn test_get_position() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
+        let line = RefCell::new(Line::new(data_from_str("test"), 1));
         cursor.set_line(Some(&line));
         assert_eq!(cursor.get_position(), (0, 1));
     }
@@ -162,7 +163,7 @@ mod tests {
     #[test]
     fn test_get_linenum() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
+        let line = RefCell::new(Line::new(data_from_str("test"), 1));
         cursor.set_line(Some(&line));
 
         assert_eq!(cursor.get_linenum(), 1);
@@ -186,7 +187,7 @@ mod tests {
     #[test]
     fn test_moving_to_end_of_line_when_set() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
+        let line = RefCell::new(Line::new(data_from_str("test"), 1));
 
         cursor.set_offset(10);
         cursor.set_line(Some(&line));
@@ -197,7 +198,7 @@ mod tests {
     #[test]
     fn test_get_line_length() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
+        let line = RefCell::new(Line::new(data_from_str("test"), 1));
 
         cursor.set_line(Some(&line));
 
@@ -207,35 +208,35 @@ mod tests {
     #[test]
     fn test_delete_backward_char() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
+        let line = RefCell::new(Line::new(data_from_str("test"), 1));
 
         cursor.set_line(Some(&line));
         cursor.set_offset(1);
         cursor.delete_backward_char();
 
-        assert_eq!(line.borrow().data, "est".to_string());
+        assert_eq!(line.borrow().data, data_from_str("est"));
     }
 
     #[test]
     fn test_delete_forward_char() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
+        let line = RefCell::new(Line::new(data_from_str("test"), 1));
 
         cursor.set_line(Some(&line));
         cursor.delete_forward_char();
 
-        assert_eq!(line.borrow().data, "est".to_string());
+        assert_eq!(line.borrow().data, data_from_str("est"));
     }
 
     #[test]
     fn test_insert_char() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new("test".to_string(), 1));
+        let line = RefCell::new(Line::new(data_from_str("test"), 1));
 
         cursor.set_line(Some(&line));
         cursor.insert_char('x');
 
-        assert_eq!(line.borrow().data, "xtest".to_string());
+        assert_eq!(line.borrow().data, data_from_str("xtest"));
     }
 
     #[test]

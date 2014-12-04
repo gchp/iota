@@ -53,6 +53,9 @@ impl<'v> View<'v> {
         term_height - 2
     }
 
+    /// Clear the buffer
+    ///
+    /// Fills every cell in the UIBuffer with the space (' ') char.
     pub fn clear(&mut self) {
         self.uibuf.fill(' ');
     }
@@ -67,7 +70,7 @@ impl<'v> View<'v> {
             if index <= height {
                 let ln = line.borrow();
                 let data = ln.data.clone();
-                for (ch_index, ch) in data.into_bytes().iter().enumerate() {
+                for (ch_index, ch) in data.iter().enumerate() {
                     self.uibuf.update_cell_content(ch_index, index, *ch as char);
                 }
             }
@@ -234,6 +237,7 @@ mod tests {
     use cursor::{Cursor, Direction};
     use view::View;
     use uibuf::UIBuffer;
+    use utils::data_from_str;
 
     fn setup_view<'v>() -> View<'v> {
         let mut view = View {
@@ -244,8 +248,8 @@ mod tests {
             threshold: 5,
         };
 
-        let first_line = RefCell::new(Line::new("test".to_string(), 0));
-        let second_line = RefCell::new(Line::new("second".to_string(), 1));
+        let first_line = RefCell::new(Line::new(data_from_str("test"), 0));
+        let second_line = RefCell::new(Line::new(data_from_str("second"), 1));
 
         view.buffer.lines = vec!(first_line, second_line);
         view.cursor.set_line(Some(&view.buffer.lines[0]));
@@ -259,7 +263,7 @@ mod tests {
         view.move_cursor_down();
 
         assert_eq!(view.cursor.get_linenum(), 1);
-        assert_eq!(view.cursor.get_line().borrow().data, "second".to_string());
+        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("second"));
     }
 
     #[test]
@@ -268,7 +272,7 @@ mod tests {
         view.move_cursor_down();
         view.move_cursor_up();
         assert_eq!(view.cursor.get_linenum(), 0);
-        assert_eq!(view.cursor.get_line().borrow().data, "test".to_string());
+        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("test"));
     }
 
     #[test]
@@ -287,7 +291,7 @@ mod tests {
         let mut view = setup_view();
         view.insert_char('t');
 
-        assert_eq!(view.cursor.get_line().borrow().data, "ttest".to_string());
+        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("ttest"));
     }
 
     #[test]
@@ -295,7 +299,7 @@ mod tests {
         let mut view = setup_view();
         view.delete_char(Direction::Right);
 
-        assert_eq!(view.cursor.get_line().borrow().data, "est".to_string());
+        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("est"));
     }
 
     #[test]
@@ -304,7 +308,7 @@ mod tests {
         view.cursor.move_right();
         view.delete_char(Direction::Left);
 
-        assert_eq!(view.cursor.get_line().borrow().data, "est".to_string());
+        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("est"));
     }
 
     #[test]
@@ -313,7 +317,7 @@ mod tests {
         view.move_cursor_down();
         view.delete_char(Direction::Left);
 
-        assert_eq!(view.cursor.get_line().borrow().data, "testsecond".to_string());
+        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("testsecond"));
     }
 
     #[test]
@@ -322,6 +326,6 @@ mod tests {
         view.cursor.set_offset(4);
         view.delete_char(Direction::Right);
 
-        assert_eq!(view.cursor.get_line().borrow().data, "testsecond".to_string());
+        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("testsecond"));
     }
 }
