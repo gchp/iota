@@ -77,6 +77,9 @@ impl Buffer {
 
     /// Join the line identified by `line_num` with the one at `line_num - 1 `.
     pub fn join_line_with_previous(&mut self, offset: uint, line_num: uint) -> uint {
+        // if the line_num is 0 (ie the first line), don't do anything
+        if line_num == 0 { return offset }
+
         let mut current_line_data: Vec<u8>;
         {
             // get current line data
@@ -209,6 +212,15 @@ mod tests {
         assert_eq!(buffer.lines.len(), 3);
         assert_eq!(buffer.lines[2].borrow().data, data_from_str("text filecontent"));
         assert_eq!(offset, 9);
+    }
+
+    #[test]
+    fn join_line_with_previous_does_nothing_on_line_zero_offset_zero() {
+        let mut buffer = setup_buffer();
+        buffer.join_line_with_previous(0, 0);
+
+        assert_eq!(buffer.lines.len(), 4);
+        assert_eq!(buffer.lines[0].borrow().data, data_from_str("test"));
     }
 
     #[test]

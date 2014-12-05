@@ -189,7 +189,6 @@ impl<'v> View<'v> {
         let (offset, line_num) = self.cursor.get_position();
 
         if offset == 0 && direction.is_left() {
-            if line_num == 0 { return }
             let offset = self.buffer.join_line_with_previous(offset, line_num);
             self.move_cursor_up();
             self.cursor.set_offset(offset);
