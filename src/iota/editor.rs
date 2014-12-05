@@ -17,11 +17,11 @@ enum EventStatus {
 
 
 pub struct Editor<'e> {
+    pub running: bool,
     pub sender: Sender<rustbox::Event>,
+
     events: Receiver<rustbox::Event>,
     view: View<'e>,
-
-    pub running: bool,
 }
 
 impl<'e> Editor<'e> {
