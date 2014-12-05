@@ -67,7 +67,7 @@ impl<'v> View<'v> {
         let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines);
 
         for (index, line) in lines_to_draw.iter().enumerate() {
-            if index <= height {
+            if index < self.uibuf.get_height() {
                 let ln = line.borrow();
                 let data = ln.data.clone();
                 for (ch_index, ch) in data.iter().enumerate() {
@@ -75,6 +75,8 @@ impl<'v> View<'v> {
                 }
             }
         }
+        // NOTE(greg): if the height of the status bar changes,
+        // this value will need to be updated also
         self.uibuf.draw_range(0, height+1);
     }
 

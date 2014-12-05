@@ -27,6 +27,10 @@ impl UIBuffer {
         }
     }
 
+    pub fn get_height(&self) -> uint {
+        self.height
+    }
+
     /// Recreated the entire grid, will cells containing `ch`.
     pub fn fill(&mut self, ch: char) {
         self.rows = Cell::create_grid(self.width, self.height, ch);
