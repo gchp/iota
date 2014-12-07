@@ -43,10 +43,14 @@ impl UIBuffer {
 
     /// Update the `ch`, `fg`, and `bg` attributes of an indivudual cell
     pub fn update_cell(&mut self, cell_num: uint, row_num: uint, ch: char, fg: rustbox::Color, bg: rustbox::Color) {
-        let cell = &mut self.rows[row_num][cell_num];
+        let cell = self.get_cell_mut(cell_num, row_num);
         cell.ch = ch;
         cell.fg = fg;
         cell.bg = bg;
+    }
+
+    pub fn get_cell_mut(&mut self, cell_num: uint, row_num: uint) -> &mut Cell {
+        &mut self.rows[row_num][cell_num]
     }
 }
 
