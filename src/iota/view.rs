@@ -60,6 +60,10 @@ impl<'v> View<'v> {
         self.uibuf.get_height() -1
     }
 
+    pub fn get_width(&self) -> uint {
+        self.uibuf.get_width()
+    }
+
     pub fn draw(&mut self) {
         let end_line = self.get_height();
         let num_lines = self.buffer.lines.len();
@@ -71,7 +75,9 @@ impl<'v> View<'v> {
                 let ln = line.borrow();
                 let data = ln.data.clone();
                 for (ch_index, ch) in data.iter().enumerate() {
-                    self.uibuf.update_cell_content(ch_index, index, *ch as char);
+                    if ch_index < self.get_width() {
+                        self.uibuf.update_cell_content(ch_index, index, *ch as char);
+                    }
                 }
             }
         }
@@ -84,11 +90,11 @@ impl<'v> View<'v> {
         let cursor_status = self.cursor.get_status_text();
         let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
         let status_text_len = status_text.len();
-        let term_width = utils::get_term_width();
+        let width = self.get_width();
         let height = self.get_height();
 
 
-        for index in range(0, term_width) {
+        for index in range(0, width) {
             let mut ch: char = ' ';
             if index < status_text_len {
                 ch = status_text[index] as char;
