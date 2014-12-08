@@ -27,6 +27,10 @@ impl UIBuffer {
         }
     }
 
+    pub fn draw_everything(&self) {
+        self.draw_range(0, self.height);
+    }
+
     pub fn get_height(&self) -> uint {
         self.height
     }

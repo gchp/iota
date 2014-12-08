@@ -129,6 +129,7 @@ impl<'e> Editor<'e> {
             Key::Delete    => { self.view.delete_char(Direction::Right); }
             Key::CtrlS     => { self.save_active_buffer(); }
             Key::CtrlQ     => { return EventStatus::Handled(Response::Quit) }
+            Key::CtrlR     => { self.view.resize(); }
 
             // TODO(greg): move these keys to event handlers of each mode
             // This block is for matching keys which will insert a char to the buffer
