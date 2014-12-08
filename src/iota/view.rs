@@ -77,8 +77,7 @@ impl<'v> View<'v> {
                 }
             }
         }
-        // NOTE(greg): if the height of the status bar changes,
-        // this value will need to be updated also
+
         self.uibuf.draw_everything();
     }
 
