@@ -30,7 +30,7 @@ impl<'v> View<'v> {
             None    => Buffer::new_empty(),
         };
 
-        let mut height: uint = utils::get_term_height();
+        let height: uint = utils::get_term_height();
         let width: uint = utils::get_term_width();
 
         // NOTE(greg): this may not play well with resizing
@@ -57,6 +57,7 @@ impl<'v> View<'v> {
     }
 
     pub fn get_height(&self) -> uint {
+        // NOTE(greg): when the status bar needs to move up, this value should be changed
         self.uibuf.get_height() -1
     }
 
