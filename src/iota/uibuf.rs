@@ -31,6 +31,10 @@ impl UIBuffer {
         self.draw_range(0, self.height);
     }
 
+    pub fn get_width(&self) -> uint {
+        self.width
+    }
+
     pub fn get_height(&self) -> uint {
         self.height
     }

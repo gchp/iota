@@ -15,13 +15,12 @@ use utils;
 /// pieces of information.
 pub struct View<'v> {
     pub buffer: Buffer,
+    // the line number of the topmost `Line` for the View to render
     pub top_line_num: uint,
     pub cursor: Cursor<'v>,
 
     uibuf: UIBuffer,
     threshold: int,
-    // TODO(greg): explain the difference between this and top_line_num
-    bottom_line_num: uint,
 }
 
 impl<'v> View<'v> {
@@ -31,11 +30,11 @@ impl<'v> View<'v> {
             None    => Buffer::new_empty(),
         };
 
-        let term_width = utils::get_term_width();
-        let term_height = utils::get_term_height();
+        let mut height: uint = utils::get_term_height();
+        let width: uint = utils::get_term_width();
 
         // NOTE(greg): this may not play well with resizing
-        let uibuf = UIBuffer::new(term_width, term_height);
+        let uibuf = UIBuffer::new(width, height);
 
         let mut cursor = Cursor::new();
         cursor.set_line(Some(&buffer.lines[0]));
@@ -43,7 +42,6 @@ impl<'v> View<'v> {
         View {
             buffer: buffer,
             top_line_num: 0,
-            bottom_line_num: term_height-1,
             cursor: cursor,
             uibuf: uibuf,
             threshold: 5,
@@ -55,21 +53,21 @@ impl<'v> View<'v> {
     /// Fills every cell in the UIBuffer with the space (' ') char.
     pub fn clear(&mut self) {
         self.uibuf.fill(' ');
+        self.uibuf.draw_everything();
+    }
+
+    pub fn get_height(&self) -> uint {
+        self.uibuf.get_height() -1
     }
 
     pub fn draw(&mut self) {
-        let mut end_line: uint = self.bottom_line_num;
-
+        let end_line = self.get_height();
         let num_lines = self.buffer.lines.len();
-
-        while end_line > num_lines {
-            end_line -= 1;
-        }
 
         let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines);
 
         for (index, line) in lines_to_draw.iter().enumerate() {
-            if index < self.bottom_line_num {
+            if index < end_line {
                 let ln = line.borrow();
                 let data = ln.data.clone();
                 for (ch_index, ch) in data.iter().enumerate() {
@@ -87,6 +85,7 @@ impl<'v> View<'v> {
         let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
         let status_text_len = status_text.len();
         let term_width = utils::get_term_width();
+        let height = self.get_height();
 
 
         for index in range(0, term_width) {
@@ -94,10 +93,10 @@ impl<'v> View<'v> {
             if index < status_text_len {
                 ch = status_text[index] as char;
             }
-            self.uibuf.update_cell(index, self.bottom_line_num, ch, rustbox::Color::Black, rustbox::Color::Blue);
+            self.uibuf.update_cell(index, height, ch, rustbox::Color::Black, rustbox::Color::Blue);
         }
 
-        self.uibuf.draw_range(self.bottom_line_num, self.bottom_line_num+1);
+        self.uibuf.draw_range(height, height+1);
     }
 
     pub fn draw_cursor(&self) {
@@ -108,8 +107,9 @@ impl<'v> View<'v> {
     }
 
     pub fn resize(&mut self) {
+        let width = self.uibuf.get_width();
         self.clear();
-        self.bottom_line_num = 15;
+        self.uibuf = UIBuffer::new(width, 15);
     }
 
     pub fn move_cursor(&mut self, direction: Direction) {
@@ -153,7 +153,7 @@ impl<'v> View<'v> {
 
         let cursor_linenum = self.cursor.get_linenum() as int;
         let cursor_offset = cursor_linenum - self.top_line_num as int;
-        let height = self.bottom_line_num as int;
+        let height = self.get_height() as int;
 
         if cursor_offset >= (height - self.threshold) {
             let times = cursor_offset - (height - self.threshold) + 1;
@@ -247,7 +247,6 @@ mod tests {
         let mut view = View {
             buffer: Buffer::new(),
             top_line_num: 0,
-            bottom_line_num: 10,
             cursor: Cursor::new(),
             uibuf: UIBuffer::new(50, 50),
             threshold: 5,
