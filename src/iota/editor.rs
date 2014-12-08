@@ -63,6 +63,7 @@ impl<'e> Editor<'e> {
 
             if result.is_err() {
                 // TODO(greg): figure out what to do here.
+                panic!("Something went wrong while writing the file");
             }
         }
     }
