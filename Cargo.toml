@@ -5,9 +5,7 @@ authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
 [dependencies]
 rustbox = "0.1.0"
-
-[dependencies.docopt]
-git = "git://github.com/docopt/docopt.rs"
+docopt = "0.6.13"
 
 [lib]
 name = "iota"
