@@ -85,15 +85,10 @@ impl<'e> Editor<'e> {
             self.view.clear();
             self.draw();
             rustbox::present();
-            match self.events.recv() {
-                rustbox::Event::KeyEvent(_, key, ch) => {
-                    match self.handle_key_event(key, ch) {
-                        // TODO(greg): refactor event handling responses
-                        Response::Continue => { /* keep going*/ }
-                        Response::Quit     => self.running = false,
-                    }
-                },
-                _ => {}
+            if let rustbox::Event::KeyEvent(_, key, ch) = self.events.recv() {
+                if let Response::Quit = self.handle_key_event(key, ch) {
+                    self.running = false;
+                }
             }
         }
     }
