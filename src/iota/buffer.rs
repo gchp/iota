@@ -36,7 +36,10 @@ impl Buffer {
             // for every line in the file we add a corresponding line to the buffer
             for (index, line) in file.lines().enumerate() {
                 let mut data = line.unwrap().into_bytes();
-                data.pop(); // remove \n chars
+                let last_index = data.len() - 1;
+                if data[last_index] == '\n' as u8 {
+                    data.pop();
+                }
                 buffer.lines.push(RefCell::new(Line::new(data, index)));
             }
         } else {
