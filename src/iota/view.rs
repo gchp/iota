@@ -73,20 +73,35 @@ impl<'v> View<'v> {
 
         for (index, line) in lines_to_draw.iter().enumerate() {
             if index < end_line {
-                let ln = line.borrow();
-                let data = ln.data.clone();
-                for (ch_index, ch) in data.iter().enumerate() {
-                    if ch_index <= width {
+                let mut internal_index = 0;
+                for ch in line.borrow().data.iter() {
 
-                        // if the line is longer than the width of the view, draw a special char
-                        if ch_index == width {
-                            // FIXME(greg): iota cant render this line correctly right now
-                            self.uibuf.update_cell_content(ch_index, index, '→');
-                            break;
+                    if internal_index < width {
+                        let ch = *ch as char;
+                        match ch {
+                            '\t' => {
+                                // TODO(greg): draw four spaces
+                                // need to update how the cursor is rendered before doing this
+                                // think about what will happen if the cursor sees a single '\t' char
+                                // in the line, however this is represented as four chars to the user
+                                // the actual cursor position will become separated from the drawn
+                                // cursor position.
+                                rustbox::shutdown();
+                                panic!("Found TAB chars - can't process these right now")
+                            }
+                            _ => {
+                                // draw the character
+                                self.uibuf.update_cell_content(internal_index, index, ch);
+                            }
                         }
+                        internal_index += 1;
+                    }
 
-                        // draw the character
-                        self.uibuf.update_cell_content(ch_index, index, *ch as char);
+                    // if the line is longer than the width of the view, draw a special char
+                    if internal_index == width {
+                        // FIXME(greg): iota cant render this line correctly right now
+                        self.uibuf.update_cell_content(internal_index, index, '→');
+                        break;
                     }
                 }
             }
