@@ -1,7 +1,9 @@
 extern crate rustbox;
 
+use std::cell::RefCell;
+
+use buffer::{Line, Buffer};
 use cursor::Direction;
-use buffer::Buffer;
 use cursor::Cursor;
 use uibuf::UIBuffer;
 
@@ -68,46 +70,52 @@ impl<'v> View<'v> {
     pub fn draw(&mut self) {
         let end_line = self.get_height();
         let num_lines = self.buffer.lines.len();
-        let width = self.get_width() -1;
-        let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines);
+        // TODO(greg): remove the clone from this line - it seems dirty
+        let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines).clone();
 
         for (index, line) in lines_to_draw.iter().enumerate() {
             if index < end_line {
-                let mut internal_index = 0;
-                for ch in line.borrow().data.iter() {
-
-                    if internal_index < width {
-                        let ch = *ch as char;
-                        match ch {
-                            '\t' => {
-                                // TODO(greg): draw four spaces
-                                // need to update how the cursor is rendered before doing this
-                                // think about what will happen if the cursor sees a single '\t' char
-                                // in the line, however this is represented as four chars to the user
-                                // the actual cursor position will become separated from the drawn
-                                // cursor position.
-                                rustbox::shutdown();
-                                panic!("Found TAB chars - can't process these right now")
-                            }
-                            _ => {
-                                // draw the character
-                                self.uibuf.update_cell_content(internal_index, index, ch);
-                            }
-                        }
-                        internal_index += 1;
-                    }
-
-                    // if the line is longer than the width of the view, draw a special char
-                    if internal_index == width {
-                        // FIXME(greg): iota cant render this line correctly right now
-                        self.uibuf.update_cell_content(internal_index, index, '→');
-                        break;
-                    }
-                }
+                self.draw_line(line)
             }
         }
 
         self.uibuf.draw_everything();
+    }
+
+    pub fn draw_line(&mut self, line: &'v RefCell<Line>) {
+        let width = self.get_width() -1;
+        let index = line.borrow().linenum;
+        let mut internal_index = 0;
+        for ch in line.borrow().data.iter() {
+
+            if internal_index < width {
+                let ch = *ch as char;
+                match ch {
+                    '\t' => {
+                        // todo(greg): draw four spaces
+                        // need to update how the cursor is rendered before doing this
+                        // think about what will happen if the cursor sees a single '\t' char
+                        // in the line, however this is represented as four chars to the user
+                        // the actual cursor position will become separated from the drawn
+                        // cursor position.
+                        rustbox::shutdown();
+                        panic!("found tab chars - can't process these right now")
+                    }
+                    _ => {
+                        // draw the character
+                        self.uibuf.update_cell_content(internal_index, index, ch);
+                    }
+                }
+                internal_index += 1;
+            }
+
+            // if the line is longer than the width of the view, draw a special char
+            if internal_index == width {
+                // fixme(greg): iota cant render this line correctly right now
+                self.uibuf.update_cell_content(internal_index, index, '→');
+                break;
+            }
+        }
     }
 
     pub fn draw_status(&mut self) {
