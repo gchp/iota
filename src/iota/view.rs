@@ -68,7 +68,7 @@ impl<'v> View<'v> {
     pub fn draw(&mut self) {
         let end_line = self.get_height();
         let num_lines = self.buffer.lines.len();
-
+        let width = self.get_width() -1;
         let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines);
 
         for (index, line) in lines_to_draw.iter().enumerate() {
@@ -76,7 +76,16 @@ impl<'v> View<'v> {
                 let ln = line.borrow();
                 let data = ln.data.clone();
                 for (ch_index, ch) in data.iter().enumerate() {
-                    if ch_index < self.get_width() {
+                    if ch_index <= width {
+
+                        // if the line is longer than the width of the view, draw a special char
+                        if ch_index == width {
+                            // FIXME(greg): iota cant render this line correctly right now
+                            self.uibuf.update_cell_content(ch_index, index, '→');
+                            break;
+                        }
+
+                        // draw the character
                         self.uibuf.update_cell_content(ch_index, index, *ch as char);
                     }
                 }
