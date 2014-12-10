@@ -132,8 +132,18 @@ impl<'v> View<'v> {
         match direction {
             Direction::Up    => { self.move_cursor_up(); },
             Direction::Down  => { self.move_cursor_down(); },
-            Direction::Right => { self.cursor.move_right(); },
+            Direction::Right => { self.move_cursor_right(); },
             Direction::Left  => { self.cursor.move_left(); },
+        }
+    }
+
+    fn move_cursor_right(&mut self) {
+        let cursor_offset = self.cursor.get_offset();
+        let next_offset = cursor_offset + 1;
+        let width = self.get_width() - 1;
+
+        if next_offset < width {
+            self.cursor.move_right()
         }
     }
 
