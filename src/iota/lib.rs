@@ -1,5 +1,7 @@
 pub use editor::Editor;
+pub use input::Input;
 
+mod input;
 mod utils;
 mod buffer;
 mod editor;

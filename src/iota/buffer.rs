@@ -1,5 +1,5 @@
 use std::io::fs::PathExtensions;
-use std::io::{File, BufferedReader};
+use std::io::{File, Reader, BufferedReader};
 use std::cell::RefCell;
 
 
@@ -26,6 +26,28 @@ impl Buffer {
         buffer
     }
 
+    fn lines_from_reader<R: Reader>(reader: &mut BufferedReader<R>) -> Vec<RefCell<Line>> {
+        let mut v = vec![];
+        // for every line in the reader we add a corresponding line to the buffer
+        for (index, line) in reader.lines().enumerate() {
+            let mut data = line.unwrap().into_bytes();
+            let last_index = data.len() - 1;
+            if data[last_index] == '\n' as u8 {
+                data.pop();
+            }
+            v.push(RefCell::new(Line::new(data, index)));
+        }
+        v
+    }
+
+    pub fn new_from_reader<R: Reader>(reader: R) -> Buffer {
+        let mut r = BufferedReader::new(reader);
+        Buffer {
+            lines: Buffer::lines_from_reader(&mut r),
+            file_path: String::from_str("untitled"),
+        }
+    }
+
     /// Create a new buffer instance and load the given file
     pub fn new_from_file(path: &Path) -> Buffer {
         let mut buffer = Buffer::new();
@@ -33,15 +55,7 @@ impl Buffer {
         if path.exists() {
             let mut file = BufferedReader::new(File::open(path));
 
-            // for every line in the file we add a corresponding line to the buffer
-            for (index, line) in file.lines().enumerate() {
-                let mut data = line.unwrap().into_bytes();
-                let last_index = data.len() - 1;
-                if data[last_index] == '\n' as u8 {
-                    data.pop();
-                }
-                buffer.lines.push(RefCell::new(Line::new(data, index)));
-            }
+            buffer.lines = Buffer::lines_from_reader(&mut file);
         } else {
             buffer.lines.push(RefCell::new(Line::new(Vec::new(), 0)));
         }
