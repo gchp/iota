@@ -12,6 +12,10 @@ Here's what it looks like right now, editing itself.
 
 Clone the project and run `cargo build`.
 
+**NOTE**: You'll need to install the [termbox](https://github.com/nsf/termbox)
+library before running the editor. See installation instructions for [rustbox](https://github.com/gchp/rustbox)
+which is a wrapper around the termbox library.
+
 Then to start the editor run `./target/iota /path/to/file.txt`. Or simply `./target/iota`
 to open an empty buffer.
 
