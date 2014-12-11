@@ -106,11 +106,11 @@ impl<'e> Editor<'e> {
     }
 
     fn handle_system_event(&mut self, k: Option<Key>) -> EventStatus {
-        if k.is_none() {
-            return EventStatus::NotHandled
-        }
+        let key = match k {
+            Some(k) => k,
+            None => return EventStatus::NotHandled
+        };
 
-        let key = k.unwrap();
         match key {
             Key::Up        => { self.view.move_cursor(Direction::Up); }
             Key::Down      => { self.view.move_cursor(Direction::Down); }
