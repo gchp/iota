@@ -3,7 +3,7 @@ name = "iota"
 version = "0.1.0"
 dependencies = [
  "docopt 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustbox 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustbox 0.1.0 (git+http://github.com/gchp/rustbox)",
 ]
 
 [[package]]
@@ -14,5 +14,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "rustbox"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+http://github.com/gchp/rustbox#9f6ca3c60c9294c8eafcb7198355bc4c98ae7286"
+dependencies = [
+ "termbox-sys 0.0.1 (git+http://github.com/gchp/rustbox)",
+]
+
+[[package]]
+name = "termbox-sys"
+version = "0.0.1"
+source = "git+http://github.com/gchp/rustbox#9f6ca3c60c9294c8eafcb7198355bc4c98ae7286"
 

@@ -4,8 +4,10 @@ version = "0.1.0"
 authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
 [dependencies]
-rustbox = "0.1.0"
 docopt = "0.6.13"
+
+[dependencies.rustbox]
+git = "http://github.com/gchp/rustbox"
 
 [lib]
 name = "iota"
