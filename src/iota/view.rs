@@ -5,6 +5,7 @@ use std::cell::RefCell;
 use buffer::{Line, Buffer};
 use cursor::Direction;
 use cursor::Cursor;
+use input::Input;
 use uibuf::UIBuffer;
 
 use utils;
@@ -26,10 +27,17 @@ pub struct View<'v> {
 }
 
 impl<'v> View<'v> {
-    pub fn new(path: Option<String>) -> View<'v> {
-        let buffer = match path {
-            Some(s) => Buffer::new_from_file(&Path::new(s)),
-            None    => Buffer::new_empty(),
+    pub fn new(source: Input) -> View<'v> {
+        let buffer = match source {
+            Input::Filename(path) => {
+                match path {
+                    Some(s) => Buffer::new_from_file(&Path::new(s)),
+                    None    => Buffer::new_empty(),
+                }
+            },
+                Input::Stdin(reader) => {
+                Buffer::new_from_reader(reader)
+            },
         };
 
         let height: uint = utils::get_term_height();

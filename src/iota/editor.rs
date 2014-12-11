@@ -5,6 +5,7 @@ use std::num;
 use std::io::{File, FileMode, FileAccess};
 
 use super::Response;
+use input::Input;
 use cursor::Direction;
 use keyboard::Key;
 use view::View;
@@ -25,8 +26,8 @@ pub struct Editor<'e> {
 }
 
 impl<'e> Editor<'e> {
-    pub fn new(filename: Option<String>) -> Editor<'e> {
-        let view = View::new(filename);
+    pub fn new(source: Input) -> Editor<'e> {
+        let view = View::new(source);
 
         let (send, recv) = channel();
         Editor {
