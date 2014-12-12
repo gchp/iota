@@ -218,7 +218,9 @@ impl<'v> View<'v> {
         }
 
         let line_len = self.cursor.get_line_length();
-        if offset == line_len && direction.is_right() && line_len > 0 {
+        if offset == line_len && direction.is_right() {
+            // try to join the next line with the current line
+            // if there is no next line, nothing will happen
             self.buffer.join_line_with_previous(offset, line_num+1);
             return
         }

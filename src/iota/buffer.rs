@@ -94,8 +94,10 @@ impl Buffer {
 
         let mut current_line_data: Vec<u8>;
         {
-            // get current line data
-            let current_line = self.get_line_at(line_num).unwrap();
+            let current_line = match self.get_line_at(line_num) {
+                Some(line) => line,
+                None => return offset,
+            };
             current_line_data = current_line.data.clone();
         }
 
@@ -247,6 +249,13 @@ mod tests {
 
         assert_eq!(old, data_from_str("con"));
         assert_eq!(new, data_from_str("tent"));
+    }
+
+    #[test]
+    fn joining_line_with_non_existant_next_line_does_nothing() {
+        let mut buffer = setup_buffer();
+        buffer.lines = vec!(Line::new(Vec::new(), 0));
+        buffer.join_line_with_previous(0, 1);
     }
 
 }
