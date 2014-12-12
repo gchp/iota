@@ -31,7 +31,7 @@ impl<'v> View<'v> {
         let buffer = match source {
             Input::Filename(path) => {
                 match path {
-                    Some(s) => Buffer::new_from_file(&Path::new(s)),
+                    Some(s) => Buffer::new_from_file(Path::new(s)),
                     None    => Buffer::new_empty(),
                 }
             },

@@ -1,18 +1,16 @@
-use std::io::fs::PathExtensions;
 use std::io::{File, Reader, BufferedReader};
 use std::cell::RefCell;
 
-
 pub struct Buffer {
-    pub file_path: String,
     pub lines: Vec<RefCell<Line>>,
+    pub file_path: Option<Path>,
 }
 
 impl Buffer {
     /// Create a new buffer instance
     pub fn new() -> Buffer {
         Buffer {
-            file_path: String::new(),
+            file_path: None,
             lines: Vec::new(),
         }
     }
@@ -21,7 +19,6 @@ impl Buffer {
     pub fn new_empty() -> Buffer {
         let mut buffer = Buffer::new();
         buffer.lines.push(RefCell::new(Line::new(Vec::new(), 0)));
-        buffer.file_path = String::from_str("untitled");
 
         buffer
     }
@@ -44,30 +41,29 @@ impl Buffer {
         let mut r = BufferedReader::new(reader);
         Buffer {
             lines: Buffer::lines_from_reader(&mut r),
-            file_path: String::from_str("untitled"),
+            file_path: None
         }
     }
 
     /// Create a new buffer instance and load the given file
-    pub fn new_from_file(path: &Path) -> Buffer {
+    pub fn new_from_file(path: Path) -> Buffer {
         let mut buffer = Buffer::new();
 
-        if path.exists() {
-            let mut file = BufferedReader::new(File::open(path));
-
-            buffer.lines = Buffer::lines_from_reader(&mut file);
+        if let Ok(file) = File::open(&path) {
+            buffer.lines = Buffer::lines_from_reader(&mut BufferedReader::new(file));
         } else {
             buffer.lines.push(RefCell::new(Line::new(Vec::new(), 0)));
         }
 
-        buffer.file_path = path.as_str().unwrap().to_string();
+        buffer.file_path = Some(path);
         buffer
     }
 
     pub fn get_status_text(&self) -> String {
-        let file_path = self.file_path.clone();
-        let line_count = self.lines.len();
-        format!("{}, lines: {}", file_path, line_count)
+        match self.file_path {
+            Some(ref path) => format!("{}, lines: {}", path.display(), self.lines.len()),
+            None => format!("untitled, lines: {}", self.lines.len())
+        }
     }
 
     fn fix_linenums(&mut self) {
@@ -175,7 +171,7 @@ mod tests {
 
     fn setup_buffer() -> Buffer {
         let mut buffer = Buffer::new();
-        buffer.file_path = String::from_str("/some/file.txt");
+        buffer.file_path = Some(Path::new("/some/file.txt"));
         buffer.lines = vec!(
             RefCell::new(Line::new(data_from_str("test"), 0)),
             RefCell::new(Line::new(Vec::new(), 1)),
