@@ -289,8 +289,6 @@ pub fn draw_line(buf: &mut UIBuffer, line: &Line) {
 #[cfg(test)]
 mod tests {
 
-    use std::cell::RefCell;
-
     use buffer::{Line, Buffer};
     use cursor::{Cursor, Direction};
     use view::View;
@@ -306,11 +304,11 @@ mod tests {
             threshold: 5,
         };
 
-        let first_line = RefCell::new(Line::new(data_from_str("test"), 0));
-        let second_line = RefCell::new(Line::new(data_from_str("second"), 1));
+        let first_line = Line::new(data_from_str("test"), 0);
+        let second_line = Line::new(data_from_str("second"), 1);
 
         view.buffer.lines = vec!(first_line, second_line);
-        view.cursor.set_line(Some(&view.buffer.lines[0]));
+        view.cursor.set_line(Some(&mut view.buffer.lines[0]));
 
         return view
     }
@@ -321,7 +319,7 @@ mod tests {
         view.move_cursor_down();
 
         assert_eq!(view.cursor.get_linenum(), 1);
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("second"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("second"));
     }
 
     #[test]
@@ -330,7 +328,7 @@ mod tests {
         view.move_cursor_down();
         view.move_cursor_up();
         assert_eq!(view.cursor.get_linenum(), 0);
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("test"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("test"));
     }
 
     #[test]
@@ -341,7 +339,7 @@ mod tests {
 
         assert_eq!(view.buffer.lines.len(), 3);
         assert_eq!(view.cursor.get_offset(), 0);
-        assert_eq!(view.cursor.get_line().borrow().linenum, 1);
+        assert_eq!(view.cursor.get_line().linenum, 1);
     }
 
     #[test]
@@ -349,7 +347,7 @@ mod tests {
         let mut view = setup_view();
         view.insert_char('t');
 
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("ttest"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("ttest"));
     }
 
     #[test]
@@ -357,7 +355,7 @@ mod tests {
         let mut view = setup_view();
         view.delete_char(Direction::Right);
 
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("est"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("est"));
     }
 
     #[test]
@@ -366,7 +364,7 @@ mod tests {
         view.cursor.move_right();
         view.delete_char(Direction::Left);
 
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("est"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("est"));
     }
 
     #[test]
@@ -375,7 +373,7 @@ mod tests {
         view.move_cursor_down();
         view.delete_char(Direction::Left);
 
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("testsecond"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("testsecond"));
     }
 
     #[test]
@@ -384,7 +382,7 @@ mod tests {
         view.cursor.set_offset(4);
         view.delete_char(Direction::Right);
 
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("testsecond"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("testsecond"));
     }
 
     #[test]
@@ -393,6 +391,6 @@ mod tests {
         view.delete_char(Direction::Left);
 
         assert_eq!(view.buffer.lines.len(), 2);
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("test"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("test"));
     }
 }

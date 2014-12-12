@@ -169,7 +169,6 @@ impl Line {
 #[cfg(test)]
 mod tests {
 
-    use std::cell::RefCell;
     use buffer::Buffer;
     use buffer::Line;
     use utils::data_from_str;
@@ -178,10 +177,10 @@ mod tests {
         let mut buffer = Buffer::new();
         buffer.file_path = Some(Path::new("/some/file.txt"));
         buffer.lines = vec!(
-            RefCell::new(Line::new(data_from_str("test"), 0)),
-            RefCell::new(Line::new(Vec::new(), 1)),
-            RefCell::new(Line::new(data_from_str("text file"), 2)),
-            RefCell::new(Line::new(data_from_str("content"), 3)),
+            Line::new(data_from_str("test"), 0),
+            Line::new(Vec::new(), 1),
+            Line::new(data_from_str("text file"), 2),
+            Line::new(data_from_str("content"), 3),
         );
         buffer
     }
@@ -206,7 +205,7 @@ mod tests {
         assert_eq!(buffer.lines.len(), 5);
 
         let ref line = buffer.lines[1];
-        assert_eq!(line.borrow().data, data_from_str("est"));
+        assert_eq!(line.data, data_from_str("est"));
     }
 
     #[test]
@@ -217,7 +216,7 @@ mod tests {
 
         // check that all linenums are sequential
         for (index, line) in buffer.lines.iter().enumerate() {
-            assert_eq!(index, line.borrow().linenum);
+            assert_eq!(index, line.linenum);
         }
     }
 
@@ -228,7 +227,7 @@ mod tests {
         let offset = buffer.join_line_with_previous(0, 3);
 
         assert_eq!(buffer.lines.len(), 3);
-        assert_eq!(buffer.lines[2].borrow().data, data_from_str("text filecontent"));
+        assert_eq!(buffer.lines[2].data, data_from_str("text filecontent"));
         assert_eq!(offset, 9);
     }
 
@@ -238,7 +237,7 @@ mod tests {
         buffer.join_line_with_previous(0, 0);
 
         assert_eq!(buffer.lines.len(), 4);
-        assert_eq!(buffer.lines[0].borrow().data, data_from_str("test"));
+        assert_eq!(buffer.lines[0].data, data_from_str("test"));
     }
 
     #[test]
