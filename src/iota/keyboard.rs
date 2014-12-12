@@ -1,6 +1,7 @@
 use std::num::FromPrimitive;
 use std::char;
 
+#[deriving(Copy)]
 pub enum Key {
     Unknown      = 0,
     Tab          = 9,
