@@ -218,7 +218,7 @@ impl<'v> View<'v> {
         }
 
         let line_len = self.cursor.get_line_length();
-        if offset == line_len && direction.is_right() {
+        if offset == line_len && direction.is_right() && line_len > 0 {
             self.buffer.join_line_with_previous(offset, line_num+1);
             return
         }
@@ -383,6 +383,15 @@ mod tests {
         view.delete_char(Direction::Right);
 
         assert_eq!(view.cursor.get_line().data, data_from_str("testsecond"));
+    }
+
+    #[test]
+    fn delete_char_when_line_is_empty_does_nothing() {
+        let mut view = setup_view();
+        view.buffer.lines = vec!(Line::new(Vec::new(), 0));
+        view.cursor.set_line(Some(&mut view.buffer.lines[0]));
+        view.delete_char(Direction::Right);
+        assert_eq!(view.cursor.get_line().data, data_from_str(""));
     }
 
     #[test]
