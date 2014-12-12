@@ -146,6 +146,17 @@ impl<'e> Editor<'e> {
             Key::LeftBracket  | Key::Backslash |
             Key::RightBracket | Key::Caret |
             Key::Underscore   | Key::Backquote |
+
+            Key::ShiftA | Key::ShiftB | Key::ShiftC |
+            Key::ShiftD | Key::ShiftE | Key::ShiftF |
+            Key::ShiftG | Key::ShiftH | Key::ShiftI |
+            Key::ShiftJ | Key::ShiftK | Key::ShiftL |
+            Key::ShiftM | Key::ShiftN | Key::ShiftO |
+            Key::ShiftP | Key::ShiftQ | Key::ShiftR |
+            Key::ShiftS | Key::ShiftT | Key::ShiftU |
+            Key::ShiftV | Key::ShiftW | Key::ShiftX |
+            Key::ShiftY | Key::ShiftZ |
+
             Key::A | Key::B | Key::C | Key::D |
             Key::E | Key::F | Key::G | Key::H |
             Key::I | Key::J | Key::K | Key::L |
@@ -164,4 +175,3 @@ impl<'e> Editor<'e> {
     }
 
 }
-
