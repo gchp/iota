@@ -106,58 +106,32 @@ impl<'e> Editor<'e> {
     }
 
     fn handle_system_event(&mut self, k: Option<Key>) -> EventStatus {
+        use super::keyboard;
+
         let key = match k {
             Some(k) => k,
             None => return EventStatus::NotHandled
         };
 
         match key {
-            Key::Up        => { self.view.move_cursor(Direction::Up); }
-            Key::Down      => { self.view.move_cursor(Direction::Down); }
-            Key::Left      => { self.view.move_cursor(Direction::Left); }
-            Key::Right     => { self.view.move_cursor(Direction::Right); }
-            Key::Enter     => { self.view.insert_line(); }
+            keyboard::UP        => { self.view.move_cursor(Direction::Up); }
+            keyboard::DOWN      => { self.view.move_cursor(Direction::Down); }
+            keyboard::LEFT      => { self.view.move_cursor(Direction::Left); }
+            keyboard::RIGHT     => { self.view.move_cursor(Direction::Right); }
+            keyboard::ENTER     => { self.view.insert_line(); }
 
             // Tab inserts 4 spaces, rather than a \t
-            Key::Tab       => { self.view.insert_tab(); }
+            keyboard::TAB       => { self.view.insert_tab(); }
 
-            Key::Backspace => { self.view.delete_char(Direction::Left); }
-            Key::Delete    => { self.view.delete_char(Direction::Right); }
-            Key::CtrlS     => { self.save_active_buffer(); }
-            Key::CtrlQ     => { return EventStatus::Handled(Response::Quit) }
-            Key::CtrlR     => { self.view.resize(); }
+            keyboard::BACKSPACE => { self.view.delete_char(Direction::Left); }
+            keyboard::DELETE    => { self.view.delete_char(Direction::Right); }
+            keyboard::CTRL_S     => { self.save_active_buffer(); }
+            keyboard::CTRL_Q     => { return EventStatus::Handled(Response::Quit) }
+            keyboard::CTRL_R     => { self.view.resize(); }
 
             // TODO(greg): move these keys to event handlers of each mode
             // This block is for matching keys which will insert a char to the buffer
-            Key::Exclaim   |  Key::Hash |
-            Key::Dollar    | Key::Percent |
-            Key::Ampersand | Key::Quote |
-            Key::LeftParen | Key::RightParen |
-            Key::Asterisk  | Key::Plus |
-            Key::Comma     | Key::Minus |
-            Key::Period    | Key::Slash |
-            Key::D0 | Key::D1 | Key::D2 |
-            Key::D3 | Key::D4 | Key::D5 |
-            Key::D6 | Key::D7 | Key::D8 |
-            Key::D9 | Key::Colon |
-            Key::Semicolon | Key::Less |
-            Key::Equals    | Key::Greater |
-            Key::Question  | Key::At |
-            Key::LeftBracket  | Key::Backslash |
-            Key::RightBracket | Key::Caret |
-            Key::Underscore   | Key::Backquote |
-            Key::A | Key::B | Key::C | Key::D |
-            Key::E | Key::F | Key::G | Key::H |
-            Key::I | Key::J | Key::K | Key::L |
-            Key::M | Key::N | Key::O | Key::P |
-            Key::Q | Key::R | Key::S | Key::T |
-            Key::U | Key::V | Key::W | Key::X |
-            Key::Y | Key::Z | Key::LeftBrace |
-            Key::Pipe       | Key::RightBrace |
-            Key::Tilde      | Key::Space => { self.view.insert_char(key.get_char().unwrap()) }
-
-            // default
-            _              => { return EventStatus::NotHandled }
+            _ => { self.view.insert_char(key.get_char().unwrap()) }
         }
         // event is handled and we want to keep the editor running
         EventStatus::Handled(Response::Continue)
