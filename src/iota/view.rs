@@ -80,7 +80,7 @@ impl<'v> View<'v> {
 
         for (index, line) in lines_to_draw.iter().enumerate() {
             if index < end_line {
-                draw_line(&mut self.uibuf, line)
+                draw_line(&mut self.uibuf, line, self.top_line_num)
             }
         }
 
@@ -252,12 +252,11 @@ impl<'v> View<'v> {
     }
 }
 
-pub fn draw_line(buf: &mut UIBuffer, line: &Line) {
+pub fn draw_line(buf: &mut UIBuffer, line: &Line, top_line_num: uint) {
     let width = buf.get_width() -1;
-    let index = line.linenum;
+    let index = line.linenum - top_line_num;
     let mut internal_index = 0;
     for ch in line.data.iter() {
-
         if internal_index < width {
             let ch = *ch;
             match ch as char {
