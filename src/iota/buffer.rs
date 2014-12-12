@@ -1,9 +1,8 @@
 use std::io::{File, Reader, BufferedReader};
-use std::cell::RefCell;
 
 pub struct Buffer {
-    pub lines: Vec<RefCell<Line>>,
     pub file_path: Option<Path>,
+    pub lines: Vec<Line>,
 }
 
 impl Buffer {
@@ -18,12 +17,12 @@ impl Buffer {
     /// Create a new buffer with a single line
     pub fn new_empty() -> Buffer {
         let mut buffer = Buffer::new();
-        buffer.lines.push(RefCell::new(Line::new(Vec::new(), 0)));
+        buffer.lines.push(Line::new(Vec::new(), 0));
 
         buffer
     }
 
-    fn lines_from_reader<R: Reader>(reader: &mut BufferedReader<R>) -> Vec<RefCell<Line>> {
+    fn lines_from_reader<R: Reader>(reader: &mut BufferedReader<R>) -> Vec<Line> {
         let mut v = vec![];
         // for every line in the reader we add a corresponding line to the buffer
         for (index, line) in reader.lines().enumerate() {
@@ -32,7 +31,7 @@ impl Buffer {
             if data[last_index] == '\n' as u8 {
                 data.pop();
             }
-            v.push(RefCell::new(Line::new(data, index)));
+            v.push(Line::new(data, index));
         }
         v
     }
@@ -52,7 +51,7 @@ impl Buffer {
         if let Ok(file) = File::open(&path) {
             buffer.lines = Buffer::lines_from_reader(&mut BufferedReader::new(file));
         } else {
-            buffer.lines.push(RefCell::new(Line::new(Vec::new(), 0)));
+            buffer.lines.push(Line::new(Vec::new(), 0));
         }
 
         buffer.file_path = Some(path);
@@ -67,8 +66,8 @@ impl Buffer {
     }
 
     fn fix_linenums(&mut self) {
-        for (index, line) in self.lines.iter().enumerate() {
-            line.borrow_mut().linenum = index;
+        for (index, line) in self.lines.iter_mut().enumerate() {
+            line.linenum = index;
         }
     }
 
@@ -77,13 +76,13 @@ impl Buffer {
         let (_, new_data) = self.split_line(offset, line_num);
         {
             // truncate the current line
-            let line = self.get_line_at(line_num);
-            line.unwrap().borrow_mut().data.truncate(offset);
+            let line = self.get_line_at_mut(line_num);
+            line.unwrap().data.truncate(offset);
         }
 
         line_num += 1;
 
-        self.lines.insert(line_num, RefCell::new(Line::new(new_data, line_num)));
+        self.lines.insert(line_num, Line::new(new_data, line_num));
 
         self.fix_linenums();
     }
@@ -97,15 +96,15 @@ impl Buffer {
         {
             // get current line data
             let current_line = self.get_line_at(line_num).unwrap();
-            current_line_data = current_line.borrow().data.clone();
+            current_line_data = current_line.data.clone();
         }
 
         // update the previous line
-        let new_cursor_offset = match self.get_line_at(line_num -1) {
+        let new_cursor_offset = match self.get_line_at_mut(line_num -1) {
             None => offset,
             Some(line) => {
-                let line_len = line.borrow().data.len();
-                line.borrow_mut().data.push_all(current_line_data.as_slice());
+                let line_len = line.data.len();
+                line.data.push_all(current_line_data.as_slice());
                 line_len
             }
         };
@@ -121,7 +120,7 @@ impl Buffer {
     fn split_line(&mut self, offset: uint, line_num: uint) -> (Vec<u8>, Vec<u8>) {
         let line = self.get_line_at(line_num).unwrap();
 
-        let data = line.borrow().data.clone();
+        let data = line.data.clone();
         let old_data = data.slice_to(offset);
         let new_data = data.slice_from(offset);
 
@@ -131,10 +130,16 @@ impl Buffer {
         return (old, new)
     }
 
-    fn get_line_at(&self, line_num: uint) -> Option<&RefCell<Line>> {
+    fn get_line_at(&self, line_num: uint) -> Option<&Line> {
         let num_lines = self.lines.len() -1;
         if line_num > num_lines { return None }
         Some(&self.lines[line_num])
+    }
+
+    fn get_line_at_mut(&mut self, line_num: uint) -> Option<&mut Line> {
+        let num_lines = self.lines.len() -1;
+        if line_num > num_lines { return None }
+        Some(&mut self.lines[line_num])
     }
 
 }

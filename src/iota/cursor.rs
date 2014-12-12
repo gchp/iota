@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use buffer::Line;
 
 pub enum Direction {
@@ -24,10 +22,9 @@ impl Direction {
     }
 }
 
-#[deriving(Clone)]
 pub struct Cursor<'c> {
     pub offset: uint,
-    line: Option<&'c RefCell<Line>>,
+    line: Option<&'c mut Line>,
 }
 
 impl<'c> Cursor<'c> {
@@ -44,7 +41,7 @@ impl<'c> Cursor<'c> {
     }
 
     pub fn get_linenum(&self) -> uint {
-        self.line.unwrap().borrow().linenum
+        self.line.as_ref().unwrap().linenum
     }
 
     pub fn get_offset(&self) -> uint {
@@ -55,48 +52,52 @@ impl<'c> Cursor<'c> {
         self.offset = offset;
     }
 
-    pub fn set_line(&mut self, line: Option<&'c RefCell<Line>>) {
+    pub fn set_line(&mut self, line: Option<&'c mut Line>) {
         self.line = line;
 
         // check that the current offset is longer than the length of the line
         let offset = self.get_offset();
-        let line_length = self.get_line().borrow().len();
+        let line_length = self.get_line().len();
         if offset > line_length {
             self.set_offset(line_length);
         }
     }
 
-    pub fn get_line(&self) -> &'c RefCell<Line> {
-        self.line.unwrap()
+    pub fn get_line(&self) -> &Line {
+        match self.line {
+            Some(ref mutref) => &**mutref,
+            None => panic!("No line available.")
+        }
+    }
+
+    pub fn get_line_mut(&mut self) -> &mut Line {
+        self.line.as_mut().map(|x| &mut**x).unwrap()
     }
 
     pub fn get_line_length(&self) -> uint {
-        self.get_line().borrow().len()
+        self.get_line().len()
     }
 
     pub fn delete_backward_char(&mut self) {
         let offset = self.get_offset();
-        let line = self.get_line();
-        line.borrow_mut().data.remove(offset-1);
+        self.get_line_mut().data.remove(offset-1);
         self.set_offset(offset-1);
     }
 
     pub fn delete_forward_char(&mut self) {
         let offset = self.get_offset();
-        let line = self.get_line();
-        line.borrow_mut().data.remove(offset);
+        self.get_line_mut().data.remove(offset);
         self.set_offset(offset);
     }
 
     pub fn insert_char(&mut self, ch: char) {
         let offset = self.get_offset();
-        let line = self.get_line();
-        line.borrow_mut().data.insert(offset, ch as u8);
+        self.get_line_mut().data.insert(offset, ch as u8);
         self.set_offset(offset+1)
     }
 
     pub fn move_right(&mut self) {
-        let line_len = self.get_line().borrow().len();
+        let line_len = self.get_line().len();
         let current_offset = self.get_offset();
         if line_len > current_offset {
             self.set_offset(current_offset + 1);
