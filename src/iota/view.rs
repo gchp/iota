@@ -1,7 +1,5 @@
 extern crate rustbox;
 
-use std::cell::RefCell;
-
 use buffer::{Line, Buffer};
 use cursor::Direction;
 use cursor::Cursor;
@@ -28,7 +26,7 @@ pub struct View<'v> {
 
 impl<'v> View<'v> {
     pub fn new(source: Input) -> View<'v> {
-        let buffer = match source {
+        let mut buffer = match source {
             Input::Filename(path) => {
                 match path {
                     Some(s) => Buffer::new_from_file(Path::new(s)),
@@ -47,7 +45,7 @@ impl<'v> View<'v> {
         let uibuf = UIBuffer::new(width, height);
 
         let mut cursor = Cursor::new();
-        cursor.set_line(Some(&buffer.lines[0]));
+        cursor.set_line(Some(&mut buffer.lines[0]));
 
         View {
             buffer: buffer,
@@ -78,52 +76,15 @@ impl<'v> View<'v> {
     pub fn draw(&mut self) {
         let end_line = self.get_height();
         let num_lines = self.buffer.lines.len();
-        // TODO(greg): remove the clone from this line - it seems dirty
-        let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines).clone();
+        let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines);
 
         for (index, line) in lines_to_draw.iter().enumerate() {
             if index < end_line {
-                self.draw_line(line)
+                draw_line(&mut self.uibuf, line)
             }
         }
 
         self.uibuf.draw_everything();
-    }
-
-    pub fn draw_line(&mut self, line: &'v RefCell<Line>) {
-        let width = self.get_width() -1;
-        let index = line.borrow().linenum;
-        let mut internal_index = 0;
-        for ch in line.borrow().data.iter() {
-
-            if internal_index < width {
-                let ch = *ch as char;
-                match ch {
-                    '\t' => {
-                        // todo(greg): draw four spaces
-                        // need to update how the cursor is rendered before doing this
-                        // think about what will happen if the cursor sees a single '\t' char
-                        // in the line, however this is represented as four chars to the user
-                        // the actual cursor position will become separated from the drawn
-                        // cursor position.
-                        rustbox::shutdown();
-                        panic!("found tab chars - can't process these right now")
-                    }
-                    _ => {
-                        // draw the character
-                        self.uibuf.update_cell_content(internal_index, index, ch);
-                    }
-                }
-                internal_index += 1;
-            }
-
-            // if the line is longer than the width of the view, draw a special char
-            if internal_index == width {
-                // fixme(greg): iota cant render this line correctly right now
-                self.uibuf.update_cell_content(internal_index, index, '→');
-                break;
-            }
-        }
     }
 
     pub fn draw_status(&mut self) {
@@ -219,7 +180,7 @@ impl<'v> View<'v> {
     }
 
     fn set_cursor_line(&mut self, linenum: uint) {
-        let line = &self.buffer.lines[linenum];
+        let line = &mut self.buffer.lines[linenum];
         self.cursor.set_line(Some(line));
     }
 
@@ -289,10 +250,44 @@ impl<'v> View<'v> {
     }
 }
 
+pub fn draw_line(buf: &mut UIBuffer, line: &Line) {
+    let width = buf.get_width() -1;
+    let index = line.linenum;
+    let mut internal_index = 0;
+    for ch in line.data.iter() {
+
+        if internal_index < width {
+            let ch = *ch;
+            match ch as char {
+                '\t' => {
+                    // todo(greg): draw four spaces
+                    // need to update how the cursor is rendered before doing this
+                    // think about what will happen if the cursor sees a single '\t' char
+                    // in the line, however this is represented as four chars to the user
+                    // the actual cursor position will become separated from the drawn
+                    // cursor position.
+                    rustbox::shutdown();
+                    panic!("found tab chars - can't process these right now")
+                }
+                _ => {
+                    // draw the character
+                    buf.update_cell_content(internal_index, index, ch as char);
+                }
+            }
+            internal_index += 1;
+        }
+
+        // if the line is longer than the width of the view, draw a special char
+        if internal_index == width {
+            // fixme(greg): iota cant render this line correctly right now
+            buf.update_cell_content(internal_index, index, '→');
+            break;
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-
-    use std::cell::RefCell;
 
     use buffer::{Line, Buffer};
     use cursor::{Cursor, Direction};
@@ -309,11 +304,11 @@ mod tests {
             threshold: 5,
         };
 
-        let first_line = RefCell::new(Line::new(data_from_str("test"), 0));
-        let second_line = RefCell::new(Line::new(data_from_str("second"), 1));
+        let first_line = Line::new(data_from_str("test"), 0);
+        let second_line = Line::new(data_from_str("second"), 1);
 
         view.buffer.lines = vec!(first_line, second_line);
-        view.cursor.set_line(Some(&view.buffer.lines[0]));
+        view.cursor.set_line(Some(&mut view.buffer.lines[0]));
 
         return view
     }
@@ -324,7 +319,7 @@ mod tests {
         view.move_cursor_down();
 
         assert_eq!(view.cursor.get_linenum(), 1);
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("second"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("second"));
     }
 
     #[test]
@@ -333,7 +328,7 @@ mod tests {
         view.move_cursor_down();
         view.move_cursor_up();
         assert_eq!(view.cursor.get_linenum(), 0);
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("test"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("test"));
     }
 
     #[test]
@@ -344,7 +339,7 @@ mod tests {
 
         assert_eq!(view.buffer.lines.len(), 3);
         assert_eq!(view.cursor.get_offset(), 0);
-        assert_eq!(view.cursor.get_line().borrow().linenum, 1);
+        assert_eq!(view.cursor.get_line().linenum, 1);
     }
 
     #[test]
@@ -352,7 +347,7 @@ mod tests {
         let mut view = setup_view();
         view.insert_char('t');
 
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("ttest"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("ttest"));
     }
 
     #[test]
@@ -360,7 +355,7 @@ mod tests {
         let mut view = setup_view();
         view.delete_char(Direction::Right);
 
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("est"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("est"));
     }
 
     #[test]
@@ -369,7 +364,7 @@ mod tests {
         view.cursor.move_right();
         view.delete_char(Direction::Left);
 
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("est"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("est"));
     }
 
     #[test]
@@ -378,7 +373,7 @@ mod tests {
         view.move_cursor_down();
         view.delete_char(Direction::Left);
 
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("testsecond"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("testsecond"));
     }
 
     #[test]
@@ -387,7 +382,7 @@ mod tests {
         view.cursor.set_offset(4);
         view.delete_char(Direction::Right);
 
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("testsecond"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("testsecond"));
     }
 
     #[test]
@@ -396,6 +391,6 @@ mod tests {
         view.delete_char(Direction::Left);
 
         assert_eq!(view.buffer.lines.len(), 2);
-        assert_eq!(view.cursor.get_line().borrow().data, data_from_str("test"));
+        assert_eq!(view.cursor.get_line().data, data_from_str("test"));
     }
 }

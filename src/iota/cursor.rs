@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use buffer::Line;
 
 pub enum Direction {
@@ -24,10 +22,9 @@ impl Direction {
     }
 }
 
-#[deriving(Clone)]
 pub struct Cursor<'c> {
     pub offset: uint,
-    line: Option<&'c RefCell<Line>>,
+    line: Option<&'c mut Line>,
 }
 
 impl<'c> Cursor<'c> {
@@ -44,7 +41,7 @@ impl<'c> Cursor<'c> {
     }
 
     pub fn get_linenum(&self) -> uint {
-        self.line.unwrap().borrow().linenum
+        self.line.as_ref().unwrap().linenum
     }
 
     pub fn get_offset(&self) -> uint {
@@ -55,48 +52,52 @@ impl<'c> Cursor<'c> {
         self.offset = offset;
     }
 
-    pub fn set_line(&mut self, line: Option<&'c RefCell<Line>>) {
+    pub fn set_line(&mut self, line: Option<&'c mut Line>) {
         self.line = line;
 
         // check that the current offset is longer than the length of the line
         let offset = self.get_offset();
-        let line_length = self.get_line().borrow().len();
+        let line_length = self.get_line().len();
         if offset > line_length {
             self.set_offset(line_length);
         }
     }
 
-    pub fn get_line(&self) -> &'c RefCell<Line> {
-        self.line.unwrap()
+    pub fn get_line(&self) -> &Line {
+        match self.line {
+            Some(ref mutref) => &**mutref,
+            None => panic!("No line available.")
+        }
+    }
+
+    pub fn get_line_mut(&mut self) -> &mut Line {
+        self.line.as_mut().map(|x| &mut**x).unwrap()
     }
 
     pub fn get_line_length(&self) -> uint {
-        self.get_line().borrow().len()
+        self.get_line().len()
     }
 
     pub fn delete_backward_char(&mut self) {
         let offset = self.get_offset();
-        let line = self.get_line();
-        line.borrow_mut().data.remove(offset-1);
+        self.get_line_mut().data.remove(offset-1);
         self.set_offset(offset-1);
     }
 
     pub fn delete_forward_char(&mut self) {
         let offset = self.get_offset();
-        let line = self.get_line();
-        line.borrow_mut().data.remove(offset);
+        self.get_line_mut().data.remove(offset);
         self.set_offset(offset);
     }
 
     pub fn insert_char(&mut self, ch: char) {
         let offset = self.get_offset();
-        let line = self.get_line();
-        line.borrow_mut().data.insert(offset, ch as u8);
+        self.get_line_mut().data.insert(offset, ch as u8);
         self.set_offset(offset+1)
     }
 
     pub fn move_right(&mut self) {
-        let line_len = self.get_line().borrow().len();
+        let line_len = self.get_line().len();
         let current_offset = self.get_offset();
         if line_len > current_offset {
             self.set_offset(current_offset + 1);
@@ -120,16 +121,14 @@ impl<'c> Cursor<'c> {
 #[cfg(test)]
 mod tests {
 
-    use std::cell::RefCell;
-
     use cursor::Cursor;
     use buffer::Line;
     use utils::data_from_str;
 
     fn setup_cursor<'c>() -> Cursor<'c> {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new(data_from_str("test"), 1));
-        cursor.set_line(Some(&line));
+        let mut line = Line::new(data_from_str("test"), 1);
+        cursor.set_line(Some(&mut line));
         return cursor
     }
 
@@ -155,16 +154,16 @@ mod tests {
     #[test]
     fn test_get_position() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new(data_from_str("test"), 1));
-        cursor.set_line(Some(&line));
+        let mut line = Line::new(data_from_str("test"), 1);
+        cursor.set_line(Some(&mut line));
         assert_eq!(cursor.get_position(), (0, 1));
     }
 
     #[test]
     fn test_get_linenum() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new(data_from_str("test"), 1));
-        cursor.set_line(Some(&line));
+        let mut line = Line::new(data_from_str("test"), 1);
+        cursor.set_line(Some(&mut line));
 
         assert_eq!(cursor.get_linenum(), 1);
     }
@@ -187,10 +186,10 @@ mod tests {
     #[test]
     fn test_moving_to_end_of_line_when_set() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new(data_from_str("test"), 1));
+        let mut line = Line::new(data_from_str("test"), 1);
 
         cursor.set_offset(10);
-        cursor.set_line(Some(&line));
+        cursor.set_line(Some(&mut line));
 
         assert_eq!(cursor.offset, 4);
     }
@@ -198,9 +197,9 @@ mod tests {
     #[test]
     fn test_get_line_length() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new(data_from_str("test"), 1));
+        let mut line = Line::new(data_from_str("test"), 1);
 
-        cursor.set_line(Some(&line));
+        cursor.set_line(Some(&mut line));
 
         assert_eq!(cursor.get_line_length(), 4);
     }
@@ -208,35 +207,35 @@ mod tests {
     #[test]
     fn test_delete_backward_char() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new(data_from_str("test"), 1));
+        let mut line = Line::new(data_from_str("test"), 1);
 
-        cursor.set_line(Some(&line));
+        cursor.set_line(Some(&mut line));
         cursor.set_offset(1);
         cursor.delete_backward_char();
 
-        assert_eq!(line.borrow().data, data_from_str("est"));
+        assert_eq!(line.data, data_from_str("est"));
     }
 
     #[test]
     fn test_delete_forward_char() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new(data_from_str("test"), 1));
+        let mut line = Line::new(data_from_str("test"), 1);
 
-        cursor.set_line(Some(&line));
+        cursor.set_line(Some(&mut line));
         cursor.delete_forward_char();
 
-        assert_eq!(line.borrow().data, data_from_str("est"));
+        assert_eq!(line.data, data_from_str("est"));
     }
 
     #[test]
     fn test_insert_char() {
         let mut cursor = Cursor::new();
-        let line = RefCell::new(Line::new(data_from_str("test"), 1));
+        let mut line = Line::new(data_from_str("test"), 1);
 
-        cursor.set_line(Some(&line));
+        cursor.set_line(Some(&mut line));
         cursor.insert_char('x');
 
-        assert_eq!(line.borrow().data, data_from_str("xtest"));
+        assert_eq!(line.data, data_from_str("xtest"));
     }
 
     #[test]

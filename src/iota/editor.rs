@@ -58,7 +58,7 @@ impl<'e> Editor<'e> {
         };
 
         for line in lines.iter() {
-            let mut data = line.borrow().data.clone();
+            let mut data = line.data.clone();
             data.push('\n' as u8);
             let result = file.write(data.as_slice());
 
