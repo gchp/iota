@@ -50,9 +50,9 @@ impl<'e> Editor<'e> {
 
     pub fn save_active_buffer(&mut self) {
         let lines = &self.view.buffer.lines;
-        let path = Path::new(&self.view.buffer.file_path);
+        let path = self.view.buffer.file_path.as_ref().unwrap();
 
-        let mut file = match File::open_mode(&path, FileMode::Open, FileAccess::Write) {
+        let mut file = match File::open_mode(path, FileMode::Open, FileAccess::Write) {
             Ok(f) => f,
             Err(e) => panic!("file error: {}", e),
         };
