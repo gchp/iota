@@ -10,6 +10,7 @@ mod keyboard;
 mod view;
 mod uibuf;
 
+#[deriving(Copy)]
 pub enum Response {
     Continue,
     Quit,

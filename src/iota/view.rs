@@ -108,7 +108,7 @@ impl<'v> View<'v> {
     }
 
     pub fn draw_cursor(&self) {
-        let offset = self.cursor.get_offset();
+        let offset = self.cursor.get_visible_offset();
         let linenum = self.cursor.get_linenum();
 
         utils::draw_cursor(offset, linenum-self.top_line_num);
@@ -130,7 +130,7 @@ impl<'v> View<'v> {
     }
 
     fn move_cursor_right(&mut self) {
-        let cursor_offset = self.cursor.get_offset();
+        let cursor_offset = self.cursor.get_visible_offset();
         let next_offset = cursor_offset + 1;
         let width = self.get_width() - 1;
 
@@ -256,10 +256,9 @@ pub fn draw_line(buf: &mut UIBuffer, line: &Line, top_line_num: uint) {
     let width = buf.get_width() -1;
     let index = line.linenum - top_line_num;
     let mut internal_index = 0;
-    for ch in line.data.iter() {
+    for ch in line.data.chars() {
         if internal_index < width {
-            let ch = *ch;
-            match ch as char {
+            match ch {
                 '\t' => {
                     // todo(greg): draw four spaces
                     // need to update how the cursor is rendered before doing this
@@ -272,15 +271,14 @@ pub fn draw_line(buf: &mut UIBuffer, line: &Line, top_line_num: uint) {
                 }
                 _ => {
                     // draw the character
-                    buf.update_cell_content(internal_index, index, ch as char);
+                    buf.update_cell_content(internal_index, index, ch);
                 }
             }
-            internal_index += 1;
+            internal_index += ch.width(false).unwrap_or(1);
         }
 
         // if the line is longer than the width of the view, draw a special char
         if internal_index == width {
-            // fixme(greg): iota cant render this line correctly right now
             buf.update_cell_content(internal_index, index, '→');
             break;
         }
@@ -389,7 +387,7 @@ mod tests {
     #[test]
     fn delete_char_when_line_is_empty_does_nothing() {
         let mut view = setup_view();
-        view.buffer.lines = vec!(Line::new(Vec::new(), 0));
+        view.buffer.lines = vec!(Line::new(String::new(), 0));
         view.cursor.set_line(Some(&mut view.buffer.lines[0]));
         view.delete_char(Direction::Right);
         assert_eq!(view.cursor.get_line().data, data_from_str(""));

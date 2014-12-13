@@ -1,7 +1,7 @@
 extern crate rustbox;
 
 use std::comm::{Receiver, Sender};
-use std::num;
+use std::char;
 use std::io::{File, FileMode, FileAccess};
 
 use super::Response;
@@ -39,10 +39,12 @@ impl<'e> Editor<'e> {
     }
 
     pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
-        let key_code = key as u32 + ch;
-        let input_key: Option<Key> = num::from_u32(key_code);
+        let key = match key {
+            0 => char::from_u32(ch).map(|c| Key::Char(c)),
+            a => Key::from_special_code(a),
+        };
 
-        match self.handle_system_event(input_key) {
+        match self.handle_system_event(key) {
             EventStatus::Handled(response) => { response }
             EventStatus::NotHandled        => { Response::Continue }
         }
@@ -59,8 +61,8 @@ impl<'e> Editor<'e> {
 
         for line in lines.iter() {
             let mut data = line.data.clone();
-            data.push('\n' as u8);
-            let result = file.write(data.as_slice());
+            data.push('\n');
+            let result = file.write(data.as_bytes());
 
             if result.is_err() {
                 // TODO(greg): figure out what to do here.
@@ -127,45 +129,7 @@ impl<'e> Editor<'e> {
             Key::CtrlQ     => { return EventStatus::Handled(Response::Quit) }
             Key::CtrlR     => { self.view.resize(); }
 
-            // TODO(greg): move these keys to event handlers of each mode
-            // This block is for matching keys which will insert a char to the buffer
-            Key::Exclaim   |  Key::Hash |
-            Key::Dollar    | Key::Percent |
-            Key::Ampersand | Key::Quote |
-            Key::LeftParen | Key::RightParen |
-            Key::Asterisk  | Key::Plus |
-            Key::Comma     | Key::Minus |
-            Key::Period    | Key::Slash |
-            Key::D0 | Key::D1 | Key::D2 |
-            Key::D3 | Key::D4 | Key::D5 |
-            Key::D6 | Key::D7 | Key::D8 |
-            Key::D9 | Key::Colon |
-            Key::Semicolon | Key::Less |
-            Key::Equals    | Key::Greater |
-            Key::Question  | Key::At |
-            Key::LeftBracket  | Key::Backslash |
-            Key::RightBracket | Key::Caret |
-            Key::Underscore   | Key::Backquote |
-
-            Key::ShiftA | Key::ShiftB | Key::ShiftC |
-            Key::ShiftD | Key::ShiftE | Key::ShiftF |
-            Key::ShiftG | Key::ShiftH | Key::ShiftI |
-            Key::ShiftJ | Key::ShiftK | Key::ShiftL |
-            Key::ShiftM | Key::ShiftN | Key::ShiftO |
-            Key::ShiftP | Key::ShiftQ | Key::ShiftR |
-            Key::ShiftS | Key::ShiftT | Key::ShiftU |
-            Key::ShiftV | Key::ShiftW | Key::ShiftX |
-            Key::ShiftY | Key::ShiftZ |
-
-            Key::A | Key::B | Key::C | Key::D |
-            Key::E | Key::F | Key::G | Key::H |
-            Key::I | Key::J | Key::K | Key::L |
-            Key::M | Key::N | Key::O | Key::P |
-            Key::Q | Key::R | Key::S | Key::T |
-            Key::U | Key::V | Key::W | Key::X |
-            Key::Y | Key::Z | Key::LeftBrace |
-            Key::Pipe       | Key::RightBrace |
-            Key::Tilde      | Key::Space => { self.view.insert_char(key.get_char().unwrap()) }
+            Key::Char(c)   => { self.view.insert_char(c) }
 
             // default
             _              => { return EventStatus::NotHandled }
