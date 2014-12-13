@@ -15,8 +15,6 @@ pub fn get_term_width() -> uint {
 }
 
 #[cfg(test)]
-pub fn data_from_str(s: &'static str) -> Vec<u8> {
-    let mut vec = Vec::new();
-    vec.push_all(s.as_bytes());
-    return vec
+pub fn data_from_str(s: &'static str) -> String {
+    s.into_string()
 }
