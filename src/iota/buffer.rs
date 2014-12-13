@@ -117,7 +117,6 @@ impl Buffer {
         return new_cursor_offset
     }
 
-    // TODO(greg): refactor this to use Vec::partition
     /// Split the line identified by `line_num` at `offset`
     fn split_line(&mut self, offset: uint, line_num: uint) -> (String, String) {
         let line = self.get_line_at(line_num).unwrap();

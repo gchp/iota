@@ -1,7 +1,6 @@
 extern crate rustbox;
 
 use std::comm::{Receiver, Sender};
-use std::num;
 use std::char;
 use std::io::{fs, File, FileMode, FileAccess, TempDir};
 use std::sync::{Arc, RWLock};
