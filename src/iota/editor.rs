@@ -2,7 +2,7 @@ extern crate rustbox;
 
 use std::comm::{Receiver, Sender};
 use std::num;
-use std::io::{File, FileMode, FileAccess};
+use std::io::{fs, File, FileMode, FileAccess, TempDir};
 
 use super::Response;
 use input::Input;
@@ -52,9 +52,16 @@ impl<'e> Editor<'e> {
         let lines = &self.view.buffer.lines;
         let path = self.view.buffer.file_path.as_ref().unwrap();
 
-        let mut file = match File::open_mode(path, FileMode::Open, FileAccess::Write) {
+        let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {
+            Ok(d) => d,
+            Err(e) => panic!("file error: {}", e)
+        };
+
+        let tmppath = tmpdir.path().join(Path::new("tmpfile"));
+
+        let mut file = match File::open_mode(&tmppath, FileMode::Open, FileAccess::Write) {
             Ok(f) => f,
-            Err(e) => panic!("file error: {}", e),
+            Err(e) => panic!("file error: {}", e)
         };
 
         for line in lines.iter() {
@@ -66,6 +73,10 @@ impl<'e> Editor<'e> {
                 // TODO(greg): figure out what to do here.
                 panic!("Something went wrong while writing the file");
             }
+        }
+
+        if let Err(e) = fs::rename(&tmppath, path) {
+            panic!("file error: {}", e);
         }
     }
 
