@@ -17,6 +17,7 @@ pub enum Key {
 impl Key {
     pub fn from_special_code(code: u16) -> Option<Key> {
         match code {
+            3     => Some(Key::Ctrl('c')),
             9     => Some(Key::Tab),
             13    => Some(Key::Enter),
             14    => Some(Key::Ctrl('n')),

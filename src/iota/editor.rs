@@ -16,12 +16,14 @@ use view::View;
 
 #[deriving(Show)]
 pub enum Command {
+    SaveBuffer,
     ExitEditor,
 
-    PreviousChar,
-    NextChar,
-    PreviousLine,
-    NextLine,
+    MoveCursor(Direction),
+    Delete(Direction),
+
+    LineEnd,
+    LineStart
 }
 
 enum EventStatus {
@@ -46,10 +48,14 @@ impl<'e> Editor<'e> {
         let (send, recv) = channel();
         let mut keymap = KeyMap::new();
         keymap.bind_keys(vec![Key::CtrlX, Key::CtrlC].as_slice(), Command::ExitEditor);
-        keymap.bind_keys(vec![Key::CtrlP].as_slice(), Command::PreviousLine);
-        keymap.bind_keys(vec![Key::CtrlN].as_slice(), Command::NextLine);
-        keymap.bind_keys(vec![Key::CtrlB].as_slice(), Command::PreviousChar);
-        keymap.bind_keys(vec![Key::CtrlF].as_slice(), Command::NextChar);
+        keymap.bind_keys(vec![Key::CtrlX, Key::CtrlS].as_slice(), Command::SaveBuffer);
+        keymap.bind_keys(vec![Key::CtrlP].as_slice(), Command::MoveCursor(Direction::Up));
+        keymap.bind_keys(vec![Key::CtrlN].as_slice(), Command::MoveCursor(Direction::Down));
+        keymap.bind_keys(vec![Key::CtrlB].as_slice(), Command::MoveCursor(Direction::Left));
+        keymap.bind_keys(vec![Key::CtrlF].as_slice(), Command::MoveCursor(Direction::Right));
+        keymap.bind_keys(vec![Key::CtrlE].as_slice(), Command::LineEnd);
+        keymap.bind_keys(vec![Key::CtrlA].as_slice(), Command::LineStart);
+        keymap.bind_keys(vec![Key::CtrlD].as_slice(), Command::Delete(Direction::Right));
         Editor {
             sender: send,
             events: recv,
@@ -146,11 +152,12 @@ impl<'e> Editor<'e> {
 
     fn handle_command(&mut self, c: Command) {
         match c {
-            Command::ExitEditor   => self.running = false,
-            Command::PreviousLine => self.view.move_cursor(Direction::Up),
-            Command::NextLine     => self.view.move_cursor(Direction::Down),
-            Command::PreviousChar => self.view.move_cursor(Direction::Left),
-            Command::NextChar     => self.view.move_cursor(Direction::Right),
+            Command::ExitEditor      => self.running = false,
+            Command::SaveBuffer      => self.save_active_buffer(),
+            Command::LineEnd         => self.view.move_cursor_to_line_end(),
+            Command::LineStart       => self.view.move_cursor_to_line_start(),
+            Command::MoveCursor(dir) => self.view.move_cursor(dir),
+            Command::Delete(dir)     => self.view.delete_char(dir)
         }
     }
 
