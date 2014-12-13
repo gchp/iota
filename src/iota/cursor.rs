@@ -58,11 +58,19 @@ impl<'c> Cursor<'c> {
         self.offset = offset;
     }
 
+    /// Moves the cursor forward one character.
+    ///
+    /// This can’t simply be `self.offset += 1`, because not all UTF-8 codepoints are exactly one
+    /// byte long. This function calculates the width of the current codepoint and increments the
+    /// offset by that width, ensuring that the cursor will always be on a character boundary.
     pub fn inc_offset(&mut self) {
         let range = self.get_line().data.char_range_at(self.offset);
         self.set_offset(range.next);
     }
 
+    /// Moves the cursor back one character.
+    ///
+    /// See `inc_offset` for why this method is needed.
     pub fn dec_offset(&mut self) {
         let range = self.get_line().data.char_range_at_reverse(self.offset);
         self.set_offset(range.next);
