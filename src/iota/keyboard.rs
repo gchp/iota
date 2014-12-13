@@ -2,9 +2,6 @@
 pub enum Key {
     Tab,
     Enter,
-    CtrlQ,
-    CtrlR,
-    CtrlS,
     Esc,
     Backspace,
     Right,
@@ -14,6 +11,7 @@ pub enum Key {
     Delete,
 
     Char(char),
+    Ctrl(char),
 }
 
 impl Key {
@@ -21,9 +19,12 @@ impl Key {
         match code {
             9     => Some(Key::Tab),
             13    => Some(Key::Enter),
-            17    => Some(Key::CtrlQ),
-            18    => Some(Key::CtrlR),
-            19    => Some(Key::CtrlS),
+            14    => Some(Key::Ctrl('n')),
+            16    => Some(Key::Ctrl('p')),
+            17    => Some(Key::Ctrl('q')),
+            18    => Some(Key::Ctrl('r')),
+            19    => Some(Key::Ctrl('s')),
+            24    => Some(Key::Ctrl('x')),
             27    => Some(Key::Esc),
             32    => Some(Key::Char(' ')),
             127   => Some(Key::Backspace),

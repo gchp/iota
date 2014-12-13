@@ -10,8 +10,19 @@ use super::Response;
 use input::Input;
 use cursor::Direction;
 use keyboard::Key;
+use keymap::{ KeyMap, KeyMapState };
 use view::View;
 
+
+#[deriving(Show)]
+pub enum Command {
+    ExitEditor,
+
+    PreviousChar,
+    NextChar,
+    PreviousLine,
+    NextLine,
+}
 
 enum EventStatus {
     Handled(Response),
@@ -23,6 +34,7 @@ pub struct Editor<'e> {
     pub running: Arc<AtomicBool>,
     pub sender: Sender<rustbox::Event>,
 
+    keymap: KeyMap,
     events: Receiver<rustbox::Event>,
     view: View<'e>,
 }
@@ -32,11 +44,18 @@ impl<'e> Editor<'e> {
         let view = View::new(source);
 
         let (send, recv) = channel();
+        let mut keymap = KeyMap::new();
+        keymap.bind_keys(vec![Key::CtrlX, Key::CtrlC].as_slice(), Command::ExitEditor);
+        keymap.bind_keys(vec![Key::CtrlP].as_slice(), Command::PreviousLine);
+        keymap.bind_keys(vec![Key::CtrlN].as_slice(), Command::NextLine);
+        keymap.bind_keys(vec![Key::CtrlB].as_slice(), Command::PreviousChar);
+        keymap.bind_keys(vec![Key::CtrlF].as_slice(), Command::NextChar);
         Editor {
             sender: send,
             events: recv,
             view: view,
             running: Arc::new(AtomicBool::new(false)),
+            keymap: keymap,
         }
     }
 
@@ -125,11 +144,35 @@ impl<'e> Editor<'e> {
         });
     }
 
+    fn handle_command(&mut self, c: Command) {
+        match c {
+            Command::ExitEditor   => self.running = false,
+            Command::PreviousLine => self.view.move_cursor(Direction::Up),
+            Command::NextLine     => self.view.move_cursor(Direction::Down),
+            Command::PreviousChar => self.view.move_cursor(Direction::Left),
+            Command::NextChar     => self.view.move_cursor(Direction::Right),
+        }
+    }
+
     fn handle_system_event(&mut self, k: Option<Key>) -> EventStatus {
         let key = match k {
             Some(k) => k,
             None => return EventStatus::NotHandled
         };
+
+        let key = k.unwrap();
+
+        // send key to the keymap
+        match self.keymap.check_key(key) {
+            KeyMapState::Match(command) => {
+                self.handle_command(command);
+                return EventStatus::Handled(Response::Continue)
+            },
+            KeyMapState::Continue => {
+                return EventStatus::Handled(Response::Continue) // keep going and wait for more keypresses
+            },
+            KeyMapState::None => {}  // do nothing and handle the key normally
+        }
 
         match key {
             Key::Up        => { self.view.move_cursor(Direction::Up); }
