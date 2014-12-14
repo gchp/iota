@@ -1,3 +1,6 @@
+#![feature(unboxed_closures)]
+#![feature(unsafe_destructor)]
+
 pub use editor::Editor;
 pub use input::Input;
 

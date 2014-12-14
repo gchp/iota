@@ -8,6 +8,33 @@ use uibuf::UIBuffer;
 
 use utils;
 
+pub struct CursorGuard<'a> {
+    linenum: &'a mut uint,
+    offset: &'a mut uint,
+    cursor: Cursor<'a>,
+}
+
+impl<'a> Deref<Cursor<'a>> for CursorGuard<'a> {
+    fn deref(&self) -> &Cursor<'a> {
+        &self.cursor
+    }
+}
+
+impl<'a> DerefMut<Cursor<'a>> for CursorGuard<'a> {
+    fn deref_mut(&mut self) -> &mut Cursor<'a> {
+        &mut self.cursor
+    }
+}
+
+#[unsafe_destructor]
+impl<'a> Drop for CursorGuard<'a> {
+    fn drop(&mut self) {
+        // Update line number and offset
+        *self.linenum = self.cursor.get_linenum();
+        *self.offset = self.cursor.get_offset();
+    }
+}
+
 /// A View is an abstract Window (into a Buffer).
 ///
 /// It draws a portion of a Buffer to a UIBuffer which in turn is drawn to the
@@ -18,7 +45,8 @@ pub struct View<'v> {
     pub buffer: Buffer,
     // the line number of the topmost `Line` for the View to render
     pub top_line_num: uint,
-    pub cursor: Cursor<'v>,
+    pub linenum: uint,
+    pub offset: uint,
 
     uibuf: UIBuffer,
     threshold: int,
@@ -26,7 +54,7 @@ pub struct View<'v> {
 
 impl<'v> View<'v> {
     pub fn new(source: Input) -> View<'v> {
-        let mut buffer = match source {
+        let buffer = match source {
             Input::Filename(path) => {
                 match path {
                     Some(s) => Buffer::new_from_file(Path::new(s)),
@@ -44,16 +72,22 @@ impl<'v> View<'v> {
         // NOTE(greg): this may not play well with resizing
         let uibuf = UIBuffer::new(width, height);
 
-        let mut cursor = Cursor::new();
-        cursor.set_line(Some(&mut buffer.lines[0]));
-
         View {
             buffer: buffer,
             top_line_num: 0,
-            cursor: cursor,
             uibuf: uibuf,
             threshold: 5,
+            linenum: 0,
+            offset: 0,
         }
+    }
+
+    pub fn cursor<'b>(&'b mut self) -> CursorGuard<'b> {
+        let View {ref mut buffer, ref mut offset, ref mut linenum, .. } = *self;
+        let mut cursor = Cursor::new();
+        cursor.set_line(Some(&mut buffer.lines[*linenum]));
+        cursor.set_offset(*offset);
+        CursorGuard { cursor: cursor, offset: offset, linenum: linenum }
     }
 
     /// Clear the buffer
@@ -89,7 +123,7 @@ impl<'v> View<'v> {
 
     pub fn draw_status(&mut self) {
         let buffer_status = self.buffer.get_status_text();
-        let cursor_status = self.cursor.get_status_text();
+        let cursor_status = self.cursor().get_status_text();
         let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
         let status_text_len = status_text.len();
         let width = self.get_width();
@@ -107,9 +141,9 @@ impl<'v> View<'v> {
         self.uibuf.draw_range(height, height+1);
     }
 
-    pub fn draw_cursor(&self) {
-        let offset = self.cursor.get_visible_offset();
-        let linenum = self.cursor.get_linenum();
+    pub fn draw_cursor(&mut self) {
+        let offset = self.cursor().get_visible_offset();
+        let linenum = self.cursor().get_linenum();
 
         utils::draw_cursor(offset, linenum-self.top_line_num);
     }
@@ -125,23 +159,25 @@ impl<'v> View<'v> {
             Direction::Up    => { self.move_cursor_up(); },
             Direction::Down  => { self.move_cursor_down(); },
             Direction::Right => { self.move_cursor_right(); },
-            Direction::Left  => { self.cursor.move_left(); },
+            Direction::Left  => { self.cursor().move_left(); },
         }
     }
 
     fn move_cursor_right(&mut self) {
-        let cursor_offset = self.cursor.get_visible_offset();
+        let cursor_offset = self.cursor().get_visible_offset();
         let next_offset = cursor_offset + 1;
         let width = self.get_width() - 1;
 
         if next_offset < width {
-            self.cursor.move_right()
+            self.cursor().move_right()
         }
     }
 
     // TODO(greg): refactor this method with move_cursor_down
     pub fn move_cursor_up(&mut self) {
-        let cursor_linenum = self.cursor.get_linenum();
+        let cursor_linenum = self.cursor().get_linenum();
+
+        if cursor_linenum == 0 { return }
         let prev_linenum = cursor_linenum - 1;
 
         let num_lines = self.buffer.lines.len() - 1;
@@ -149,7 +185,7 @@ impl<'v> View<'v> {
 
         self.set_cursor_line(prev_linenum);
 
-        let cursor_linenum = self.cursor.get_linenum() as int;
+        let cursor_linenum = self.cursor().get_linenum() as int;
         let cursor_offset = cursor_linenum - self.top_line_num as int;
 
         if cursor_offset < self.threshold {
@@ -161,7 +197,7 @@ impl<'v> View<'v> {
 
     // TODO(greg): refactor this method with move_cursor_up
     pub fn move_cursor_down(&mut self) {
-        let cursor_linenum = self.cursor.get_linenum();
+        let cursor_linenum = self.cursor().get_linenum();
         let next_linenum = cursor_linenum + 1;
 
         let num_lines = self.buffer.lines.len() - 1;
@@ -169,7 +205,7 @@ impl<'v> View<'v> {
 
         self.set_cursor_line(next_linenum);
 
-        let cursor_linenum = self.cursor.get_linenum() as int;
+        let cursor_linenum = self.cursor().get_linenum() as int;
         let cursor_offset = cursor_linenum - self.top_line_num as int;
         let height = self.get_height() as int;
 
@@ -180,9 +216,7 @@ impl<'v> View<'v> {
     }
 
     fn set_cursor_line<'b>(&'b mut self, linenum: uint) {
-        let mut lines = self.buffer.lines.as_slice();
-        let line = &mut lines[linenum];
-        self.cursor.set_line(Some(line));
+        self.linenum = linenum;
     }
 
     fn move_top_line_n_times(&mut self, mut num_times: int) {
@@ -209,16 +243,17 @@ impl<'v> View<'v> {
     }
 
     pub fn delete_char(&mut self, direction: Direction) {
-        let (offset, line_num) = self.cursor.get_position();
+        let (offset, line_num) = self.cursor().get_position();
 
         if offset == 0 && direction.is_left() {
-            let offset = self.buffer.join_line_with_previous(offset, line_num);
+            // Must move the cursor up first so we aren't pointing at dangling memory
             self.move_cursor_up();
-            self.cursor.set_offset(offset);
+            let offset = self.buffer.join_line_with_previous(offset, line_num);
+            self.cursor().set_offset(offset);
             return
         }
 
-        let line_len = self.cursor.get_line_length();
+        let line_len = self.cursor().get_line_length();
         if offset == line_len && direction.is_right() {
             // try to join the next line with the current line
             // if there is no next line, nothing will happen
@@ -227,8 +262,8 @@ impl<'v> View<'v> {
         }
 
         match direction {
-            Direction::Left  => self.cursor.delete_backward_char(),
-            Direction::Right => self.cursor.delete_forward_char(),
+            Direction::Left  => self.cursor().delete_backward_char(),
+            Direction::Right => self.cursor().delete_forward_char(),
             _                => {}
         }
     }
@@ -241,15 +276,15 @@ impl<'v> View<'v> {
     }
 
     pub fn insert_char(&mut self, ch: char) {
-        self.cursor.insert_char(ch);
+        self.cursor().insert_char(ch);
     }
 
     pub fn insert_line(&mut self) {
-        let (offset, line_num) = self.cursor.get_position();
+        let (offset, line_num) = self.cursor().get_position();
         self.buffer.insert_line(offset, line_num);
 
         self.move_cursor_down();
-        self.cursor.set_offset(0);
+        self.cursor().set_offset(0);
     }
 }
 
@@ -290,7 +325,7 @@ pub fn draw_line(buf: &mut UIBuffer, line: &Line, top_line_num: uint) {
 mod tests {
 
     use buffer::{Line, Buffer};
-    use cursor::{Cursor, Direction};
+    use cursor::{Direction};
     use view::View;
     use uibuf::UIBuffer;
     use utils::data_from_str;
@@ -299,7 +334,8 @@ mod tests {
         let mut view = View {
             buffer: Buffer::new(),
             top_line_num: 0,
-            cursor: Cursor::new(),
+            linenum: 0,
+            offset: 0,
             uibuf: UIBuffer::new(50, 50),
             threshold: 5,
         };
@@ -308,7 +344,7 @@ mod tests {
         let second_line = Line::new(data_from_str("second"), 1);
 
         view.buffer.lines = vec!(first_line, second_line);
-        view.cursor.set_line(Some(&mut view.buffer.lines[0]));
+        view.set_cursor_line(0);
 
         return view
     }
@@ -318,8 +354,8 @@ mod tests {
         let mut view = setup_view();
         view.move_cursor_down();
 
-        assert_eq!(view.cursor.get_linenum(), 1);
-        assert_eq!(view.cursor.get_line().data, data_from_str("second"));
+        assert_eq!(view.cursor().get_linenum(), 1);
+        assert_eq!(view.cursor().get_line().data, data_from_str("second"));
     }
 
     #[test]
@@ -327,19 +363,19 @@ mod tests {
         let mut view = setup_view();
         view.move_cursor_down();
         view.move_cursor_up();
-        assert_eq!(view.cursor.get_linenum(), 0);
-        assert_eq!(view.cursor.get_line().data, data_from_str("test"));
+        assert_eq!(view.cursor().get_linenum(), 0);
+        assert_eq!(view.cursor().get_line().data, data_from_str("test"));
     }
 
     #[test]
     fn test_insert_line() {
         let mut view = setup_view();
-        view.cursor.move_right();
+        view.cursor().move_right();
         view.insert_line();
 
         assert_eq!(view.buffer.lines.len(), 3);
-        assert_eq!(view.cursor.get_offset(), 0);
-        assert_eq!(view.cursor.get_line().linenum, 1);
+        assert_eq!(view.cursor().get_offset(), 0);
+        assert_eq!(view.cursor().get_line().linenum, 1);
     }
 
     #[test]
@@ -347,7 +383,7 @@ mod tests {
         let mut view = setup_view();
         view.insert_char('t');
 
-        assert_eq!(view.cursor.get_line().data, data_from_str("ttest"));
+        assert_eq!(view.cursor().get_line().data, data_from_str("ttest"));
     }
 
     #[test]
@@ -355,16 +391,16 @@ mod tests {
         let mut view = setup_view();
         view.delete_char(Direction::Right);
 
-        assert_eq!(view.cursor.get_line().data, data_from_str("est"));
+        assert_eq!(view.cursor().get_line().data, data_from_str("est"));
     }
 
     #[test]
     fn test_delete_char_to_left() {
         let mut view = setup_view();
-        view.cursor.move_right();
+        view.cursor().move_right();
         view.delete_char(Direction::Left);
 
-        assert_eq!(view.cursor.get_line().data, data_from_str("est"));
+        assert_eq!(view.cursor().get_line().data, data_from_str("est"));
     }
 
     #[test]
@@ -373,25 +409,25 @@ mod tests {
         view.move_cursor_down();
         view.delete_char(Direction::Left);
 
-        assert_eq!(view.cursor.get_line().data, data_from_str("testsecond"));
+        assert_eq!(view.cursor().get_line().data, data_from_str("testsecond"));
     }
 
     #[test]
     fn test_delete_char_at_end_of_line() {
         let mut view = setup_view();
-        view.cursor.set_offset(4);
+        view.offset = 4;
         view.delete_char(Direction::Right);
 
-        assert_eq!(view.cursor.get_line().data, data_from_str("testsecond"));
+        assert_eq!(view.cursor().get_line().data, data_from_str("testsecond"));
     }
 
     #[test]
     fn delete_char_when_line_is_empty_does_nothing() {
         let mut view = setup_view();
         view.buffer.lines = vec!(Line::new(String::new(), 0));
-        view.cursor.set_line(Some(&mut view.buffer.lines[0]));
+        view.linenum = 0;
         view.delete_char(Direction::Right);
-        assert_eq!(view.cursor.get_line().data, data_from_str(""));
+        assert_eq!(view.cursor().get_line().data, data_from_str(""));
     }
 
     #[test]
@@ -400,6 +436,6 @@ mod tests {
         view.delete_char(Direction::Left);
 
         assert_eq!(view.buffer.lines.len(), 2);
-        assert_eq!(view.cursor.get_line().data, data_from_str("test"));
+        assert_eq!(view.cursor().get_line().data, data_from_str("test"));
     }
 }

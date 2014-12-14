@@ -118,7 +118,9 @@ impl<'e> Editor<'e> {
 
         spawn(proc() {
             while running.load(Ordering::Relaxed) {
-                let _ = sender.send_opt(rustbox::peek_event(1000));
+                if sender.send_opt(rustbox::peek_event(1000)).is_err() {
+                    running.store(false, Ordering::Relaxed);
+                }
             }
         });
     }
