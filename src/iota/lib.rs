@@ -14,5 +14,3 @@ pub enum Response {
     Continue,
     Quit,
 }
-
-impl Copy for Response { }
