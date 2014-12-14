@@ -45,10 +45,7 @@ impl<'v> View<'v> {
         let uibuf = UIBuffer::new(width, height);
 
         let mut cursor = Cursor::new();
-        // FIXME: respect borrowing rules
-        let line: *mut Line = &mut buffer.lines[0];
-        let line: &mut Line = unsafe { &mut *line };
-        cursor.set_line(Some(line));
+        cursor.set_line(Some(&mut buffer.lines[0]));
 
         View {
             buffer: buffer,
@@ -182,10 +179,9 @@ impl<'v> View<'v> {
         }
     }
 
-    fn set_cursor_line(&mut self, linenum: uint) {
-        // FIXME: find a way to respect borrowing rules
-        let line: *mut Line = &mut self.buffer.lines[linenum];
-        let line: &mut Line = unsafe { &mut *line };
+    fn set_cursor_line<'b>(&'b mut self, linenum: uint) {
+        let mut lines = self.buffer.lines.as_slice();
+        let line = &mut lines[linenum];
         self.cursor.set_line(Some(line));
     }
 

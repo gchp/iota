@@ -2,13 +2,13 @@
 name = "iota"
 version = "0.1.0"
 dependencies = [
- "docopt 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "docopt 0.6.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustbox 0.1.0 (git+http://github.com/gchp/rustbox)",
 ]
 
 [[package]]
 name = "docopt"
-version = "0.6.13"
+version = "0.6.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
