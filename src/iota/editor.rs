@@ -39,7 +39,7 @@ impl<'e> Editor<'e> {
         }
     }
 
-    pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
+    pub fn handle_key_event(&'e mut self, key: u16, ch: u32) -> Response {
         let key_code = key as u32 + ch;
         let input_key: Option<Key> = num::from_u32(key_code);
 
@@ -87,19 +87,21 @@ impl<'e> Editor<'e> {
         self.view.draw_cursor();
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&'e mut self) {
         *self.running.write() = true;
         self.event_loop();
         self.main_loop();
     }
 
-    fn main_loop(&mut self) {
+    fn main_loop(&'e mut self) {
         while *self.running.read() {
             self.view.clear();
             self.draw();
             rustbox::present();
             if let rustbox::Event::KeyEvent(_, key, ch) = self.events.recv() {
-                if let Response::Quit = self.handle_key_event(key, ch) {
+                let this: *mut Editor<'e> = self;
+                let this = unsafe { &mut *this };
+                if let Response::Quit = this.handle_key_event(key, ch) {
                     *self.running.write() = false;
                 }
             }
@@ -118,7 +120,7 @@ impl<'e> Editor<'e> {
         });
     }
 
-    fn handle_system_event(&mut self, k: Option<Key>) -> EventStatus {
+    fn handle_system_event(&'e mut self, k: Option<Key>) -> EventStatus {
         let key = match k {
             Some(k) => k,
             None => return EventStatus::NotHandled

@@ -1,5 +1,7 @@
 extern crate rustbox;
 
+use std::cmp;
+
 use buffer::{Line, Buffer};
 use cursor::Direction;
 use cursor::Cursor;
@@ -44,11 +46,10 @@ impl<'v> View<'v> {
         // NOTE(greg): this may not play well with resizing
         let uibuf = UIBuffer::new(width, height);
 
-        let mut cursor = Cursor::new();
-        // FIXME: respect borrowing rules
+        // FIXME: respect borrowing rules (this is more or less safe, I believe)
         let line: *mut Line = &mut buffer.lines[0];
         let line: &mut Line = unsafe { &mut *line };
-        cursor.set_line(Some(line));
+        let cursor = Cursor::new(line, 0);
 
         View {
             buffer: buffer,
@@ -79,12 +80,11 @@ impl<'v> View<'v> {
     pub fn draw(&mut self) {
         let end_line = self.get_height();
         let num_lines = self.buffer.lines.len();
-        let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines);
+        let min_upper = cmp::min(num_lines, end_line + self.top_line_num);
+        let lines_to_draw = self.buffer.lines.slice(self.top_line_num, min_upper);
 
-        for (index, line) in lines_to_draw.iter().enumerate() {
-            if index < end_line {
-                draw_line(&mut self.uibuf, line, self.top_line_num)
-            }
+        for line in lines_to_draw.iter() {
+            draw_line(&mut self.uibuf, line, self.top_line_num);
         }
 
         self.uibuf.draw_everything();
@@ -123,7 +123,7 @@ impl<'v> View<'v> {
         self.uibuf = UIBuffer::new(width, 15);
     }
 
-    pub fn move_cursor(&mut self, direction: Direction) {
+    pub fn move_cursor(&'v mut self, direction: Direction) {
         match direction {
             Direction::Up    => { self.move_cursor_up(); },
             Direction::Down  => { self.move_cursor_down(); },
@@ -143,14 +143,16 @@ impl<'v> View<'v> {
     }
 
     // TODO(greg): refactor this method with move_cursor_down
-    pub fn move_cursor_up(&mut self) {
+    pub fn move_cursor_up(&'v mut self) {
         let cursor_linenum = self.cursor.get_linenum();
         let prev_linenum = cursor_linenum - 1;
 
         let num_lines = self.buffer.lines.len() - 1;
         if prev_linenum > num_lines { return }
 
-        self.set_cursor_line(prev_linenum);
+        let this: *mut View<'v> = self;
+        let this = unsafe { &mut *this };
+        this.set_cursor_line(prev_linenum);
 
         let cursor_linenum = self.cursor.get_linenum() as int;
         let cursor_offset = cursor_linenum - self.top_line_num as int;
@@ -163,14 +165,16 @@ impl<'v> View<'v> {
     }
 
     // TODO(greg): refactor this method with move_cursor_up
-    pub fn move_cursor_down(&mut self) {
+    pub fn move_cursor_down(&'v mut self) {
         let cursor_linenum = self.cursor.get_linenum();
         let next_linenum = cursor_linenum + 1;
 
         let num_lines = self.buffer.lines.len() - 1;
         if next_linenum > num_lines { return }
 
-        self.set_cursor_line(next_linenum);
+        let this: *mut View<'v> = self;
+        let this = unsafe { &mut *this };
+        this.set_cursor_line(next_linenum);
 
         let cursor_linenum = self.cursor.get_linenum() as int;
         let cursor_offset = cursor_linenum - self.top_line_num as int;
@@ -182,11 +186,8 @@ impl<'v> View<'v> {
         }
     }
 
-    fn set_cursor_line(&mut self, linenum: uint) {
-        // FIXME: find a way to respect borrowing rules
-        let line: *mut Line = &mut self.buffer.lines[linenum];
-        let line: &mut Line = unsafe { &mut *line };
-        self.cursor.set_line(Some(line));
+    fn set_cursor_line(&'v mut self, linenum: uint) {
+        self.cursor.set_line(&mut self.buffer.lines[linenum]);
     }
 
     fn move_top_line_n_times(&mut self, mut num_times: int) {
@@ -212,12 +213,14 @@ impl<'v> View<'v> {
         }
     }
 
-    pub fn delete_char(&mut self, direction: Direction) {
+    pub fn delete_char(&'v mut self, direction: Direction) {
         let (offset, line_num) = self.cursor.get_position();
 
         if offset == 0 && direction.is_left() {
             let offset = self.buffer.join_line_with_previous(offset, line_num);
-            self.move_cursor_up();
+            let this: *mut View<'v> = self;
+            let this = unsafe { &mut *this };
+            this.move_cursor_up();
             self.cursor.set_offset(offset);
             return
         }
@@ -248,11 +251,13 @@ impl<'v> View<'v> {
         self.cursor.insert_char(ch);
     }
 
-    pub fn insert_line(&mut self) {
+    pub fn insert_line(&'v mut self) {
         let (offset, line_num) = self.cursor.get_position();
         self.buffer.insert_line(offset, line_num);
 
-        self.move_cursor_down();
+        let this: *mut View<'v> = self;
+        let this = unsafe { &mut *this };
+        this.move_cursor_down();
         self.cursor.set_offset(0);
     }
 }
@@ -294,6 +299,8 @@ pub fn draw_line(buf: &mut UIBuffer, line: &Line, top_line_num: uint) {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::TreeMap;
+    use std::mem;
 
     use buffer::{Line, Buffer};
     use cursor::{Cursor, Direction};
@@ -305,7 +312,7 @@ mod tests {
         let mut view = View {
             buffer: Buffer::new(),
             top_line_num: 0,
-            cursor: Cursor::new(),
+            cursor: unsafe { mem::uninitialized() },
             uibuf: UIBuffer::new(50, 50),
             threshold: 5,
         };
@@ -314,7 +321,7 @@ mod tests {
         let second_line = Line::new(data_from_str("second"), 1);
 
         view.buffer.lines = vec!(first_line, second_line);
-        view.cursor.set_line(Some(&mut view.buffer.lines[0]));
+        view.cursor = Cursor::new(&mut view.buffer.lines[0], 0);
 
         return view
     }
@@ -395,7 +402,7 @@ mod tests {
     fn delete_char_when_line_is_empty_does_nothing() {
         let mut view = setup_view();
         view.buffer.lines = vec!(Line::new(Vec::new(), 0));
-        view.cursor.set_line(Some(&mut view.buffer.lines[0]));
+        view.cursor.set_line(&mut view.buffer.lines[0]);
         view.delete_char(Direction::Right);
         assert_eq!(view.cursor.get_line().data, data_from_str(""));
     }
