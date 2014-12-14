@@ -33,7 +33,7 @@ impl<'v> View<'v> {
                     None    => Buffer::new_empty(),
                 }
             },
-                Input::Stdin(reader) => {
+            Input::Stdin(reader) => {
                 Buffer::new_from_reader(reader)
             },
         };
@@ -45,7 +45,10 @@ impl<'v> View<'v> {
         let uibuf = UIBuffer::new(width, height);
 
         let mut cursor = Cursor::new();
-        cursor.set_line(Some(&mut buffer.lines[0]));
+        // FIXME: respect borrowing rules
+        let line: *mut Line = &mut buffer.lines[0];
+        let line: &mut Line = unsafe { &mut *line };
+        cursor.set_line(Some(line));
 
         View {
             buffer: buffer,
@@ -180,7 +183,9 @@ impl<'v> View<'v> {
     }
 
     fn set_cursor_line(&mut self, linenum: uint) {
-        let line = &mut self.buffer.lines[linenum];
+        // FIXME: find a way to respect borrowing rules
+        let line: *mut Line = &mut self.buffer.lines[linenum];
+        let line: &mut Line = unsafe { &mut *line };
         self.cursor.set_line(Some(line));
     }
 
