@@ -76,7 +76,7 @@ impl Cell {
     pub fn new() -> Cell {
         Cell {
             bg: rustbox::Color::Default,
-            fg: rustbox::Color::White,
+            fg: rustbox::Color::Default,
             ch: ' ',
             x: 0,
             y: 0,
