@@ -3,6 +3,7 @@ extern crate rustbox;
 use std::comm::{Receiver, Sender};
 use std::num;
 use std::io::{fs, File, FileMode, FileAccess, TempDir};
+use std::sync::{Arc, RWLock};
 
 use super::Response;
 use input::Input;
@@ -18,7 +19,7 @@ enum EventStatus {
 
 
 pub struct Editor<'e> {
-    pub running: bool,
+    pub running: Arc<RWLock<bool>>,
     pub sender: Sender<rustbox::Event>,
 
     events: Receiver<rustbox::Event>,
@@ -34,7 +35,7 @@ impl<'e> Editor<'e> {
             sender: send,
             events: recv,
             view: view,
-            running: false,
+            running: Arc::new(RWLock::new(false)),
         }
     }
 
@@ -87,19 +88,19 @@ impl<'e> Editor<'e> {
     }
 
     pub fn start(&mut self) {
-        self.running = true;
+        *self.running.write() = true;
         self.event_loop();
         self.main_loop();
     }
 
     fn main_loop(&mut self) {
-        while self.running {
+        while *self.running.read() {
             self.view.clear();
             self.draw();
             rustbox::present();
             if let rustbox::Event::KeyEvent(_, key, ch) = self.events.recv() {
                 if let Response::Quit = self.handle_key_event(key, ch) {
-                    self.running = false;
+                    *self.running.write() = false;
                 }
             }
         }
@@ -108,10 +109,11 @@ impl<'e> Editor<'e> {
     fn event_loop(&self) {
         // clone the sender so that we can use it in the proc
         let sender = self.sender.clone();
+        let lock = self.running.clone();
 
         spawn(proc() {
-            loop {
-                sender.send(rustbox::poll_event());
+            while *lock.read() {
+                let _ = sender.send_opt(rustbox::peek_event(1000));
             }
         });
     }
