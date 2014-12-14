@@ -2,7 +2,8 @@ extern crate rustbox;
 
 use std::comm::{Receiver, Sender};
 use std::num;
-use std::io::{File, FileMode, FileAccess};
+use std::io::{fs, File, FileMode, FileAccess, TempDir};
+use std::sync::{Arc, RWLock};
 
 use super::Response;
 use input::Input;
@@ -18,7 +19,7 @@ enum EventStatus {
 
 
 pub struct Editor<'e> {
-    pub running: bool,
+    pub running: Arc<RWLock<bool>>,
     pub sender: Sender<rustbox::Event>,
 
     events: Receiver<rustbox::Event>,
@@ -34,11 +35,11 @@ impl<'e> Editor<'e> {
             sender: send,
             events: recv,
             view: view,
-            running: false,
+            running: Arc::new(RWLock::new(false)),
         }
     }
 
-    pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
+    pub fn handle_key_event(&'e mut self, key: u16, ch: u32) -> Response {
         let key_code = key as u32 + ch;
         let input_key: Option<Key> = num::from_u32(key_code);
 
@@ -52,9 +53,16 @@ impl<'e> Editor<'e> {
         let lines = &self.view.buffer.lines;
         let path = self.view.buffer.file_path.as_ref().unwrap();
 
-        let mut file = match File::open_mode(path, FileMode::Open, FileAccess::Write) {
+        let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {
+            Ok(d) => d,
+            Err(e) => panic!("file error: {}", e)
+        };
+
+        let tmppath = tmpdir.path().join(Path::new("tmpfile"));
+
+        let mut file = match File::open_mode(&tmppath, FileMode::Open, FileAccess::Write) {
             Ok(f) => f,
-            Err(e) => panic!("file error: {}", e),
+            Err(e) => panic!("file error: {}", e)
         };
 
         for line in lines.iter() {
@@ -67,6 +75,10 @@ impl<'e> Editor<'e> {
                 panic!("Something went wrong while writing the file");
             }
         }
+
+        if let Err(e) = fs::rename(&tmppath, path) {
+            panic!("file error: {}", e);
+        }
     }
 
     pub fn draw(&mut self) {
@@ -75,20 +87,22 @@ impl<'e> Editor<'e> {
         self.view.draw_cursor();
     }
 
-    pub fn start(&mut self) {
-        self.running = true;
+    pub fn start(&'e mut self) {
+        *self.running.write() = true;
         self.event_loop();
         self.main_loop();
     }
 
-    fn main_loop(&mut self) {
-        while self.running {
+    fn main_loop(&'e mut self) {
+        while *self.running.read() {
             self.view.clear();
             self.draw();
             rustbox::present();
             if let rustbox::Event::KeyEvent(_, key, ch) = self.events.recv() {
-                if let Response::Quit = self.handle_key_event(key, ch) {
-                    self.running = false;
+                let this: *mut Editor<'e> = self;
+                let this = unsafe { &mut *this };
+                if let Response::Quit = this.handle_key_event(key, ch) {
+                    *self.running.write() = false;
                 }
             }
         }
@@ -97,15 +111,16 @@ impl<'e> Editor<'e> {
     fn event_loop(&self) {
         // clone the sender so that we can use it in the proc
         let sender = self.sender.clone();
+        let lock = self.running.clone();
 
         spawn(proc() {
-            loop {
-                sender.send(rustbox::poll_event());
+            while *lock.read() {
+                let _ = sender.send_opt(rustbox::peek_event(1000));
             }
         });
     }
 
-    fn handle_system_event(&mut self, k: Option<Key>) -> EventStatus {
+    fn handle_system_event(&'e mut self, k: Option<Key>) -> EventStatus {
         let key = match k {
             Some(k) => k,
             None => return EventStatus::NotHandled
