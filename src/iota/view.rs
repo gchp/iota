@@ -292,7 +292,6 @@ pub fn draw_line(buf: &mut UIBuffer, line: &Line, top_line_num: uint) {
 
 #[cfg(test)]
 mod tests {
-
     use buffer::{Line, Buffer};
     use cursor::{Cursor, Direction};
     use view::View;
@@ -312,7 +311,7 @@ mod tests {
         let second_line = Line::new(data_from_str("second"), 1);
 
         view.buffer.lines = vec!(first_line, second_line);
-        view.cursor.set_line(Some(&mut view.buffer.lines[0]));
+        set_cursor_line!(view.cursor, &mut view.buffer.lines[0]);
 
         return view
     }
@@ -393,7 +392,7 @@ mod tests {
     fn delete_char_when_line_is_empty_does_nothing() {
         let mut view = setup_view();
         view.buffer.lines = vec!(Line::new(String::new(), 0));
-        view.cursor.set_line(Some(&mut view.buffer.lines[0]));
+        set_cursor_line!(view.cursor, &mut view.buffer.lines[0]);
         view.delete_char(Direction::Right);
         assert_eq!(view.cursor.get_line().data, data_from_str(""));
     }

@@ -153,7 +153,7 @@ mod tests {
     fn setup_cursor<'c>() -> Cursor<'c> {
         let mut cursor = Cursor::new();
         let mut line = Line::new(data_from_str("test"), 1);
-        cursor.set_line(Some(&mut line));
+        set_cursor_line!(cursor, &mut line);
         return cursor
     }
 
@@ -238,7 +238,7 @@ mod tests {
         cursor.set_offset(1);
         cursor.delete_backward_char();
 
-        assert_eq!(line.data, data_from_str("est"));
+        assert_eq!(cursor.get_line().data, data_from_str("est"));
     }
 
     #[test]
@@ -249,7 +249,7 @@ mod tests {
         cursor.set_line(Some(&mut line));
         cursor.delete_forward_char();
 
-        assert_eq!(line.data, data_from_str("est"));
+        assert_eq!(cursor.get_line().data, data_from_str("est"));
     }
 
     #[test]
@@ -260,7 +260,7 @@ mod tests {
         cursor.set_line(Some(&mut line));
         cursor.insert_char('x');
 
-        assert_eq!(line.data, data_from_str("xtest"));
+        assert_eq!(cursor.get_line().data, data_from_str("xtest"));
     }
 
     #[test]
