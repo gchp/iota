@@ -17,7 +17,7 @@ impl Buffer {
     /// Create a new buffer with a single line
     pub fn new_empty() -> Buffer {
         let mut buffer = Buffer::new();
-        buffer.lines.push(Line::new(Vec::new(), 0));
+        buffer.lines.push(Line::new(String::new(), 0));
 
         buffer
     }
@@ -26,12 +26,12 @@ impl Buffer {
         let mut v = vec![];
         // for every line in the reader we add a corresponding line to the buffer
         for (index, line) in reader.lines().enumerate() {
-            let mut data = line.unwrap().into_bytes();
+            let mut data = line.unwrap();
             let last_index = data.len() - 1;
-            if data[last_index] == '\n' as u8 {
+            if data.is_char_boundary(last_index) && data.char_at(last_index) == '\n' {
                 data.pop();
             }
-            v.push(Line::new(data, index));
+            v.push(Line::new(data.trim_right_chars('\n').into_string(), index));
         }
         v
     }
@@ -51,7 +51,7 @@ impl Buffer {
         if let Ok(file) = File::open(&path) {
             buffer.lines = Buffer::lines_from_reader(&mut BufferedReader::new(file));
         } else {
-            buffer.lines.push(Line::new(Vec::new(), 0));
+            buffer.lines.push(Line::new(String::new(), 0));
         }
 
         buffer.file_path = Some(path);
@@ -92,7 +92,7 @@ impl Buffer {
         // if the line_num is 0 (ie the first line), don't do anything
         if line_num == 0 { return offset }
 
-        let mut current_line_data: Vec<u8>;
+        let mut current_line_data: String;
         {
             let current_line = match self.get_line_at(line_num) {
                 Some(line) => line,
@@ -106,7 +106,7 @@ impl Buffer {
             None => offset,
             Some(line) => {
                 let line_len = line.data.len();
-                line.data.push_all(current_line_data.as_slice());
+                line.data.push_str(&*current_line_data);
                 line_len
             }
         };
@@ -117,17 +117,16 @@ impl Buffer {
         return new_cursor_offset
     }
 
-    // TODO(greg): refactor this to use Vec::partition
     /// Split the line identified by `line_num` at `offset`
-    fn split_line(&mut self, offset: uint, line_num: uint) -> (Vec<u8>, Vec<u8>) {
+    fn split_line(&mut self, offset: uint, line_num: uint) -> (String, String) {
         let line = self.get_line_at(line_num).unwrap();
 
         let data = line.data.clone();
         let old_data = data.slice_to(offset);
         let new_data = data.slice_from(offset);
 
-        let mut new = Vec::new(); new.push_all(new_data);
-        let mut old = Vec::new(); old.push_all(old_data);
+        let mut new = String::new(); new.push_str(new_data);
+        let mut old = String::new(); old.push_str(old_data);
 
         return (old, new)
     }
@@ -148,13 +147,13 @@ impl Buffer {
 
 
 pub struct Line {
-    pub data: Vec<u8>,
+    pub data: String,
     pub linenum: uint,
 }
 
 impl Line {
     /// Create a new line instance
-    pub fn new(data: Vec<u8>, line_num: uint) -> Line {
+    pub fn new(data: String, line_num: uint) -> Line {
         Line{
             data: data,
             linenum: line_num,
@@ -180,7 +179,7 @@ mod tests {
         buffer.file_path = Some(Path::new("/some/file.txt"));
         buffer.lines = vec!(
             Line::new(data_from_str("test"), 0),
-            Line::new(Vec::new(), 1),
+            Line::new(String::new(), 1),
             Line::new(data_from_str("text file"), 2),
             Line::new(data_from_str("content"), 3),
         );
@@ -254,7 +253,7 @@ mod tests {
     #[test]
     fn joining_line_with_non_existant_next_line_does_nothing() {
         let mut buffer = setup_buffer();
-        buffer.lines = vec!(Line::new(Vec::new(), 0));
+        buffer.lines = vec!(Line::new(String::new(), 0));
         buffer.join_line_with_previous(0, 1);
     }
 

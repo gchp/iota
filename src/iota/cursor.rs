@@ -23,6 +23,8 @@ impl Direction {
 }
 
 pub struct Cursor<'c> {
+    /// The number of bytes the cursor is along the line. This must always be on a character
+    /// boundary.
     pub offset: uint,
     line: Option<&'c mut Line>,
 }
@@ -48,8 +50,30 @@ impl<'c> Cursor<'c> {
         self.offset
     }
 
+    pub fn get_visible_offset(&self) -> uint {
+        self.get_line().data.slice_to(self.get_offset()).width(false)
+    }
+
     pub fn set_offset(&mut self, offset: uint) {
         self.offset = offset;
+    }
+
+    /// Moves the cursor forward one character.
+    ///
+    /// This can’t simply be `self.offset += 1`, because not all UTF-8 codepoints are exactly one
+    /// byte long. This function calculates the width of the current codepoint and increments the
+    /// offset by that width, ensuring that the cursor will always be on a character boundary.
+    pub fn inc_offset(&mut self) {
+        let range = self.get_line().data.char_range_at(self.offset);
+        self.set_offset(range.next);
+    }
+
+    /// Moves the cursor back one character.
+    ///
+    /// See `inc_offset` for why this method is needed.
+    pub fn dec_offset(&mut self) {
+        let range = self.get_line().data.char_range_at_reverse(self.offset);
+        self.set_offset(range.next);
     }
 
     pub fn set_line(&mut self, line: Option<&'c mut Line>) {
@@ -80,34 +104,35 @@ impl<'c> Cursor<'c> {
 
     pub fn delete_backward_char(&mut self) {
         let offset = self.get_offset();
-        self.get_line_mut().data.remove(offset-1);
-        self.set_offset(offset-1);
+        let range = self.get_line().data.char_range_at_reverse(self.offset);
+        let back = self.offset - range.next;
+        self.dec_offset();
+        self.get_line_mut().data.remove(offset-back);
     }
 
     pub fn delete_forward_char(&mut self) {
         let offset = self.get_offset();
         self.get_line_mut().data.remove(offset);
-        self.set_offset(offset);
     }
 
     pub fn insert_char(&mut self, ch: char) {
         let offset = self.get_offset();
-        self.get_line_mut().data.insert(offset, ch as u8);
-        self.set_offset(offset+1)
+        self.get_line_mut().data.insert(offset, ch);
+        self.inc_offset();
     }
 
     pub fn move_right(&mut self) {
         let line_len = self.get_line().len();
         let current_offset = self.get_offset();
         if line_len > current_offset {
-            self.set_offset(current_offset + 1);
+            self.inc_offset();
         }
     }
 
     pub fn move_left(&mut self) {
         let current_offset = self.get_offset();
         if current_offset > 0 {
-            self.set_offset(current_offset - 1);
+            self.dec_offset();
         }
     }
 
