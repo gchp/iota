@@ -154,7 +154,7 @@ impl KeyMap {
         keymap.bind_key(Key::Tab, Command::InsertTab);
         keymap.bind_key(Key::Enter, Command::InsertLine);
         keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left));
-        keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Right));
+        keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left));
         keymap.bind_key(Key::Delete, Command::Delete(Direction::Right));
         keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right));
 

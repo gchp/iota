@@ -23,6 +23,8 @@ impl Key {
             4     => Some(Key::Ctrl('d')),
             5     => Some(Key::Ctrl('e')),
             6     => Some(Key::Ctrl('f')),
+            7     => Some(Key::Ctrl('g')),
+            8     => Some(Key::Ctrl('h')),
             9     => Some(Key::Tab),
             13    => Some(Key::Enter),
             14    => Some(Key::Ctrl('n')),
