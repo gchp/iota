@@ -18,12 +18,16 @@ use view::View;
 pub enum Command {
     SaveBuffer,
     ExitEditor,
+    ResizeView,
 
     MoveCursor(Direction),
-    Delete(Direction),
-
     LineEnd,
-    LineStart
+    LineStart,
+
+    Delete(Direction),
+    InsertTab,
+    InsertLine,
+    InsertChar(char)
 }
 
 enum EventStatus {
@@ -143,12 +147,21 @@ impl<'e> Editor<'e> {
 
     fn handle_command(&mut self, c: Command) {
         match c {
+            // Editor Commands
             Command::ExitEditor      => *self.running.write() = false,
             Command::SaveBuffer      => self.save_active_buffer(),
+            Command::ResizeView      => self.view.resize(),
+
+            // Navigation
+            Command::MoveCursor(dir) => self.view.move_cursor(dir),
             Command::LineEnd         => self.view.move_cursor_to_line_end(),
             Command::LineStart       => self.view.move_cursor_to_line_start(),
-            Command::MoveCursor(dir) => self.view.move_cursor(dir),
-            Command::Delete(dir)     => self.view.delete_char(dir)
+
+            // Editing
+            Command::Delete(dir)     => self.view.delete_char(dir),
+            Command::InsertTab       => self.view.insert_tab(),
+            Command::InsertLine      => self.view.insert_line(),
+            Command::InsertChar(c)   => self.view.insert_char(c)
         }
     }
 
@@ -158,8 +171,6 @@ impl<'e> Editor<'e> {
             None => return EventStatus::NotHandled
         };
 
-        let key = k.unwrap();
-
         // send key to the keymap
         match self.keymap.check_key(key) {
             KeyMapState::Match(command) => {
@@ -167,34 +178,19 @@ impl<'e> Editor<'e> {
                 return EventStatus::Handled(Response::Continue)
             },
             KeyMapState::Continue => {
-                return EventStatus::Handled(Response::Continue) // keep going and wait for more keypresses
+                // keep going and wait for more keypresses
+                return EventStatus::Handled(Response::Continue) 
             },
             KeyMapState::None => {}  // do nothing and handle the key normally
         }
 
-        match key {
-            Key::Up        => { self.view.move_cursor(Direction::Up); }
-            Key::Down      => { self.view.move_cursor(Direction::Down); }
-            Key::Left      => { self.view.move_cursor(Direction::Left); }
-            Key::Right     => { self.view.move_cursor(Direction::Right); }
-            Key::Enter     => { self.view.insert_line(); }
-
-            // Tab inserts 4 spaces, rather than a \t
-            Key::Tab       => { self.view.insert_tab(); }
-
-            Key::Backspace => { self.view.delete_char(Direction::Left); }
-            Key::Delete    => { self.view.delete_char(Direction::Right); }
-            Key::Ctrl('s') => { self.save_active_buffer(); }
-            Key::Ctrl('q') => { return EventStatus::Handled(Response::Quit) }
-            Key::Ctrl('r') => { self.view.resize(); }
-
-            Key::Char(c)   => { self.view.insert_char(c) }
-
-            // default
-            _              => { return EventStatus::NotHandled }
+        // if the key is a character that is not part of a keybinding, insert into the buffer
+        // otherwise, ignore it.
+        if let Key::Char(c) = key {
+            self.view.insert_char(c);
+            EventStatus::Handled(Response::Continue)
+        } else {
+            EventStatus::NotHandled
         }
-        // event is handled and we want to keep the editor running
-        EventStatus::Handled(Response::Continue)
     }
-
 }

@@ -116,22 +116,48 @@ impl KeyMap {
         }
     }
     
-    /// Insert or overwrite a key binding
+    /// Insert or overwrite a key-sequence binding
     pub fn bind_keys(&mut self, keys: &[Key], command: Command) {
         self.root.bind_keys(keys.as_slice(), command);
     }
 
+    /// Insert or overwrite a key binding
+    pub fn bind_key(&mut self, key: Key, command: Command) {
+        self.root.bind_key(key, command);
+    }
+
     pub fn load_defaults() -> KeyMap {
         let mut keymap = KeyMap::new();
+
+        // Editor Commands
+        keymap.bind_key(Key::Ctrl('q'), Command::ExitEditor);
+        keymap.bind_key(Key::Ctrl('s'), Command::SaveBuffer);
+        keymap.bind_key(Key::Ctrl('r'), Command::ResizeView);
         keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('c')].as_slice(), Command::ExitEditor);
         keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('s')].as_slice(), Command::SaveBuffer);
-        keymap.bind_keys(vec![Key::Ctrl('p')].as_slice(), Command::MoveCursor(Direction::Up));
-        keymap.bind_keys(vec![Key::Ctrl('n')].as_slice(), Command::MoveCursor(Direction::Down));
-        keymap.bind_keys(vec![Key::Ctrl('b')].as_slice(), Command::MoveCursor(Direction::Left));
-        keymap.bind_keys(vec![Key::Ctrl('f')].as_slice(), Command::MoveCursor(Direction::Right));
-        keymap.bind_keys(vec![Key::Ctrl('e')].as_slice(), Command::LineEnd);
-        keymap.bind_keys(vec![Key::Ctrl('a')].as_slice(), Command::LineStart);
-        keymap.bind_keys(vec![Key::Ctrl('d')].as_slice(), Command::Delete(Direction::Right));
-        keymap
+
+        // Navigation
+        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up));
+        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down));
+        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left));
+        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right));
+
+        keymap.bind_key(Key::Ctrl('p'), Command::MoveCursor(Direction::Up));
+        keymap.bind_key(Key::Ctrl('n'), Command::MoveCursor(Direction::Down));
+        keymap.bind_key(Key::Ctrl('b'), Command::MoveCursor(Direction::Left));
+        keymap.bind_key(Key::Ctrl('f'), Command::MoveCursor(Direction::Right));
+
+        keymap.bind_key(Key::Ctrl('e'), Command::LineEnd);
+        keymap.bind_key(Key::Ctrl('a'), Command::LineStart);
+
+        // Editing
+        keymap.bind_key(Key::Tab, Command::InsertTab);
+        keymap.bind_key(Key::Enter, Command::InsertLine);
+        keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left));
+        keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Right));
+        keymap.bind_key(Key::Delete, Command::Delete(Direction::Right));
+        keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right));
+
+        return keymap
     }
 }
