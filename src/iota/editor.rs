@@ -14,7 +14,7 @@ use keymap::{ KeyMap, KeyMapState };
 use view::View;
 
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum Command {
     SaveBuffer,
     ExitEditor,
@@ -44,18 +44,9 @@ pub struct Editor<'e> {
 impl<'e> Editor<'e> {
     pub fn new(source: Input) -> Editor<'e> {
         let view = View::new(source);
-
         let (send, recv) = channel();
-        let mut keymap = KeyMap::new();
-        keymap.bind_keys(vec![Key::CtrlX, Key::CtrlC].as_slice(), Command::ExitEditor);
-        keymap.bind_keys(vec![Key::CtrlX, Key::CtrlS].as_slice(), Command::SaveBuffer);
-        keymap.bind_keys(vec![Key::CtrlP].as_slice(), Command::MoveCursor(Direction::Up));
-        keymap.bind_keys(vec![Key::CtrlN].as_slice(), Command::MoveCursor(Direction::Down));
-        keymap.bind_keys(vec![Key::CtrlB].as_slice(), Command::MoveCursor(Direction::Left));
-        keymap.bind_keys(vec![Key::CtrlF].as_slice(), Command::MoveCursor(Direction::Right));
-        keymap.bind_keys(vec![Key::CtrlE].as_slice(), Command::LineEnd);
-        keymap.bind_keys(vec![Key::CtrlA].as_slice(), Command::LineStart);
-        keymap.bind_keys(vec![Key::CtrlD].as_slice(), Command::Delete(Direction::Right));
+        let keymap = KeyMap::load_defaults();
+
         Editor {
             sender: send,
             events: recv,
@@ -152,7 +143,7 @@ impl<'e> Editor<'e> {
 
     fn handle_command(&mut self, c: Command) {
         match c {
-            Command::ExitEditor      => self.running = false,
+            Command::ExitEditor      => *self.running.write() = false,
             Command::SaveBuffer      => self.save_active_buffer(),
             Command::LineEnd         => self.view.move_cursor_to_line_end(),
             Command::LineStart       => self.view.move_cursor_to_line_start(),
@@ -193,9 +184,9 @@ impl<'e> Editor<'e> {
 
             Key::Backspace => { self.view.delete_char(Direction::Left); }
             Key::Delete    => { self.view.delete_char(Direction::Right); }
-            Key::CtrlS     => { self.save_active_buffer(); }
-            Key::CtrlQ     => { return EventStatus::Handled(Response::Quit) }
-            Key::CtrlR     => { self.view.resize(); }
+            Key::Ctrl('s') => { self.save_active_buffer(); }
+            Key::Ctrl('q') => { return EventStatus::Handled(Response::Quit) }
+            Key::Ctrl('r') => { self.view.resize(); }
 
             Key::Char(c)   => { self.view.insert_char(c) }
 

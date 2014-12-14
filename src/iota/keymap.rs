@@ -2,8 +2,8 @@ use std::collections::{ HashMap };
 
 use keyboard::Key;
 use editor::Command;
+use cursor::Direction;
 
-#[deriving(Show)]
 pub enum Trie {
     Leaf(Command),
     Node(HashMap<Key, Box<Trie>>)
@@ -72,7 +72,7 @@ impl Trie {
     }
 }
 
-#[deriving(Show)]
+#[deriving(Copy, Show)]
 pub enum KeyMapState {
     Match(Command),     // found a match
     Continue,           // needs another key to disambiguate
@@ -119,5 +119,19 @@ impl KeyMap {
     /// Insert or overwrite a key binding
     pub fn bind_keys(&mut self, keys: &[Key], command: Command) {
         self.root.bind_keys(keys.as_slice(), command);
+    }
+
+    pub fn load_defaults() -> KeyMap {
+        let mut keymap = KeyMap::new();
+        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('c')].as_slice(), Command::ExitEditor);
+        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('s')].as_slice(), Command::SaveBuffer);
+        keymap.bind_keys(vec![Key::Ctrl('p')].as_slice(), Command::MoveCursor(Direction::Up));
+        keymap.bind_keys(vec![Key::Ctrl('n')].as_slice(), Command::MoveCursor(Direction::Down));
+        keymap.bind_keys(vec![Key::Ctrl('b')].as_slice(), Command::MoveCursor(Direction::Left));
+        keymap.bind_keys(vec![Key::Ctrl('f')].as_slice(), Command::MoveCursor(Direction::Right));
+        keymap.bind_keys(vec![Key::Ctrl('e')].as_slice(), Command::LineEnd);
+        keymap.bind_keys(vec![Key::Ctrl('a')].as_slice(), Command::LineStart);
+        keymap.bind_keys(vec![Key::Ctrl('d')].as_slice(), Command::Delete(Direction::Right));
+        keymap
     }
 }

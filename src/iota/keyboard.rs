@@ -1,4 +1,4 @@
-#[deriving(Copy)]
+#[deriving(Copy, PartialEq, Eq, Hash)]
 pub enum Key {
     Tab,
     Enter,
@@ -17,7 +17,12 @@ pub enum Key {
 impl Key {
     pub fn from_special_code(code: u16) -> Option<Key> {
         match code {
+            1     => Some(Key::Ctrl('a')),
+            2     => Some(Key::Ctrl('b')),
             3     => Some(Key::Ctrl('c')),
+            4     => Some(Key::Ctrl('d')),
+            5     => Some(Key::Ctrl('e')),
+            6     => Some(Key::Ctrl('f')),
             9     => Some(Key::Tab),
             13    => Some(Key::Enter),
             14    => Some(Key::Ctrl('n')),
