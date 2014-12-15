@@ -26,16 +26,24 @@ pub struct Cursor<'c> {
     /// The number of bytes the cursor is along the line. This must always be on a character
     /// boundary.
     pub offset: uint,
-    line: Option<&'c mut Line>,
+    line: &'c mut Line,
 }
 
 impl<'c> Cursor<'c> {
     /// Create a new cursor instance
-    pub fn new() -> Cursor<'c> {
-        Cursor {
-            offset: 0,
-            line: None,
+    pub fn new(line: &'c mut Line, offset: uint) -> Cursor<'c> {
+        let mut cursor = Cursor {
+            offset: offset,
+            line: line,
+        };
+
+        // check that the current offset is longer than the length of the line
+        let offset = cursor.get_offset();
+        let line_length = cursor.get_line().len();
+        if offset > line_length {
+            cursor.set_offset(line_length);
         }
+        cursor
     }
 
     pub fn get_position(&self) -> (uint, uint) {
@@ -43,7 +51,7 @@ impl<'c> Cursor<'c> {
     }
 
     pub fn get_linenum(&self) -> uint {
-        self.line.as_ref().unwrap().linenum
+        self.line.linenum
     }
 
     pub fn get_offset(&self) -> uint {
@@ -76,26 +84,12 @@ impl<'c> Cursor<'c> {
         self.set_offset(range.next);
     }
 
-    pub fn set_line(&mut self, line: Option<&'c mut Line>) {
-        self.line = line;
-
-        // check that the current offset is longer than the length of the line
-        let offset = self.get_offset();
-        let line_length = self.get_line().len();
-        if offset > line_length {
-            self.set_offset(line_length);
-        }
-    }
-
     pub fn get_line(&self) -> &Line {
-        match self.line {
-            Some(ref mutref) => &**mutref,
-            None => panic!("No line available.")
-        }
+        &*self.line
     }
 
     pub fn get_line_mut(&mut self) -> &mut Line {
-        self.line.as_mut().map(|x| &mut**x).unwrap()
+        self.line
     }
 
     pub fn get_line_length(&self) -> uint {
@@ -151,9 +145,8 @@ mod tests {
     use utils::data_from_str;
 
     fn setup_cursor<F>(mut f: F) where F: FnMut(Cursor) {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
-        cursor.set_line(Some(&mut line));
+        let ref mut line = Line::new(data_from_str("test"), 1);
+        let cursor = Cursor::new(line, 0);
         f(cursor);
     }
 
@@ -179,17 +172,15 @@ mod tests {
 
     #[test]
     fn test_get_position() {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
-        cursor.set_line(Some(&mut line));
+        let ref mut line = Line::new(data_from_str("test"), 1);
+        let cursor = Cursor::new(line, 0);
         assert_eq!(cursor.get_position(), (0, 1));
     }
 
     #[test]
     fn test_get_linenum() {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
-        cursor.set_line(Some(&mut line));
+        let ref mut line = Line::new(data_from_str("test"), 1);
+        let cursor = Cursor::new(line, 0);
 
         assert_eq!(cursor.get_linenum(), 1);
     }
@@ -213,33 +204,26 @@ mod tests {
 
     #[test]
     fn test_moving_to_end_of_line_when_set() {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
-
-        cursor.set_offset(10);
-        cursor.set_line(Some(&mut line));
+        let ref mut line = Line::new(data_from_str("test"), 1);
+        let cursor = Cursor::new(line, 10);
 
         assert_eq!(cursor.offset, 4);
     }
 
     #[test]
     fn test_get_line_length() {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
-
-        cursor.set_line(Some(&mut line));
+        let ref mut line = Line::new(data_from_str("test"), 1);
+        let cursor = Cursor::new(line, 0);
 
         assert_eq!(cursor.get_line_length(), 4);
     }
 
     #[test]
     fn test_delete_backward_char() {
-        let mut line = Line::new(data_from_str("test"), 1);
+        let ref mut line = Line::new(data_from_str("test"), 1);
 
         {
-            let mut cursor = Cursor::new();
-            cursor.set_line(Some(&mut line));
-            cursor.set_offset(1);
+            let mut cursor = Cursor::new(line, 1);
             cursor.delete_backward_char();
         }
 
@@ -248,11 +232,10 @@ mod tests {
 
     #[test]
     fn test_delete_forward_char() {
-        let mut line = Line::new(data_from_str("test"), 1);
+        let ref mut line = Line::new(data_from_str("test"), 1);
 
         {
-            let mut cursor = Cursor::new();
-            cursor.set_line(Some(&mut line));
+            let mut cursor = Cursor::new(line, 0);
             cursor.delete_forward_char();
         }
 
@@ -261,11 +244,10 @@ mod tests {
 
     #[test]
     fn test_insert_char() {
-        let mut line = Line::new(data_from_str("test"), 1);
+        let ref mut line = Line::new(data_from_str("test"), 1);
 
         {
-            let mut cursor = Cursor::new();
-            cursor.set_line(Some(&mut line));
+            let mut cursor = Cursor::new(line, 0);
             cursor.insert_char('x');
         }
 
