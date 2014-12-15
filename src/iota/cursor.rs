@@ -26,16 +26,24 @@ pub struct Cursor<'c> {
     /// The number of bytes the cursor is along the line. This must always be on a character
     /// boundary.
     pub offset: uint,
-    line: Option<&'c mut Line>,
+    line: &'c mut Line,
 }
 
 impl<'c> Cursor<'c> {
     /// Create a new cursor instance
-    pub fn new() -> Cursor<'c> {
-        Cursor {
-            offset: 0,
-            line: None,
+    pub fn new(line: &'c mut Line, offset: uint) -> Cursor<'c> {
+        let mut cursor = Cursor {
+            offset: offset,
+            line: line,
+        };
+
+        // check that the current offset is longer than the length of the line
+        let offset = cursor.get_offset();
+        let line_length = cursor.get_line().len();
+        if offset > line_length {
+            cursor.set_offset(line_length);
         }
+        cursor
     }
 
     pub fn get_position(&self) -> (uint, uint) {
@@ -43,7 +51,7 @@ impl<'c> Cursor<'c> {
     }
 
     pub fn get_linenum(&self) -> uint {
-        self.line.as_ref().unwrap().linenum
+        self.line.linenum
     }
 
     pub fn get_offset(&self) -> uint {
@@ -76,26 +84,12 @@ impl<'c> Cursor<'c> {
         self.set_offset(range.next);
     }
 
-    pub fn set_line(&mut self, line: Option<&'c mut Line>) {
-        self.line = line;
-
-        // check that the current offset is longer than the length of the line
-        let offset = self.get_offset();
-        let line_length = self.get_line().len();
-        if offset > line_length {
-            self.set_offset(line_length);
-        }
-    }
-
     pub fn get_line(&self) -> &Line {
-        match self.line {
-            Some(ref mutref) => &**mutref,
-            None => panic!("No line available.")
-        }
+        &*self.line
     }
 
     pub fn get_line_mut(&mut self) -> &mut Line {
-        self.line.as_mut().map(|x| &mut**x).unwrap()
+        self.line
     }
 
     pub fn get_line_length(&self) -> uint {
@@ -150,123 +144,121 @@ mod tests {
     use buffer::Line;
     use utils::data_from_str;
 
-    fn setup_cursor<'c>() -> Cursor<'c> {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
-        cursor.set_line(Some(&mut line));
-        return cursor
+    fn setup_cursor<F>(mut f: F) where F: FnMut(Cursor) {
+        let ref mut line = Line::new(data_from_str("test"), 1);
+        let cursor = Cursor::new(line, 0);
+        f(cursor);
     }
 
     #[test]
     fn test_moving_right() {
-        let mut cursor = setup_cursor();
-
-        assert_eq!(cursor.offset, 0);
-        cursor.move_right();
-        assert_eq!(cursor.offset, 1);
+        setup_cursor( |mut cursor| {
+            assert_eq!(cursor.offset, 0);
+            cursor.move_right();
+            assert_eq!(cursor.offset, 1);
+        });
     }
 
     #[test]
     fn test_moving_left() {
-        let mut cursor = setup_cursor();
-        cursor.set_offset(1);
+        setup_cursor( |mut cursor| {
+            cursor.set_offset(1);
 
-        assert_eq!(cursor.offset, 1);
-        cursor.move_left();
-        assert_eq!(cursor.offset, 0);
+            assert_eq!(cursor.offset, 1);
+            cursor.move_left();
+            assert_eq!(cursor.offset, 0);
+        });
     }
 
     #[test]
     fn test_get_position() {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
-        cursor.set_line(Some(&mut line));
+        let ref mut line = Line::new(data_from_str("test"), 1);
+        let cursor = Cursor::new(line, 0);
         assert_eq!(cursor.get_position(), (0, 1));
     }
 
     #[test]
     fn test_get_linenum() {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
-        cursor.set_line(Some(&mut line));
+        let ref mut line = Line::new(data_from_str("test"), 1);
+        let cursor = Cursor::new(line, 0);
 
         assert_eq!(cursor.get_linenum(), 1);
     }
 
     #[test]
     fn test_get_offset() {
-        let cursor = setup_cursor();
-        assert_eq!(cursor.get_offset(), 0)
+        setup_cursor( |cursor| {
+            assert_eq!(cursor.get_offset(), 0)
+        });
     }
 
     #[test]
     fn test_set_offset() {
-        let mut cursor = setup_cursor();
-        cursor.set_offset(3);
+        setup_cursor( |mut cursor| {
+            cursor.set_offset(3);
 
-        assert_eq!(cursor.offset, 3);
+            assert_eq!(cursor.offset, 3);
+        });
     }
 
 
     #[test]
     fn test_moving_to_end_of_line_when_set() {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
-
-        cursor.set_offset(10);
-        cursor.set_line(Some(&mut line));
+        let ref mut line = Line::new(data_from_str("test"), 1);
+        let cursor = Cursor::new(line, 10);
 
         assert_eq!(cursor.offset, 4);
     }
 
     #[test]
     fn test_get_line_length() {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
-
-        cursor.set_line(Some(&mut line));
+        let ref mut line = Line::new(data_from_str("test"), 1);
+        let cursor = Cursor::new(line, 0);
 
         assert_eq!(cursor.get_line_length(), 4);
     }
 
     #[test]
     fn test_delete_backward_char() {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
+        let ref mut line = Line::new(data_from_str("test"), 1);
 
-        cursor.set_line(Some(&mut line));
-        cursor.set_offset(1);
-        cursor.delete_backward_char();
+        {
+            let mut cursor = Cursor::new(line, 1);
+            cursor.delete_backward_char();
+        }
 
         assert_eq!(line.data, data_from_str("est"));
     }
 
     #[test]
     fn test_delete_forward_char() {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
+        let ref mut line = Line::new(data_from_str("test"), 1);
 
-        cursor.set_line(Some(&mut line));
-        cursor.delete_forward_char();
+        {
+            let mut cursor = Cursor::new(line, 0);
+            cursor.delete_forward_char();
+        }
 
         assert_eq!(line.data, data_from_str("est"));
     }
 
     #[test]
     fn test_insert_char() {
-        let mut cursor = Cursor::new();
-        let mut line = Line::new(data_from_str("test"), 1);
+        let ref mut line = Line::new(data_from_str("test"), 1);
 
-        cursor.set_line(Some(&mut line));
-        cursor.insert_char('x');
+        {
+            let mut cursor = Cursor::new(line, 0);
+            cursor.insert_char('x');
+        }
 
         assert_eq!(line.data, data_from_str("xtest"));
     }
 
     #[test]
     fn test_get_status_text() {
-        let cursor = setup_cursor();
-        assert_eq!(cursor.get_status_text(), "(0, 1)".to_string());
+        setup_cursor( |cursor| {
+            assert_eq!(cursor.get_status_text(), "(0, 1)".to_string());
+        } );
     }
 
 }

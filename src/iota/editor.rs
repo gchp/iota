@@ -3,7 +3,8 @@ extern crate rustbox;
 use std::comm::{Receiver, Sender};
 use std::char;
 use std::io::{fs, File, FileMode, FileAccess, TempDir};
-use std::sync::{Arc, RWLock};
+use std::sync::Arc;
+use std::sync::atomic::{Ordering, AtomicBool};
 
 use super::Response;
 use input::Input;
@@ -19,7 +20,7 @@ enum EventStatus {
 
 
 pub struct Editor<'e> {
-    pub running: Arc<RWLock<bool>>,
+    pub running: Arc<AtomicBool>,
     pub sender: Sender<rustbox::Event>,
 
     events: Receiver<rustbox::Event>,
@@ -35,7 +36,7 @@ impl<'e> Editor<'e> {
             sender: send,
             events: recv,
             view: view,
-            running: Arc::new(RWLock::new(false)),
+            running: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -90,19 +91,21 @@ impl<'e> Editor<'e> {
     }
 
     pub fn start(&mut self) {
-        *self.running.write() = true;
+        // Synchronizes with transfer across thread boundary
+        self.running.store(true, Ordering::Relaxed);
         self.event_loop();
         self.main_loop();
     }
 
     fn main_loop(&mut self) {
-        while *self.running.read() {
+        while self.running.load(Ordering::Relaxed) {
             self.view.clear();
             self.draw();
             rustbox::present();
             if let rustbox::Event::KeyEvent(_, key, ch) = self.events.recv() {
                 if let Response::Quit = self.handle_key_event(key, ch) {
-                    *self.running.write() = false;
+                    // Okay if it doesn't quit immediately.
+                    self.running.store(false, Ordering::Relaxed);
                 }
             }
         }
@@ -111,11 +114,13 @@ impl<'e> Editor<'e> {
     fn event_loop(&self) {
         // clone the sender so that we can use it in the proc
         let sender = self.sender.clone();
-        let lock = self.running.clone();
+        let running = self.running.clone();
 
         spawn(proc() {
-            while *lock.read() {
-                let _ = sender.send_opt(rustbox::peek_event(1000));
+            while running.load(Ordering::Relaxed) {
+                if sender.send_opt(rustbox::peek_event(1000)).is_err() {
+                    running.store(false, Ordering::Relaxed);
+                }
             }
         });
     }

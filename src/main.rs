@@ -23,6 +23,12 @@ struct Args {
 
 #[cfg(not(test))]
 fn main() {
+    struct RustBoxGuard;
+
+    impl Drop for RustBoxGuard {
+        fn drop(&mut self) { rustbox::shutdown() }
+    }
+
     let args: Args = Docopt::new(USAGE)
                             .and_then(|d| d.decode())
                             .unwrap_or_else(|e| e.exit());
@@ -33,7 +39,7 @@ fn main() {
     };
 
     rustbox::init();
+    let _guard = RustBoxGuard; // Ensure that RustBox gets shut down on abnormal termination.
     let mut editor = Editor::new(source);
     editor.start();
-    rustbox::shutdown();
 }
