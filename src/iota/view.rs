@@ -85,8 +85,8 @@ impl<'v> View<'v> {
     pub fn cursor<'b>(&'b mut self) -> CursorGuard<'b> {
         let View {ref mut buffer, ref mut offset, ref mut linenum, .. } = *self;
         let mut cursor = Cursor::new();
-        cursor.set_line(Some(&mut buffer.lines[*linenum]));
         cursor.set_offset(*offset);
+        cursor.set_line(Some(&mut buffer.lines[*linenum]));
         CursorGuard { cursor: cursor, offset: offset, linenum: linenum }
     }
 
