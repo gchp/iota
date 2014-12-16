@@ -26,3 +26,16 @@ You can move the cursor around with the arrow keys.
 
 To save, press `Ctrl-s`.
 To exit, press `Ctrl-q`, followed by `Ctrl-c`.
+
+Iota currently supports Emacs-style keybindings for simple movement.
+
+- `Ctrl-p` move up
+- `Ctrl-n` move down
+- `Ctrl-a` move to start of line
+- `Ctrl-e` move to end of line
+- `Ctrl-d` delete forwards
+- `Ctrl-h` delete backwards
+- `Ctrl-x Ctrl-c` quit
+- `Ctrl-x Ctrl-s` save
+
+There are also plans to optionally enable Vi-like keybindings & modes.
