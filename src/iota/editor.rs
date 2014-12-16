@@ -5,6 +5,7 @@ use std::char;
 use std::io::{fs, File, FileMode, FileAccess, TempDir};
 use std::sync::Arc;
 use std::sync::atomic::{Ordering, AtomicBool};
+use std::borrow::Cow;
 
 use super::Response;
 use input::Input;
@@ -76,10 +77,10 @@ impl<'e> Editor<'e> {
     pub fn save_active_buffer(&mut self) {
         let lines = &self.view.buffer.lines;
         let path = match self.view.buffer.file_path {
-            Some(ref p) => p.clone(),
+            Some(ref p) => Cow::Borrowed(p),
             None => {
                 // TODO: prompt user for file name here
-                Path::new("untitled")
+                Cow::Owned(Path::new("untitled"))
             },
         };
 
@@ -106,7 +107,7 @@ impl<'e> Editor<'e> {
             }
         }
 
-        if let Err(e) = fs::rename(&tmppath, &path) {
+        if let Err(e) = fs::rename(&tmppath, &*path) {
             panic!("file error: {}", e);
         }
     }
