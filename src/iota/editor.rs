@@ -54,7 +54,13 @@ impl<'e> Editor<'e> {
 
     pub fn save_active_buffer(&mut self) {
         let lines = &self.view.buffer.lines;
-        let path = self.view.buffer.file_path.as_ref().unwrap();
+        let path = match self.view.buffer.file_path {
+            Some(ref p) => p.clone(),
+            None => {
+                // TODO: prompt user for file name here
+                Path::new("untitled")
+            },
+        };
 
         let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {
             Ok(d) => d,
@@ -79,7 +85,7 @@ impl<'e> Editor<'e> {
             }
         }
 
-        if let Err(e) = fs::rename(&tmppath, path) {
+        if let Err(e) = fs::rename(&tmppath, &path) {
             panic!("file error: {}", e);
         }
     }
