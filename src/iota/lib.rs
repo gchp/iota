@@ -10,6 +10,7 @@ mod buffer;
 mod editor;
 mod cursor;
 mod keyboard;
+mod keymap;
 mod view;
 mod uibuf;
 

@@ -10,8 +10,26 @@ use super::Response;
 use input::Input;
 use cursor::Direction;
 use keyboard::Key;
+use keymap::{ KeyMap, KeyMapState };
 use view::View;
 
+
+#[deriving(Copy, Show)]
+#[allow(dead_code)]
+pub enum Command {
+    SaveBuffer,
+    ExitEditor,
+    ResizeView,
+
+    MoveCursor(Direction),
+    LineEnd,
+    LineStart,
+
+    Delete(Direction),
+    InsertTab,
+    InsertLine,
+    InsertChar(char)
+}
 
 enum EventStatus {
     Handled(Response),
@@ -23,6 +41,7 @@ pub struct Editor<'e> {
     pub running: Arc<AtomicBool>,
     pub sender: Sender<rustbox::Event>,
 
+    keymap: KeyMap,
     events: Receiver<rustbox::Event>,
     view: View<'e>,
 }
@@ -30,13 +49,15 @@ pub struct Editor<'e> {
 impl<'e> Editor<'e> {
     pub fn new(source: Input) -> Editor<'e> {
         let view = View::new(source);
-
         let (send, recv) = channel();
+        let keymap = KeyMap::load_defaults();
+
         Editor {
             sender: send,
             events: recv,
             view: view,
             running: Arc::new(AtomicBool::new(false)),
+            keymap: keymap,
         }
     }
 
@@ -131,35 +152,52 @@ impl<'e> Editor<'e> {
         });
     }
 
+    fn handle_command(&mut self, c: Command) {
+        match c {
+            // Editor Commands
+            Command::ExitEditor      => self.running.store(false, Ordering::Relaxed),
+            Command::SaveBuffer      => self.save_active_buffer(),
+            Command::ResizeView      => self.view.resize(),
+
+            // Navigation
+            Command::MoveCursor(dir) => self.view.move_cursor(dir),
+            Command::LineEnd         => self.view.move_cursor_to_line_end(),
+            Command::LineStart       => self.view.move_cursor_to_line_start(),
+
+            // Editing
+            Command::Delete(dir)     => self.view.delete_char(dir),
+            Command::InsertTab       => self.view.insert_tab(),
+            Command::InsertLine      => self.view.insert_line(),
+            Command::InsertChar(c)   => self.view.insert_char(c)
+        }
+    }
+
     fn handle_system_event(&mut self, k: Option<Key>) -> EventStatus {
         let key = match k {
             Some(k) => k,
             None => return EventStatus::NotHandled
         };
 
-        match key {
-            Key::Up        => { self.view.move_cursor(Direction::Up); }
-            Key::Down      => { self.view.move_cursor(Direction::Down); }
-            Key::Left      => { self.view.move_cursor(Direction::Left); }
-            Key::Right     => { self.view.move_cursor(Direction::Right); }
-            Key::Enter     => { self.view.insert_line(); }
-
-            // Tab inserts 4 spaces, rather than a \t
-            Key::Tab       => { self.view.insert_tab(); }
-
-            Key::Backspace => { self.view.delete_char(Direction::Left); }
-            Key::Delete    => { self.view.delete_char(Direction::Right); }
-            Key::CtrlS     => { self.save_active_buffer(); }
-            Key::CtrlQ     => { return EventStatus::Handled(Response::Quit) }
-            Key::CtrlR     => { self.view.resize(); }
-
-            Key::Char(c)   => { self.view.insert_char(c) }
-
-            // default
-            _              => { return EventStatus::NotHandled }
+        // send key to the keymap
+        match self.keymap.check_key(key) {
+            KeyMapState::Match(command) => {
+                self.handle_command(command);
+                return EventStatus::Handled(Response::Continue)
+            },
+            KeyMapState::Continue => {
+                // keep going and wait for more keypresses
+                return EventStatus::Handled(Response::Continue) 
+            },
+            KeyMapState::None => {}  // do nothing and handle the key normally
         }
-        // event is handled and we want to keep the editor running
-        EventStatus::Handled(Response::Continue)
-    }
 
+        // if the key is a character that is not part of a keybinding, insert into the buffer
+        // otherwise, ignore it.
+        if let Key::Char(c) = key {
+            self.view.insert_char(c);
+            EventStatus::Handled(Response::Continue)
+        } else {
+            EventStatus::NotHandled
+        }
+    }
 }

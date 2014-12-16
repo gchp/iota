@@ -1,5 +1,6 @@
 use buffer::Line;
 
+#[deriving(Copy, Show)]
 pub enum Direction {
     Up,
     Down,

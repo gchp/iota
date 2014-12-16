@@ -1,10 +1,7 @@
-#[deriving(Copy)]
+#[deriving(Copy, PartialEq, Eq, Hash)]
 pub enum Key {
     Tab,
     Enter,
-    CtrlQ,
-    CtrlR,
-    CtrlS,
     Esc,
     Backspace,
     Right,
@@ -14,16 +11,28 @@ pub enum Key {
     Delete,
 
     Char(char),
+    Ctrl(char),
 }
 
 impl Key {
     pub fn from_special_code(code: u16) -> Option<Key> {
         match code {
+            1     => Some(Key::Ctrl('a')),
+            2     => Some(Key::Ctrl('b')),
+            3     => Some(Key::Ctrl('c')),
+            4     => Some(Key::Ctrl('d')),
+            5     => Some(Key::Ctrl('e')),
+            6     => Some(Key::Ctrl('f')),
+            7     => Some(Key::Ctrl('g')),
+            8     => Some(Key::Ctrl('h')),
             9     => Some(Key::Tab),
             13    => Some(Key::Enter),
-            17    => Some(Key::CtrlQ),
-            18    => Some(Key::CtrlR),
-            19    => Some(Key::CtrlS),
+            14    => Some(Key::Ctrl('n')),
+            16    => Some(Key::Ctrl('p')),
+            17    => Some(Key::Ctrl('q')),
+            18    => Some(Key::Ctrl('r')),
+            19    => Some(Key::Ctrl('s')),
+            24    => Some(Key::Ctrl('x')),
             27    => Some(Key::Esc),
             32    => Some(Key::Char(' ')),
             127   => Some(Key::Backspace),
