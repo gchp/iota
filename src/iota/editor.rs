@@ -116,7 +116,7 @@ impl<'e> Editor<'e> {
         let sender = self.sender.clone();
         let running = self.running.clone();
 
-        spawn(proc() {
+        spawn(move || {
             while running.load(Ordering::Relaxed) {
                 if sender.send_opt(rustbox::peek_event(1000)).is_err() {
                     running.store(false, Ordering::Relaxed);
