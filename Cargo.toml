@@ -3,8 +3,8 @@ name = "iota"
 version = "0.1.0"
 authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
-[dependencies]
-docopt = "0.6.14"
+[dependencies.docopt]
+git = "https://github.com/docopt/docopt.rs"
 
 [dependencies.rustbox]
 git = "http://github.com/gchp/rustbox"
