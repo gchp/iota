@@ -15,6 +15,7 @@ use view::View;
 
 
 #[deriving(Copy, Show)]
+#[allow(dead_code)]
 pub enum Command {
     SaveBuffer,
     ExitEditor,
@@ -148,7 +149,7 @@ impl<'e> Editor<'e> {
     fn handle_command(&mut self, c: Command) {
         match c {
             // Editor Commands
-            Command::ExitEditor      => *self.running.write() = false,
+            Command::ExitEditor      => self.running.store(false, Ordering::Relaxed),
             Command::SaveBuffer      => self.save_active_buffer(),
             Command::ResizeView      => self.view.resize(),
 

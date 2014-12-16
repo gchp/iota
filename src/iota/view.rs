@@ -162,12 +162,12 @@ impl<'v> View<'v> {
     }
 
     pub fn move_cursor_to_line_end(&mut self) {
-        let eol_offset = self.cursor.get_line().len();
-        self.cursor.set_offset(eol_offset);
+        let eol_offset = self.cursor().get_line().len();
+        self.cursor().set_offset(eol_offset);
     }
 
     pub fn move_cursor_to_line_start(&mut self) {
-        self.cursor.set_offset(0);
+        self.cursor().set_offset(0);
     }
 
     fn move_cursor_right(&mut self) {
