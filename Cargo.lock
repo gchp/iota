@@ -14,7 +14,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "rustbox"
 version = "0.1.0"
-source = "git+http://github.com/gchp/rustbox#9f6ca3c60c9294c8eafcb7198355bc4c98ae7286"
+source = "git+http://github.com/gchp/rustbox#4501d2c583ed1e773f5cae44fee05e214cace0f0"
 dependencies = [
  "termbox-sys 0.0.1 (git+http://github.com/gchp/rustbox)",
 ]
@@ -22,5 +22,5 @@ dependencies = [
 [[package]]
 name = "termbox-sys"
 version = "0.0.1"
-source = "git+http://github.com/gchp/rustbox#9f6ca3c60c9294c8eafcb7198355bc4c98ae7286"
+source = "git+http://github.com/gchp/rustbox#4501d2c583ed1e773f5cae44fee05e214cace0f0"
 
