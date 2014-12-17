@@ -1,5 +1,7 @@
 # Iota [![Build Status](https://travis-ci.org/gchp/iota.svg?branch=master)](https://travis-ci.org/gchp/iota)
 
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/gchp/iota?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Iota is a terminal-based text-editor written in Rust.
 
 ## Screenshot
