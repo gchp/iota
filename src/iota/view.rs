@@ -1,4 +1,4 @@
-extern crate rustbox;
+use rustbox::{Color, RustBox};
 
 use buffer::{Line, Buffer};
 use cursor::Direction;
@@ -53,7 +53,7 @@ pub struct View<'v> {
 }
 
 impl<'v> View<'v> {
-    pub fn new(source: Input) -> View<'v> {
+    pub fn new(source: Input, rb: &RustBox) -> View<'v> {
         let buffer = match source {
             Input::Filename(path) => {
                 match path {
@@ -66,8 +66,8 @@ impl<'v> View<'v> {
             },
         };
 
-        let height: uint = utils::get_term_height();
-        let width: uint = utils::get_term_width();
+        let height: uint = utils::get_term_height(rb);
+        let width: uint = utils::get_term_width(rb);
 
         // NOTE(greg): this may not play well with resizing
         let uibuf = UIBuffer::new(width, height);
@@ -91,9 +91,9 @@ impl<'v> View<'v> {
     /// Clear the buffer
     ///
     /// Fills every cell in the UIBuffer with the space (' ') char.
-    pub fn clear(&mut self) {
+    pub fn clear(&mut self, rb: &RustBox) {
         self.uibuf.fill(' ');
-        self.uibuf.draw_everything();
+        self.uibuf.draw_everything(rb);
     }
 
     pub fn get_height(&self) -> uint {
@@ -105,7 +105,7 @@ impl<'v> View<'v> {
         self.uibuf.get_width()
     }
 
-    pub fn draw(&mut self) {
+    pub fn draw(&mut self, rb: &RustBox) {
         let end_line = self.get_height();
         let num_lines = self.buffer.lines.len();
         let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines);
@@ -116,10 +116,10 @@ impl<'v> View<'v> {
             }
         }
 
-        self.uibuf.draw_everything();
+        self.uibuf.draw_everything(rb);
     }
 
-    pub fn draw_status(&mut self) {
+    pub fn draw_status(&mut self, rb: &RustBox) {
         let buffer_status = self.buffer.get_status_text();
         let cursor_status = self.cursor().get_status_text();
         let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
@@ -133,22 +133,22 @@ impl<'v> View<'v> {
             if index < status_text_len {
                 ch = status_text[index] as char;
             }
-            self.uibuf.update_cell(index, height, ch, rustbox::Color::Black, rustbox::Color::Blue);
+            self.uibuf.update_cell(index, height, ch, Color::Black, Color::Blue);
         }
 
-        self.uibuf.draw_range(height, height+1);
+        self.uibuf.draw_range(rb, height, height+1);
     }
 
-    pub fn draw_cursor(&mut self) {
+    pub fn draw_cursor(&mut self, rb: &RustBox) {
         let offset = self.cursor().get_visible_offset();
         let linenum = self.cursor().get_linenum();
 
-        utils::draw_cursor(offset, linenum-self.top_line_num);
+        utils::draw_cursor(rb, offset, linenum-self.top_line_num);
     }
 
-    pub fn resize(&mut self) {
+    pub fn resize(&mut self, rb: &RustBox) {
         let width = self.uibuf.get_width();
-        self.clear();
+        self.clear(rb);
         self.uibuf = UIBuffer::new(width, 15);
     }
 
@@ -309,7 +309,6 @@ pub fn draw_line(buf: &mut UIBuffer, line: &Line, top_line_num: uint) {
                     // in the line, however this is represented as four chars to the user
                     // the actual cursor position will become separated from the drawn
                     // cursor position.
-                    rustbox::shutdown();
                     panic!("found tab chars - can't process these right now")
                 }
                 _ => {

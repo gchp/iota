@@ -1,5 +1,4 @@
-extern crate rustbox;
-
+use rustbox::{Color, RustBox, Style};
 
 pub struct UIBuffer {
     width: uint,
@@ -18,17 +17,17 @@ impl UIBuffer {
         }
     }
 
-    pub fn draw_range(&self, start: uint, stop: uint) {
+    pub fn draw_range(&self, rb: &RustBox, start: uint, stop: uint) {
         let rows = self.rows.slice(start, stop);
         for row in rows.iter() {
             for cell in row.iter() {
-                rustbox::print_char(cell.x, cell.y, rustbox::Style::Normal, cell.fg, cell.bg, cell.ch);
+                rb.print_char(cell.x, cell.y, Style::empty(), cell.fg, cell.bg, cell.ch);
             }
         }
     }
 
-    pub fn draw_everything(&self) {
-        self.draw_range(0, self.height);
+    pub fn draw_everything(&self, rb: &RustBox) {
+        self.draw_range(rb, 0, self.height);
     }
 
     pub fn get_width(&self) -> uint {
@@ -50,7 +49,7 @@ impl UIBuffer {
     }
 
     /// Update the `ch`, `fg`, and `bg` attributes of an indivudual cell
-    pub fn update_cell(&mut self, cell_num: uint, row_num: uint, ch: char, fg: rustbox::Color, bg: rustbox::Color) {
+    pub fn update_cell(&mut self, cell_num: uint, row_num: uint, ch: char, fg: Color, bg: Color) {
         let cell = self.get_cell_mut(cell_num, row_num);
         cell.ch = ch;
         cell.fg = fg;
@@ -64,8 +63,8 @@ impl UIBuffer {
 
 
 pub struct Cell {
-    pub bg: rustbox::Color,
-    pub fg: rustbox::Color,
+    pub bg: Color,
+    pub fg: Color,
     pub ch: char,
     pub x: uint,
     pub y: uint,
@@ -75,8 +74,8 @@ pub struct Cell {
 impl Cell {
     pub fn new() -> Cell {
         Cell {
-            bg: rustbox::Color::Default,
-            fg: rustbox::Color::Default,
+            bg: Color::Default,
+            fg: Color::Default,
             ch: ' ',
             x: 0,
             y: 0,
@@ -104,10 +103,8 @@ impl Cell {
 
 #[cfg(test)]
 mod tests {
-
-    extern crate rustbox;
-
     use uibuf::UIBuffer;
+    use rustbox::Color;
 
     fn setup_uibuf() -> UIBuffer {
         UIBuffer::new(50, 50)
@@ -147,8 +144,8 @@ mod tests {
         let cell_num = 10u;
         let row_num = 0u;
         let ch = 'q';
-        let fg = rustbox::Color::Red;
-        let bg = rustbox::Color::Blue;
+        let fg = Color::Red;
+        let bg = Color::Blue;
 
         uibuf.update_cell(cell_num, row_num, ch, fg, bg);
 

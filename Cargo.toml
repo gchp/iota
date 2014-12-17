@@ -3,6 +3,9 @@ name = "iota"
 version = "0.1.0"
 authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
+[dependencies]
+lazy_static = "0.1.1"
+
 [dependencies.docopt]
 git = "https://github.com/docopt/docopt.rs"
 

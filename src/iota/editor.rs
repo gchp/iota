@@ -1,11 +1,8 @@
-extern crate rustbox;
-
-use std::comm::{Receiver, Sender};
+use rustbox::{Event, RustBox};
+use std::borrow::Cow;
 use std::char;
 use std::io::{fs, File, FileMode, FileAccess, TempDir};
-use std::sync::Arc;
-use std::sync::atomic::{Ordering, AtomicBool};
-use std::borrow::Cow;
+use std::time::duration::Duration;
 
 use super::Response;
 use input::Input;
@@ -39,25 +36,19 @@ enum EventStatus {
 
 
 pub struct Editor<'e> {
-    pub running: Arc<AtomicBool>,
-    pub sender: Sender<rustbox::Event>,
-
     keymap: KeyMap,
-    events: Receiver<rustbox::Event>,
     view: View<'e>,
+    rb: &'e RustBox,
 }
 
 impl<'e> Editor<'e> {
-    pub fn new(source: Input) -> Editor<'e> {
-        let view = View::new(source);
-        let (send, recv) = channel();
+    pub fn new(source: Input, rb: &'e RustBox) -> Editor<'e> {
+        let view = View::new(source, rb);
         let keymap = KeyMap::load_defaults();
 
         Editor {
-            sender: send,
-            events: recv,
             view: view,
-            running: Arc::new(AtomicBool::new(false)),
+            rb: rb,
             keymap: keymap,
         }
     }
@@ -113,52 +104,32 @@ impl<'e> Editor<'e> {
     }
 
     pub fn draw(&mut self) {
-        self.view.draw();
-        self.view.draw_status();
-        self.view.draw_cursor();
+        self.view.draw(self.rb);
+        self.view.draw_status(self.rb);
+        self.view.draw_cursor(self.rb);
     }
 
     pub fn start(&mut self) {
-        // Synchronizes with transfer across thread boundary
-        self.running.store(true, Ordering::Relaxed);
-        self.event_loop();
-        self.main_loop();
-    }
-
-    fn main_loop(&mut self) {
-        while self.running.load(Ordering::Relaxed) {
-            self.view.clear();
+        loop {
+            self.view.clear(self.rb);
             self.draw();
-            rustbox::present();
-            if let rustbox::Event::KeyEvent(_, key, ch) = self.events.recv() {
+            self.rb.present();
+            let event = self.rb.peek_event(Duration::milliseconds(1000)).unwrap();
+            if let Event::KeyEvent(_, key, ch) = event {
                 if let Response::Quit = self.handle_key_event(key, ch) {
-                    // Okay if it doesn't quit immediately.
-                    self.running.store(false, Ordering::Relaxed);
+                    break;
                 }
             }
+
         }
     }
 
-    fn event_loop(&self) {
-        // clone the sender so that we can use it in the proc
-        let sender = self.sender.clone();
-        let running = self.running.clone();
-
-        spawn(move || {
-            while running.load(Ordering::Relaxed) {
-                if sender.send_opt(rustbox::peek_event(1000)).is_err() {
-                    running.store(false, Ordering::Relaxed);
-                }
-            }
-        });
-    }
-
-    fn handle_command(&mut self, c: Command) {
+    fn handle_command(&mut self, c: Command) -> Response {
         match c {
             // Editor Commands
-            Command::ExitEditor      => self.running.store(false, Ordering::Relaxed),
+            Command::ExitEditor      => return Response::Quit,
             Command::SaveBuffer      => self.save_active_buffer(),
-            Command::ResizeView      => self.view.resize(),
+            Command::ResizeView      => self.view.resize(self.rb),
 
             // Navigation
             Command::MoveCursor(dir) => self.view.move_cursor(dir),
@@ -171,6 +142,7 @@ impl<'e> Editor<'e> {
             Command::InsertLine      => self.view.insert_line(),
             Command::InsertChar(c)   => self.view.insert_char(c)
         }
+        Response::Continue
     }
 
     fn handle_system_event(&mut self, k: Option<Key>) -> EventStatus {
@@ -182,8 +154,7 @@ impl<'e> Editor<'e> {
         // send key to the keymap
         match self.keymap.check_key(key) {
             KeyMapState::Match(command) => {
-                self.handle_command(command);
-                return EventStatus::Handled(Response::Continue)
+                return EventStatus::Handled(self.handle_command(command));
             },
             KeyMapState::Continue => {
                 // keep going and wait for more keypresses
