@@ -2,7 +2,6 @@ use rustbox::{Event, RustBox};
 use std::borrow::Cow;
 use std::char;
 use std::io::{fs, File, FileMode, FileAccess, TempDir};
-use std::time::duration::Duration;
 
 use super::Response;
 use input::Input;
@@ -114,7 +113,7 @@ impl<'e> Editor<'e> {
             self.view.clear(self.rb);
             self.draw();
             self.rb.present();
-            let event = self.rb.peek_event(Duration::milliseconds(1000)).unwrap();
+            let event = self.rb.poll_event().unwrap();
             if let Event::KeyEvent(_, key, ch) = event {
                 if let Response::Quit = self.handle_key_event(key, ch) {
                     break;
