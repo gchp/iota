@@ -1,6 +1,8 @@
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 
+extern crate rustbox;
+
 pub use editor::Editor;
 pub use input::Input;
 

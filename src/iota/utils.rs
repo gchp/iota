@@ -1,17 +1,17 @@
-extern crate rustbox;
+use rustbox::RustBox;
 
-pub fn draw_cursor(x: uint, y: uint) {
+pub fn draw_cursor(rb: &RustBox, x: uint, y: uint) {
     let x = x.to_int().unwrap();
     let y = y.to_int().unwrap();
-    rustbox::set_cursor(x, y);
+    rb.set_cursor(x, y);
 }
 
-pub fn get_term_height() -> uint {
-    rustbox::height()
+pub fn get_term_height(rb: &RustBox) -> uint {
+    rb.height()
 }
 
-pub fn get_term_width() -> uint {
-    rustbox::width()
+pub fn get_term_width(rb: &RustBox) -> uint {
+    rb.width()
 }
 
 #[cfg(test)]
