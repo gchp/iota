@@ -38,9 +38,13 @@ impl UIBuffer {
         self.height
     }
 
-    /// Recreated the entire grid, will cells containing `ch`.
+    /// Set all cells to `ch`.
     pub fn fill(&mut self, ch: char) {
-        self.rows = Cell::create_grid(self.width, self.height, ch);
+        for row in range(0, self.height) {
+            for col in range(0, self.width) {
+                self.rows[row][col].ch = ch
+            }
+        }
     }
 
     /// Update the `ch` attribute of an individual cell
