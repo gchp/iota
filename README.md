@@ -4,11 +4,32 @@
 
 Iota is a terminal-based text-editor written in Rust.
 
-## Screenshot
-
 Here's what it looks like right now, editing itself.
 
 ![Screenshot](https://raw.githubusercontent.com/gchp/iota/master/screenshot.png)
+
+## Motivation
+
+Iota was born out of my frustrations with existing text editors. Over the years I've tried
+combinations of simple text editors, IDEs and everything in between. None of them felt right
+to me, however. Some were too slow & bulky, others were too difficult to customise and still
+others were platform specific and I couldn't use them on all my machines.
+
+I started building Iota with the view of combining ideas and features from serveral different
+editors while designing it to work on modern hardware.
+
+## Goals
+
+The goals for Iota are that it would be:
+
+- 100% open source
+- highly extensible/customisable
+- fast & efficient - designed with modern hardware in mind
+- cross platform - it should work anywhere
+- developer friendly - it should just "get out of the way"
+
+Iota is still in the very early stages, and is probably not ready for every day use.
+Right now the focus is on implementing and polishing the basic editing functionality.
 
 ## Usage
 
