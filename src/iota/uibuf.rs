@@ -44,7 +44,7 @@ impl UIBuffer {
     pub fn fill(&mut self, ch: char) {
         for row in range(0, self.height) {
             for col in range(0, self.width) {
-                self.rows[row][col].set_char(ch)
+                self.update_cell_content(col, row, ch);
             }
         }
     }
