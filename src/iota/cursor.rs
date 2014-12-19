@@ -130,7 +130,7 @@ impl<'c> Cursor<'c> {
 
     pub fn get_status_text(&self) -> String {
         let (offset, line_num) = self.get_position();
-        format!("({}, {})", offset, line_num)
+        format!("({}, {})", offset + 1, line_num + 1)
     }
 }
 
@@ -256,7 +256,7 @@ mod tests {
     #[test]
     fn test_get_status_text() {
         setup_cursor( |cursor| {
-            assert_eq!(cursor.get_status_text(), "(0, 1)".to_string());
+            assert_eq!(cursor.get_status_text(), "(1, 2)".to_string());
         } );
     }
 
