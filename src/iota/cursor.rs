@@ -262,4 +262,11 @@ mod tests {
         } );
     }
 
+    #[test]
+    fn test_tab_width() {
+        let ref mut line = Line::new(data_from_str("a\ttest"), 1);
+        let cursor = Cursor::new(line, 2);
+        assert_eq!(cursor.get_visible_offset(), 4)
+    }
+
 }
