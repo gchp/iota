@@ -223,6 +223,17 @@ impl<'v> View<'v> {
     }
 
     fn set_cursor_line<'b>(&'b mut self, linenum: uint) {
+        let vis_width = self.cursor().get_visible_offset();
+        let mut offset = 0;
+        let mut vis_acc = 0;
+        let line = &*self.buffer.lines[linenum].data;
+        for _ in line.char_indices().take_while(|&(i, c)| {
+            offset = line.char_range_at(i).next;
+            vis_acc += ::utils::char_width(c, false, 4, vis_acc).unwrap_or(0);
+            vis_acc < vis_width
+        }) {}
+        if self.offset == 0 { offset = 0 }
+        self.offset = offset;
         self.linenum = linenum;
     }
 
