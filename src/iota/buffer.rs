@@ -1,3 +1,9 @@
+#![feature(slicing_syntax)]
+
+//TODO: UTF8 support
+//TODO: Save cursor x offset as it traverses up/down
+//TODO: Write tests
+
 extern crate gapbuffer;
 
 use std::io::{File, Reader, BufferedReader};
@@ -5,23 +11,62 @@ use gapbuffer::GapBuffer;
 
 #[deriving(Copy, Show)]
 pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
+    Up, Down, Left, Right,
 }
 
 pub struct Buffer {
     pub file_path: Option<Path>,
-    pub text: GapBuffer<u8>,
+    pub text: GapBuffer<char>,
     pub cursor: uint,
 }
 
+//Private methods
+impl Buffer {
+
+    //Returns the number of newlines in the buffer before the mark.
+    fn get_line(&self, mark: uint) -> Option<uint> {
+        let mut linenum = 0;
+        if mark < self.text.len() {
+            for c in self.text[0..mark].iter() {
+                if c == &'\n' { linenum += 1; }
+            }
+            Some(linenum)
+        } else { None }
+    }
+
+    //Returns the index of the nth newline in the buffer.
+    fn get_line_idx(&self, line: uint) -> Option<uint> {
+        let mut linenum = 0;
+        for idx in range(0, self.text.len()) {
+            if self.text[idx] == '\n' { linenum += 1; if linenum == line { return Some(idx) } }
+        }
+        None
+    }
+
+    //Returns the index of the point the mark would be at if shifted 'offset' lines.
+    fn move_line(&self, mark: uint, offset: int) -> Option<uint> {
+        let mut x_offset = 1;
+        loop {
+            match self.text[0..mark].iter().next_back() {
+                Some(&'\n') | None => { break; }
+                _                  => { x_offset += 1; }
+            }
+        }
+        if let Some(line) = self.get_line(mark) {
+            let newline = (line as int - offset) as uint;
+            Some(self.get_line_idx(newline).unwrap() + x_offset)
+        } else { None } 
+    }
+
+
+}
+
+//Public methods
 impl Buffer {
 
     /// Constructor for empty buffer.
     pub fn new() -> Buffer {
-        let text: GapBuffer<u8> = GapBuffer::new();
+        let text = GapBuffer::new();
         Buffer {
             file_path: None,
             text: text,
@@ -65,21 +110,20 @@ impl Buffer {
     //Shift the cursor by one in any of the four directions.
     pub fn shift_cursor(&mut self, direction: Direction) {
         match direction {
-            Direction::Up /*if not the first line.*/            => {
-                //up code
+            Direction::Up if self.get_line(self.cursor).unwrap() > 0             => {
+                self.move_line(self.cursor, -1);
             }
-            Direction::Down /*if not the last line.*/           => {
-                //down code
+            Direction::Down
+            if self.get_line(self.cursor) < self.get_line(self.text.len() - 1)  => {
+                self.move_line(self.cursor, 1);
             }
-            Direction::Left if self.cursor > 0                  => {
-                //needs to be changed for proper utf8 support?
+            Direction::Left if self.cursor > 0                                  => {
                 self.cursor -= 1;
             }
-            Direction::Right if self.cursor < self.text.len()   => {
-                //needs to be changed for proper utf8 support?
+            Direction::Right if self.cursor < self.text.len()                   => {
                 self.cursor += 1;
             }
-            _ => { break; }
+            _ => { }
         }
     }
 
@@ -93,4 +137,9 @@ impl Buffer {
         self.text.insert(self.cursor, c);
     }
 
+}
+
+#[cfg(test)]
+mod test {
+    
 }
