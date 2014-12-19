@@ -18,3 +18,13 @@ pub fn get_term_width(rb: &RustBox) -> uint {
 pub fn data_from_str(s: &'static str) -> String {
     s.into_string()
 }
+
+pub fn str_width(s: &str, is_cjk: bool, tab_width: uint) -> uint {
+    s.chars().fold(0, |acc, c|
+        acc + if c == '\t' {
+            tab_width - acc%tab_width
+        } else {
+            c.width(is_cjk).unwrap_or(0)
+        }
+    )
+}

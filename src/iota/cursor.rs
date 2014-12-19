@@ -60,7 +60,7 @@ impl<'c> Cursor<'c> {
     }
 
     pub fn get_visible_offset(&self) -> uint {
-        self.get_line().data.slice_to(self.get_offset()).width(false)
+        ::utils::str_width(self.get_line().data.slice_to(self.get_offset()), false, 4)
     }
 
     pub fn set_offset(&mut self, offset: uint) {
