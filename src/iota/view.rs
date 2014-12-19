@@ -222,6 +222,17 @@ impl<'v> View<'v> {
     }
 
     fn set_cursor_line<'b>(&'b mut self, linenum: uint) {
+        let vis_width = self.cursor().get_visible_offset();
+        let mut offset = 0;
+        let mut vis_acc = 0;
+        let line = &*self.buffer.lines[linenum].data;
+        for _ in line.char_indices().take_while(|&(i, c)| {
+            offset = line.char_range_at(i).next;
+            vis_acc += ::utils::char_width(c, false, 4, vis_acc).unwrap_or(0);
+            vis_acc < vis_width
+        }) {}
+        if self.offset == 0 { offset = 0 }
+        self.offset = offset;
         self.linenum = linenum;
     }
 
@@ -302,20 +313,18 @@ pub fn draw_line(buf: &mut UIBuffer, line: &Line, top_line_num: uint) {
         if internal_index < width {
             match ch {
                 '\t' => {
-                    // todo(greg): draw four spaces
-                    // need to update how the cursor is rendered before doing this
-                    // think about what will happen if the cursor sees a single '\t' char
-                    // in the line, however this is represented as four chars to the user
-                    // the actual cursor position will become separated from the drawn
-                    // cursor position.
-                    panic!("found tab chars - can't process these right now")
+                    let w = 4 - internal_index%4;
+                    for _ in range(0, w) {
+                        buf.update_cell_content(internal_index, index, ' ');
+                        internal_index += 1;
+                    }
                 }
                 _ => {
                     // draw the character
                     buf.update_cell_content(internal_index, index, ch);
+                    internal_index += ch.width(false).unwrap_or(1);
                 }
             }
-            internal_index += ch.width(false).unwrap_or(1);
         }
 
         // if the line is longer than the width of the view, draw a special char

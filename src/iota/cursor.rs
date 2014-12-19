@@ -57,7 +57,7 @@ impl<'c> Cursor<'c> {
     }
 
     pub fn get_visible_offset(&self) -> uint {
-        self.get_line().data.slice_to(self.get_offset()).width(false)
+        ::utils::str_width(self.get_line().data.slice_to(self.get_offset()), false, 4)
     }
 
     pub fn set_offset(&mut self, offset: uint) {
@@ -258,6 +258,13 @@ mod tests {
         setup_cursor( |cursor| {
             assert_eq!(cursor.get_status_text(), "(0, 1)".to_string());
         } );
+    }
+
+    #[test]
+    fn test_tab_width() {
+        let ref mut line = Line::new(data_from_str("a\ttest"), 1);
+        let cursor = Cursor::new(line, 2);
+        assert_eq!(cursor.get_visible_offset(), 4)
     }
 
 }
