@@ -121,7 +121,7 @@ impl Buffer {
     fn split_line(&mut self, offset: uint, line_num: uint) -> (String, String) {
         let line = self.get_line_at(line_num).unwrap();
 
-        let data = line.data.clone();
+        let data = &line.data;
         let old_data = data.slice_to(offset);
         let new_data = data.slice_from(offset);
 
