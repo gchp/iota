@@ -31,7 +31,7 @@ impl<'a> Drop for CursorGuard<'a> {
     fn drop(&mut self) {
         // Update line number and offset
         *self.linenum = self.cursor.get_linenum();
-        *self.offset = self.cursor.get_offset();
+        *self.offset = self.cursor.get_actual_offset();
     }
 }
 
@@ -162,8 +162,7 @@ impl<'v> View<'v> {
     }
 
     pub fn move_cursor_to_line_end(&mut self) {
-        let eol_offset = self.cursor().get_line().len();
-        self.cursor().set_offset(eol_offset);
+        self.cursor().set_offset(::std::uint::MAX);
     }
 
     pub fn move_cursor_to_line_start(&mut self) {
