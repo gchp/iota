@@ -38,7 +38,10 @@ impl Buffer {
     fn get_line_idx(&self, line: uint) -> Option<uint> {
         let mut linenum = 0;
         for idx in range(0, self.text.len()) {
-            if self.text[idx] == '\n' { linenum += 1; if linenum == line { return Some(idx) } }
+            if self.text[idx] == '\n' {
+                linenum += 1;
+                if linenum == line { return Some(idx) }
+            }
         }
         None
     }
@@ -89,9 +92,7 @@ impl Buffer {
             let mut buff = Buffer::new_from_reader(file);
             buff.file_path = Some(path);
             buff
-        } else {
-            Buffer::new()
-        }
+        } else { Buffer::new() }
     }
 
     //Move the cursor by some amount (can be negative).
@@ -110,17 +111,17 @@ impl Buffer {
     //Shift the cursor by one in any of the four directions.
     pub fn shift_cursor(&mut self, direction: Direction) {
         match direction {
-            Direction::Up if self.get_line(self.cursor).unwrap() > 0             => {
-                self.move_line(self.cursor, -1);
+            Direction::Up if self.get_line(self.cursor).unwrap() > 0 => {
+                self.cursor = self.move_line(self.cursor, -1);
             }
             Direction::Down
-            if self.get_line(self.cursor) < self.get_line(self.text.len() - 1)  => {
-                self.move_line(self.cursor, 1);
+            if self.get_line(self.cursor) < self.get_line(self.text.len() - 1) => {
+                self.cursor = self.move_line(self.cursor, 1);
             }
-            Direction::Left if self.cursor > 0                                  => {
+            Direction::Left if self.cursor > 0 => {
                 self.cursor -= 1;
             }
-            Direction::Right if self.cursor < self.text.len()                   => {
+            Direction::Right if self.cursor < self.text.len() => {
                 self.cursor += 1;
             }
             _ => { }
