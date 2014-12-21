@@ -1,4 +1,5 @@
 use buffer::Line;
+use std::cmp;
 
 #[deriving(Copy, Show)]
 pub enum Direction {
@@ -33,22 +34,14 @@ pub struct Cursor<'c> {
 impl<'c> Cursor<'c> {
     /// Create a new cursor instance
     pub fn new(line: &'c mut Line, offset: uint) -> Cursor<'c> {
-        let mut cursor = Cursor {
+        Cursor {
             offset: offset,
             line: line,
-        };
-
-        // check that the current offset is longer than the length of the line
-        let offset = cursor.get_offset();
-        let line_length = cursor.get_line().len();
-        if offset > line_length {
-            cursor.set_offset(line_length);
         }
-        cursor
     }
 
     pub fn get_position(&self) -> (uint, uint) {
-        (self.offset, self.get_linenum())
+        (self.get_offset(), self.get_linenum())
     }
 
     pub fn get_linenum(&self) -> uint {
@@ -56,11 +49,15 @@ impl<'c> Cursor<'c> {
     }
 
     pub fn get_offset(&self) -> uint {
+        cmp::min(self.line.len(), self.offset)
+    }
+
+    pub fn get_actual_offset(&self) -> uint {
         self.offset
     }
 
     pub fn get_visible_offset(&self) -> uint {
-        self.get_line().data.slice_to(self.get_offset()).width(false)
+        ::utils::str_width(self.get_line().data.slice_to(self.get_offset()), false, 4)
     }
 
     pub fn set_offset(&mut self, offset: uint) {
@@ -73,7 +70,7 @@ impl<'c> Cursor<'c> {
     /// byte long. This function calculates the width of the current codepoint and increments the
     /// offset by that width, ensuring that the cursor will always be on a character boundary.
     pub fn inc_offset(&mut self) {
-        let range = self.get_line().data.char_range_at(self.offset);
+        let range = self.get_line().data.char_range_at(self.get_offset());
         self.set_offset(range.next);
     }
 
@@ -81,7 +78,7 @@ impl<'c> Cursor<'c> {
     ///
     /// See `inc_offset` for why this method is needed.
     pub fn dec_offset(&mut self) {
-        let range = self.get_line().data.char_range_at_reverse(self.offset);
+        let range = self.get_line().data.char_range_at_reverse(self.get_offset());
         self.set_offset(range.next);
     }
 
@@ -99,7 +96,7 @@ impl<'c> Cursor<'c> {
 
     pub fn delete_backward_char(&mut self) {
         let offset = self.get_offset();
-        let range = self.get_line().data.char_range_at_reverse(self.offset);
+        let range = self.get_line().data.char_range_at_reverse(self.get_offset());
         let back = self.offset - range.next;
         self.dec_offset();
         self.get_line_mut().data.remove(offset-back);
@@ -133,7 +130,7 @@ impl<'c> Cursor<'c> {
 
     pub fn get_status_text(&self) -> String {
         let (offset, line_num) = self.get_position();
-        format!("({}, {})", offset, line_num)
+        format!("({}, {})", offset + 1, line_num + 1)
     }
 }
 
@@ -208,7 +205,8 @@ mod tests {
         let ref mut line = Line::new(data_from_str("test"), 1);
         let cursor = Cursor::new(line, 10);
 
-        assert_eq!(cursor.offset, 4);
+        assert_eq!(cursor.offset, 10);
+        assert_eq!(cursor.get_offset(), 4);
     }
 
     #[test]
@@ -258,8 +256,15 @@ mod tests {
     #[test]
     fn test_get_status_text() {
         setup_cursor( |cursor| {
-            assert_eq!(cursor.get_status_text(), "(0, 1)".to_string());
+            assert_eq!(cursor.get_status_text(), "(1, 2)".to_string());
         } );
+    }
+
+    #[test]
+    fn test_tab_width() {
+        let ref mut line = Line::new(data_from_str("a\ttest"), 1);
+        let cursor = Cursor::new(line, 2);
+        assert_eq!(cursor.get_visible_offset(), 4)
     }
 
 }

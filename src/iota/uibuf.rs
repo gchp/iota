@@ -17,17 +17,19 @@ impl UIBuffer {
         }
     }
 
-    pub fn draw_range(&self, rb: &RustBox, start: uint, stop: uint) {
-        let rows = self.rows.slice(start, stop);
-        for row in rows.iter() {
-            for cell in row.iter() {
+    pub fn draw_range(&mut self, rb: &RustBox, start: uint, stop: uint) {
+        let rows = self.rows.slice_mut(start, stop);
+        for row in rows.iter_mut() {
+            for cell in row.iter_mut().filter(|cell| cell.dirty) {
                 rb.print_char(cell.x, cell.y, Style::empty(), cell.fg, cell.bg, cell.ch);
+                cell.dirty = false;
             }
         }
     }
 
-    pub fn draw_everything(&self, rb: &RustBox) {
-        self.draw_range(rb, 0, self.height);
+    pub fn draw_everything(&mut self, rb: &RustBox) {
+        let height = self.height;
+        self.draw_range(rb, 0, height);
     }
 
     pub fn get_width(&self) -> uint {
@@ -38,22 +40,23 @@ impl UIBuffer {
         self.height
     }
 
-    /// Recreated the entire grid, will cells containing `ch`.
+    /// Set all cells to `ch`.
     pub fn fill(&mut self, ch: char) {
-        self.rows = Cell::create_grid(self.width, self.height, ch);
+        for row in range(0, self.height) {
+            for col in range(0, self.width) {
+                self.update_cell_content(col, row, ch);
+            }
+        }
     }
 
     /// Update the `ch` attribute of an individual cell
     pub fn update_cell_content(&mut self, cell_num: uint, row_num: uint, ch: char) {
-        self.rows[row_num][cell_num].ch = ch
+        self.rows[row_num][cell_num].set_char(ch);
     }
 
     /// Update the `ch`, `fg`, and `bg` attributes of an indivudual cell
     pub fn update_cell(&mut self, cell_num: uint, row_num: uint, ch: char, fg: Color, bg: Color) {
-        let cell = self.get_cell_mut(cell_num, row_num);
-        cell.ch = ch;
-        cell.fg = fg;
-        cell.bg = bg;
+        self.get_cell_mut(cell_num, row_num).set(ch, fg, bg);
     }
 
     pub fn get_cell_mut(&mut self, cell_num: uint, row_num: uint) -> &mut Cell {
@@ -68,6 +71,7 @@ pub struct Cell {
     pub ch: char,
     pub x: uint,
     pub y: uint,
+    pub dirty: bool
 }
 
 
@@ -79,7 +83,24 @@ impl Cell {
             ch: ' ',
             x: 0,
             y: 0,
+            dirty: true
         }
+    }
+
+    pub fn set_char(&mut self, ch: char) {
+        if self.ch != ch {
+            self.dirty = true;
+            self.ch = ch;
+        }
+    }
+
+    pub fn set(&mut self, ch: char, fg: Color, bg: Color) {
+        if self.ch != ch || self.fg != fg || self.bg != bg {
+            self.dirty = true;
+        }
+        self.ch = ch;
+        self.fg = fg;
+        self.bg = bg;
     }
 
     pub fn create_grid(width: uint, height: uint, ch: char) -> Vec<Vec<Cell>> {
