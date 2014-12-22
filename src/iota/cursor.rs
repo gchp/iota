@@ -110,7 +110,7 @@ impl<'c> Cursor<'c> {
     pub fn insert_char(&mut self, ch: char) {
         let offset = self.get_offset();
         self.get_line_mut().data.insert(offset, ch);
-        self.inc_offset();
+        self.move_right();
     }
 
     pub fn move_right(&mut self) {
