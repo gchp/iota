@@ -95,11 +95,8 @@ impl<'c> Cursor<'c> {
     }
 
     pub fn delete_backward_char(&mut self) {
-        let offset = self.get_offset();
-        let range = self.get_line().data.char_range_at_reverse(self.get_offset());
-        let back = self.offset - range.next;
-        self.dec_offset();
-        self.get_line_mut().data.remove(offset-back);
+        self.move_left();
+        self.delete_forward_char();
     }
 
     pub fn delete_forward_char(&mut self) {
