@@ -60,7 +60,7 @@ ifconfig | ./target/iota
 You can move the cursor around with the arrow keys.
 
 To save, press `Ctrl-s`.
-To exit, press `Ctrl-q`, followed by `Ctrl-c`.
+To exit, press `Ctrl-q`.
 
 Iota currently supports Emacs-style keybindings for simple movement.
 
