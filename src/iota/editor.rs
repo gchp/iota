@@ -8,6 +8,7 @@ use input::Input;
 use cursor::Direction;
 use keyboard::Key;
 use keymap::{ KeyMap, KeyMapState };
+use log::LogEntries;
 use view::View;
 
 
@@ -25,7 +26,10 @@ pub enum Command {
     Delete(Direction),
     InsertTab,
     InsertLine,
-    InsertChar(char)
+    InsertChar(char),
+
+    Undo,
+    Redo,
 }
 
 enum EventStatus {
@@ -38,6 +42,8 @@ pub struct Editor<'e> {
     keymap: KeyMap,
     view: View<'e>,
     rb: &'e RustBox,
+    /// Undo / redo log
+    log: LogEntries,
 }
 
 impl<'e> Editor<'e> {
@@ -49,6 +55,7 @@ impl<'e> Editor<'e> {
             view: view,
             rb: rb,
             keymap: keymap,
+            log: LogEntries::new(),
         }
     }
 
@@ -136,10 +143,36 @@ impl<'e> Editor<'e> {
             Command::LineStart       => self.view.move_cursor_to_line_start(),
 
             // Editing
-            Command::Delete(dir)     => self.view.delete_char(dir),
-            Command::InsertTab       => self.view.insert_tab(),
-            Command::InsertLine      => self.view.insert_line(),
-            Command::InsertChar(c)   => self.view.insert_char(c)
+            Command::Delete(dir)     => {
+                let Editor {ref mut log, ref mut view, .. } = *self;
+                let mut transaction = log.start(view.cursor_data);
+                view.delete_char(&mut transaction, dir);
+            },
+            Command::InsertTab       => {
+                let Editor {ref mut log, ref mut view, .. } = *self;
+                let mut transaction = log.start(view.cursor_data);
+                view.insert_tab(&mut transaction);
+            },
+            Command::InsertLine      => {
+                let Editor {ref mut log, ref mut view, .. } = *self;
+                let mut transaction = log.start(view.cursor_data);
+                view.insert_line(&mut transaction);
+            },
+            Command::InsertChar(c)   => {
+                let Editor {ref mut log, ref mut view, .. } = *self;
+                let mut transaction = log.start(view.cursor_data);
+                view.insert_char(&mut transaction, c);
+            },
+            Command::Redo => {
+                if let Some(entry) = self.log.redo() {
+                    self.view.replay(entry);
+                }
+            }
+            Command::Undo            => {
+                if let Some(entry) = self.log.undo() {
+                    self.view.replay(entry);
+                }
+            }
         }
         Response::Continue
     }
@@ -157,7 +190,7 @@ impl<'e> Editor<'e> {
             },
             KeyMapState::Continue => {
                 // keep going and wait for more keypresses
-                return EventStatus::Handled(Response::Continue) 
+                return EventStatus::Handled(Response::Continue)
             },
             KeyMapState::None => {}  // do nothing and handle the key normally
         }
@@ -165,7 +198,9 @@ impl<'e> Editor<'e> {
         // if the key is a character that is not part of a keybinding, insert into the buffer
         // otherwise, ignore it.
         if let Key::Char(c) = key {
-            self.view.insert_char(c);
+            let Editor {ref mut log, ref mut view, .. } = *self;
+            let mut transaction = log.start(view.cursor_data);
+            view.insert_char(&mut transaction, c);
             EventStatus::Handled(Response::Continue)
         } else {
             EventStatus::NotHandled
