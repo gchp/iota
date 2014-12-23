@@ -53,8 +53,8 @@ to open an empty buffer.
 You can also create buffers from `stdin`.
 
 ```bash
-# open a buffer with the output of `ls`
-ls | ./target/iota
+# open a buffer with the output of `ifconfig`
+ifconfig | ./target/iota
 ```
 
 You can move the cursor around with the arrow keys.
