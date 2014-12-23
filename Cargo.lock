@@ -2,14 +2,14 @@
 name = "iota"
 version = "0.1.0"
 dependencies = [
- "docopt 0.6.15 (git+https://github.com/docopt/docopt.rs)",
+ "gapbuffer 0.0.1 (git+https://github.com/dlaronson/gapbuffer)",
  "rustbox 0.2.0 (git+https://github.com/gchp/rustbox)",
 ]
 
 [[package]]
-name = "docopt"
-version = "0.6.15"
-source = "git+https://github.com/docopt/docopt.rs#6f2da7c4033cec2ac67b74fa473343e3889bda5c"
+name = "gapbuffer"
+version = "0.0.1"
+source = "git+https://github.com/dlaronson/gapbuffer#91de41e52161257802a99b56c0a2e45eae3c7729"
 
 [[package]]
 name = "rustbox"

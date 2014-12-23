@@ -5,7 +5,7 @@ use std::io::{fs, File, FileMode, FileAccess, TempDir};
 
 use super::Response;
 use input::Input;
-use cursor::Direction;
+use buffer::Direction;
 use keyboard::Key;
 use keymap::{ KeyMap, KeyMapState };
 use view::View;
@@ -138,7 +138,6 @@ impl<'e> Editor<'e> {
             // Editing
             Command::Delete(dir)     => self.view.delete_char(dir),
             Command::InsertTab       => self.view.insert_tab(),
-            Command::InsertLine      => self.view.insert_line(),
             Command::InsertChar(c)   => self.view.insert_char(c)
         }
         Response::Continue

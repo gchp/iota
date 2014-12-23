@@ -2,7 +2,7 @@ use std::collections::{ HashMap };
 
 use keyboard::Key;
 use editor::Command;
-use cursor::Direction;
+use buffer::Direction;
 
 pub enum Trie {
     Leaf(Command),
@@ -152,7 +152,7 @@ impl KeyMap {
 
         // Editing
         keymap.bind_key(Key::Tab, Command::InsertTab);
-        keymap.bind_key(Key::Enter, Command::InsertLine);
+        keymap.bind_key(Key::Enter, Command::InsertChar('\n'));
         keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left));
         keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left));
         keymap.bind_key(Key::Delete, Command::Delete(Direction::Right));

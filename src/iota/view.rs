@@ -1,6 +1,6 @@
 use rustbox::{Color, RustBox};
 
-use buffer::{Direction, Buffer};
+use buffer::{Buffer, Direction, Mark};
 use input::Input;
 use uibuf::UIBuffer;
 
@@ -13,17 +13,15 @@ use utils;
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
 pub struct View<'v> {
-    pub buffer: Buffer,
-    // the line number of the topmost `Line` for the View to render
-    pub top_line_num: uint,
-    pub linenum: uint,
-    pub offset: uint,
-
-    uibuf: UIBuffer,
-    threshold: int,
+    buffer: Buffer,         //Text buffer
+    first_char: Mark,       //First character to be displayed
+    cursor: Mark,           //Cursor displayed by this buffer.
+    uibuf: UIBuffer,        //UIBuffer
 }
 
 impl<'v> View<'v> {
+
+    //----- CONSTRUCTORS ---------------------------------------------------------------------------
 
     pub fn new(source: Input, rb: &RustBox) -> View<'v> {
         let buffer = match source {
@@ -44,23 +42,20 @@ impl<'v> View<'v> {
         // NOTE(greg): this may not play well with resizing
         let uibuf = UIBuffer::new(width, height);
 
+        let cursor = Mark::Cursor(0);
+        buffer.add_mark(cursor, 0);
+        let first_char = Mark::DisplayMark(0);
+        buffer.add_mark(first_char, 0);
+
         View {
             buffer: buffer,
-            top_line_num: 0,
+            first_char: first_char,
+            cursor: cursor,
             uibuf: uibuf,
-            threshold: 5,
-            linenum: 0,
-            offset: 0,
         }
     }
 
-    /// Clear the buffer
-    ///
-    /// Fills every cell in the UIBuffer with the space (' ') char.
-    pub fn clear(&mut self, rb: &RustBox) {
-        self.uibuf.fill(' ');
-        self.uibuf.draw_everything(rb);
-    }
+    //----- DRAWING METHODS ------------------------------------------------------------------------
 
     pub fn get_height(&self) -> uint {
         // NOTE(greg): when the status bar needs to move up, this value should be changed
@@ -71,26 +66,27 @@ impl<'v> View<'v> {
         self.uibuf.get_width()
     }
 
-
-    //FIXME
-    pub fn draw(&mut self, rb: &RustBox) {
-        let end_line = self.get_height();
-        let num_lines = self.buffer.lines.len();
-        let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines);
-
-        for (index, line) in lines_to_draw.iter().enumerate() {
-            if index < end_line {
-                draw_line(&mut self.uibuf, line, self.top_line_num)
-            }
-        }
-
+    /// Clear the buffer
+    ///
+    /// Fills every cell in the UIBuffer with the space (' ') char.
+    pub fn clear(&mut self, rb: &RustBox) {
+        self.uibuf.fill(' ');
         self.uibuf.draw_everything(rb);
     }
 
-    //FIXME
+    pub fn draw(&mut self, rb: &RustBox) {
+        for (index,line) in self.buffer
+                                .lines_from(self.buffer.get_mark_idx(self.first_char).unwrap())
+                                .enumerate() {
+            draw_line(&mut self.uibuf, line, index);
+            if index == self.get_height() { break; }
+        }
+        self.uibuf.draw_everything(rb);
+    }
+
     pub fn draw_status(&mut self, rb: &RustBox) {
-        let buffer_status = self.buffer.get_status_text();
-        let cursor_status = self.cursor().get_status_text();
+        let buffer_status = self.buffer.status_text();
+        let cursor_status = self.buffer.get_mark_coords(self.cursor);
         let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
         let status_text_len = status_text.len();
         let width = self.get_width();
@@ -108,12 +104,10 @@ impl<'v> View<'v> {
         self.uibuf.draw_range(rb, height, height+1);
     }
 
-    //FIXME
     pub fn draw_cursor(&mut self, rb: &RustBox) {
-        let offset = self.cursor().get_visible_offset();
-        let linenum = self.cursor().get_linenum();
-
-        utils::draw_cursor(rb, offset, linenum-self.top_line_num);
+        if let Some((x, y)) = self.buffer.get_mark_coords(self.cursor) {
+            utils::draw_cursor(rb, x, y);
+        }
     }
 
     pub fn resize(&mut self, rb: &RustBox) {
@@ -122,71 +116,51 @@ impl<'v> View<'v> {
         self.uibuf = UIBuffer::new(width, 15);
     }
 
+    //----- CURSOR METHODS -------------------------------------------------------------------------
+
     pub fn move_cursor(&mut self, direction: Direction) {
-        self.buffer.shift_cursor(direction);
+        self.buffer.shift_mark(self.cursor, direction);
+        self.cursor_movement();
     }
 
-    //FIXME
     pub fn move_cursor_to_line_end(&mut self) {
-        self.cursor().set_offset(::std::uint::MAX);
+        self.buffer.move_mark_to_line_term(self.cursor, Direction::Right);
+        self.cursor_movement();
     }
 
-    //FIXME
     pub fn move_cursor_to_line_start(&mut self) {
-        self.cursor().set_offset(0);
+        self.buffer.move_mark_to_line_term(self.cursor, Direction::Left);
+        self.cursor_movement();
     }
 
-    //FIXME
-    fn set_cursor_line<'b>(&'b mut self, linenum: uint) {
-        let vis_width = self.cursor().get_visible_offset();
-        let mut offset = 0;
-        let mut vis_acc = 0;
-        let line = &*self.buffer.lines[linenum].data;
-        for _ in line.char_indices().take_while(|&(i, c)| {
-            offset = line.char_range_at(i).next;
-            vis_acc += ::utils::char_width(c, false, 4, vis_acc).unwrap_or(0);
-            vis_acc < vis_width
-        }) {}
-        if self.offset == 0 { offset = 0 }
-        self.offset = offset;
-        self.linenum = linenum;
-    }
+    fn cursor_movement(&mut self) {
 
-    //FIXME
-    fn move_top_line_n_times(&mut self, mut num_times: int) {
-        if num_times == 0 { return }
+        //Update the point to be at the cursor.
+        self.buffer.update_point(self.cursor);
 
-        // moving down
-        if num_times > 0 {
-            while num_times > 0 {
-                self.top_line_num += 1;
-                num_times -= 1;
-            }
-            return
+        //Update the first_char mark if necessary to keep the cursor on the screen.
+        let cursor_y = self.buffer.get_mark_coords(self.cursor).unwrap().val1();
+        let first_char_y = self.buffer.get_mark_coords(self.first_char).unwrap().val1();
+        if cursor_y < first_char_y {
+            self.buffer.shift_mark(self.first_char, Direction::Up);
+        } else if cursor_y > first_char_y + self.get_height() {
+            self.buffer.shift_mark(self.first_char, Direction::Down);
         }
 
-        // moving up
-        if num_times < 0 {
-            while num_times < 0 {
-                if self.top_line_num == 0 { return }
-                self.top_line_num -= 1;
-                num_times += 1;
-            }
-            return
-        }
     }
+
+    //----- TEXT EDIT METHODS ----------------------------------------------------------------------
 
     pub fn delete_char(&mut self, direction: Direction) {
         match direction {
             Direction::Left => {
-                self.remove_char();
-                self.buffer.shift_mark(buffer.cursor, direction);
+                self.buffer.remove_char();
+                self.move_cursor(direction);
             }
             Direction::Right => {
-                self.buffer.shift_mark(buffer.cursor, direction);
-                self.remove_char();
+                self.move_cursor(direction);
+                self.buffer.remove_char();
             }
-            _
         }
     }
 
@@ -199,38 +173,32 @@ impl<'v> View<'v> {
 
     pub fn insert_char(&mut self, ch: char) {
         self.buffer.insert_char(ch);
-        self.shift_mark(buffer.cursor, Right);
+        self.move_cursor(Direction::Right)
     }
 
 }
 
-//FIXME
-pub fn draw_line(buf: &mut UIBuffer, line: &Line, top_line_num: uint) {
-    let width = buf.get_width() -1;
-    let index = line.linenum - top_line_num;
-    let mut internal_index = 0;
-    for ch in line.data.chars() {
-        if internal_index < width {
-            match ch {
-                '\t' => {
-                    let w = 4 - internal_index%4;
+pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: uint) {
+    let width = buf.get_width() - 1;
+    let mut wide_chars = 0;
+    for line_idx in range(0, width) {
+        if line_idx < line.len() {
+            match line[line_idx] {
+                '\t'    => {
+                    let w = 4 - line_idx % 4;
                     for _ in range(0, w) {
-                        buf.update_cell_content(internal_index, index, ' ');
-                        internal_index += 1;
+                        buf.update_cell_content(line_idx + wide_chars, idx, ' ');
+                        line_idx += 1;
                     }
                 }
-                _ => {
-                    // draw the character
-                    buf.update_cell_content(internal_index, index, ch);
-                    internal_index += ch.width(false).unwrap_or(1);
-                }
+                '\n'    => buf.update_cell_content(line_idx + wide_chars, idx, ' '),
+                _       => buf.update_cell_content(line_idx + wide_chars, idx, line[line_idx]),
             }
-        }
-
-        // if the line is longer than the width of the view, draw a special char
-        if internal_index == width {
-            buf.update_cell_content(internal_index, index, '→');
-            break;
-        }
+            wide_chars += line[line_idx].width(false).unwrap_or(1) - 1;
+        } else { buf.update_cell_content(line_idx + wide_chars, idx, ' '); }
     }
+    if line.len() >= width {
+        buf.update_cell_content(width + wide_chars, idx, '→');
+    }
+
 }
