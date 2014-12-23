@@ -1,4 +1,5 @@
 use buffer::Line;
+use log::{Change, Transaction};
 use std::cmp;
 
 #[deriving(Copy, Show)]
@@ -24,6 +25,14 @@ impl Direction {
     }
 }
 
+#[deriving(Copy,PartialEq,Show)]
+pub struct CursorData {
+    /// The current line number of the cursor
+    pub linenum: uint,
+    /// The current offset of the cursor
+    pub offset: uint,
+}
+
 pub struct Cursor<'c> {
     /// The number of bytes the cursor is along the line. This must always be on a character
     /// boundary.
@@ -40,8 +49,11 @@ impl<'c> Cursor<'c> {
         }
     }
 
-    pub fn get_position(&self) -> (uint, uint) {
-        (self.get_offset(), self.get_linenum())
+    pub fn get_position(&self) -> CursorData {
+        CursorData {
+            linenum: self.get_linenum(),
+            offset: self.get_offset(),
+        }
     }
 
     pub fn get_linenum(&self) -> uint {
@@ -94,20 +106,24 @@ impl<'c> Cursor<'c> {
         self.get_line().len()
     }
 
-    pub fn delete_backward_char(&mut self) {
+    pub fn delete_backward_char(&mut self, transaction: &mut Transaction) {
         self.move_left();
-        self.delete_forward_char();
+        self.delete_forward_char(transaction);
     }
 
-    pub fn delete_forward_char(&mut self) {
+    pub fn delete_forward_char(&mut self, transaction: &mut Transaction) {
         let offset = self.get_offset();
+        let old_line = self.get_line_mut().clone();
         self.get_line_mut().data.remove(offset);
+        transaction.log(Change::Update(old_line, self.line.data.clone()), self.get_position());
     }
 
-    pub fn insert_char(&mut self, ch: char) {
+    pub fn insert_char(&mut self, transaction: &mut Transaction, ch: char) {
         let offset = self.get_offset();
+        let old_line = self.get_line_mut().clone();
         self.get_line_mut().data.insert(offset, ch);
         self.move_right();
+        transaction.log(Change::Update(old_line, self.line.data.clone()), self.get_position());
     }
 
     pub fn move_right(&mut self) {
@@ -126,8 +142,8 @@ impl<'c> Cursor<'c> {
     }
 
     pub fn get_status_text(&self) -> String {
-        let (offset, line_num) = self.get_position();
-        format!("({}, {})", offset + 1, line_num + 1)
+        let CursorData { offset, linenum } = self.get_position();
+        format!("({}, {})", offset + 1, linenum + 1)
     }
 }
 
@@ -135,19 +151,22 @@ impl<'c> Cursor<'c> {
 #[cfg(test)]
 mod tests {
 
-    use cursor::Cursor;
+    use cursor::{Cursor, CursorData};
     use buffer::Line;
+    use log::{LogEntries, Transaction};
     use utils::data_from_str;
 
-    fn setup_cursor<F>(mut f: F) where F: FnMut(Cursor) {
+    fn setup_cursor<F>(mut f: F) where F: FnMut(Cursor, Transaction) {
         let ref mut line = Line::new(data_from_str("test"), 1);
         let cursor = Cursor::new(line, 0);
-        f(cursor);
+        let mut log = LogEntries::new();
+        let position = cursor.get_position();
+        f(cursor, log.start(position));
     }
 
     #[test]
     fn test_moving_right() {
-        setup_cursor( |mut cursor| {
+        setup_cursor( |mut cursor, _| {
             assert_eq!(cursor.offset, 0);
             cursor.move_right();
             assert_eq!(cursor.offset, 1);
@@ -156,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_moving_left() {
-        setup_cursor( |mut cursor| {
+        setup_cursor( |mut cursor, _| {
             cursor.set_offset(1);
 
             assert_eq!(cursor.offset, 1);
@@ -167,29 +186,31 @@ mod tests {
 
     #[test]
     fn test_get_position() {
-        let ref mut line = Line::new(data_from_str("test"), 1);
-        let cursor = Cursor::new(line, 0);
-        assert_eq!(cursor.get_position(), (0, 1));
+        setup_cursor( |cursor, _| {
+            assert_eq!(cursor.get_position(), CursorData {
+                linenum: 1,
+                offset: 0
+            });
+        });
     }
 
     #[test]
     fn test_get_linenum() {
-        let ref mut line = Line::new(data_from_str("test"), 1);
-        let cursor = Cursor::new(line, 0);
-
-        assert_eq!(cursor.get_linenum(), 1);
+        setup_cursor( |cursor, _| {
+            assert_eq!(cursor.get_linenum(), 1);
+        });
     }
 
     #[test]
     fn test_get_offset() {
-        setup_cursor( |cursor| {
+        setup_cursor( |cursor, _| {
             assert_eq!(cursor.get_offset(), 0)
         });
     }
 
     #[test]
     fn test_set_offset() {
-        setup_cursor( |mut cursor| {
+        setup_cursor( |mut cursor, _| {
             cursor.set_offset(3);
 
             assert_eq!(cursor.offset, 3);
@@ -208,51 +229,39 @@ mod tests {
 
     #[test]
     fn test_get_line_length() {
-        let ref mut line = Line::new(data_from_str("test"), 1);
-        let cursor = Cursor::new(line, 0);
-
-        assert_eq!(cursor.get_line_length(), 4);
+        setup_cursor( |cursor, _| {
+            assert_eq!(cursor.get_line_length(), 4);
+        });
     }
 
     #[test]
     fn test_delete_backward_char() {
-        let ref mut line = Line::new(data_from_str("test"), 1);
-
-        {
-            let mut cursor = Cursor::new(line, 1);
-            cursor.delete_backward_char();
-        }
-
-        assert_eq!(line.data, data_from_str("est"));
+        setup_cursor( |mut cursor, ref mut transaction| {
+            cursor.offset = 1;
+            cursor.delete_backward_char(transaction);
+            assert_eq!(cursor.line.data, data_from_str("est"));
+        });
     }
 
     #[test]
     fn test_delete_forward_char() {
-        let ref mut line = Line::new(data_from_str("test"), 1);
-
-        {
-            let mut cursor = Cursor::new(line, 0);
-            cursor.delete_forward_char();
-        }
-
-        assert_eq!(line.data, data_from_str("est"));
+        setup_cursor( |mut cursor, ref mut transaction| {
+            cursor.delete_forward_char(transaction);
+            assert_eq!(cursor.line.data, data_from_str("est"));
+        });
     }
 
     #[test]
     fn test_insert_char() {
-        let ref mut line = Line::new(data_from_str("test"), 1);
-
-        {
-            let mut cursor = Cursor::new(line, 0);
-            cursor.insert_char('x');
-        }
-
-        assert_eq!(line.data, data_from_str("xtest"));
+        setup_cursor( |mut cursor, ref mut transaction| {
+            cursor.insert_char(transaction, 'x');
+            assert_eq!(cursor.line.data, data_from_str("xtest"));
+        });
     }
 
     #[test]
     fn test_get_status_text() {
-        setup_cursor( |cursor| {
+        setup_cursor( |cursor, _| {
             assert_eq!(cursor.get_status_text(), "(1, 2)".to_string());
         } );
     }

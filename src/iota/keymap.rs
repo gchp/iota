@@ -115,7 +115,7 @@ impl KeyMap {
             _ => self.state
         }
     }
-    
+
     /// Insert or overwrite a key-sequence binding
     pub fn bind_keys(&mut self, keys: &[Key], command: Command) {
         self.root.bind_keys(keys.as_slice(), command);
@@ -157,6 +157,10 @@ impl KeyMap {
         keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left));
         keymap.bind_key(Key::Delete, Command::Delete(Direction::Right));
         keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right));
+
+        // History
+        keymap.bind_key(Key::Ctrl('y'), Command::Redo);
+        keymap.bind_key(Key::Ctrl('z'), Command::Undo);
 
         return keymap
     }

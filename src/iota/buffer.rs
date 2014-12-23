@@ -1,4 +1,7 @@
 use std::io::{File, Reader, BufferedReader};
+use std::mem;
+use cursor::CursorData;
+use log::{Change, Transaction};
 
 pub struct Buffer {
     pub file_path: Option<Path>,
@@ -71,13 +74,33 @@ impl Buffer {
         }
     }
 
-    pub fn insert_line(&mut self, offset: uint, mut line_num: uint) {
+    pub fn replay(&mut self, change: &Change) {
+        match *change {
+            Change::Insert(ref line) => {
+                self.lines.insert(line.linenum, line.clone());
+                self.fix_linenums();
+            },
+            Change::Delete(ref line) => {
+                self.lines.remove(line.linenum);
+                self.fix_linenums();
+            },
+            Change::Update(ref old, ref new) => {
+                mem::replace(&mut self.get_line_at_mut(old.linenum).unwrap().data, new.clone());
+            }
+        }
+    }
+
+    pub fn insert_line(&mut self, transaction: &mut Transaction, offset: uint,
+                       mut line_num: uint) {
         // split the current line at the cursor position
         let (_, new_data) = self.split_line(offset, line_num);
         {
             // truncate the current line
-            let line = self.get_line_at_mut(line_num);
-            line.unwrap().data.truncate(offset);
+            let line = self.get_line_at_mut(line_num).unwrap();
+            let old_line = line.clone();
+            line.data.truncate(offset);
+            transaction.log(Change::Update(old_line, line.data.clone()),
+                            CursorData { linenum: line_num, offset: offset });
         }
 
         line_num += 1;
@@ -85,34 +108,42 @@ impl Buffer {
         self.lines.insert(line_num, Line::new(new_data, line_num));
 
         self.fix_linenums();
+        transaction.log(Change::Insert(self.get_line_at(line_num).unwrap().clone()),
+                        CursorData { linenum: line_num, offset: 0 });
     }
 
     /// Join the line identified by `line_num` with the one at `line_num - 1 `.
-    pub fn join_line_with_previous(&mut self, offset: uint, line_num: uint) -> uint {
+    pub fn join_line_with_previous(&mut self, transaction: &mut Transaction, offset: uint,
+                                   line_num: uint) -> uint {
         // if the line_num is 0 (ie the first line), don't do anything
         if line_num == 0 { return offset }
 
-        let mut current_line_data: String;
-        {
+        let current_line = {
             let current_line = match self.get_line_at(line_num) {
                 Some(line) => line,
                 None => return offset,
             };
-            current_line_data = current_line.data.clone();
-        }
+            current_line.clone()
+        };
 
         // update the previous line
         let new_cursor_offset = match self.get_line_at_mut(line_num -1) {
             None => offset,
             Some(line) => {
+                let old_line = line.clone();
                 let line_len = line.data.len();
-                line.data.push_str(&*current_line_data);
+                line.data.push_str(&*current_line.data);
+                transaction.log(Change::Update(old_line, line.data.clone()),
+                                CursorData { linenum: line_num, offset: offset });
                 line_len
             }
         };
 
-        self.lines.remove(line_num);
-        self.fix_linenums();
+        if let Some(line) = self.lines.remove(line_num) {
+            self.fix_linenums();
+            transaction.log(Change::Delete(line),
+                            CursorData { linenum: line_num - 1, offset: new_cursor_offset });
+        }
 
         return new_cursor_offset
     }
@@ -145,7 +176,7 @@ impl Buffer {
 
 }
 
-
+#[deriving(Clone)]
 pub struct Line {
     pub data: String,
     pub linenum: uint,
@@ -172,6 +203,8 @@ mod tests {
 
     use buffer::Buffer;
     use buffer::Line;
+    use cursor::CursorData;
+    use log::LogEntries;
     use utils::data_from_str;
 
     fn setup_buffer() -> Buffer {
@@ -195,14 +228,18 @@ mod tests {
     #[test]
     fn test_insert_line() {
         let mut buffer = setup_buffer();
-        buffer.insert_line(0, 0);
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
+        buffer.insert_line(&mut transaction, 0, 0);
         assert_eq!(buffer.lines.len(), 5);
     }
 
     #[test]
     fn test_insert_line_in_middle_of_other_line() {
         let mut buffer = setup_buffer();
-        buffer.insert_line(1, 0);
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
+        buffer.insert_line(&mut transaction, 1, 0);
         assert_eq!(buffer.lines.len(), 5);
 
         let ref line = buffer.lines[1];
@@ -212,7 +249,9 @@ mod tests {
     #[test]
     fn test_line_numbers_are_fixed_after_adding_new_line() {
         let mut buffer = setup_buffer();
-        buffer.insert_line(1, 2);
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
+        buffer.insert_line(&mut transaction, 1, 2);
         assert_eq!(buffer.lines.len(), 5);
 
         // check that all linenums are sequential
@@ -224,8 +263,10 @@ mod tests {
     #[test]
     fn test_join_line_with_previous() {
         let mut buffer = setup_buffer();
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
 
-        let offset = buffer.join_line_with_previous(0, 3);
+        let offset = buffer.join_line_with_previous(&mut transaction, 0, 3);
 
         assert_eq!(buffer.lines.len(), 3);
         assert_eq!(buffer.lines[2].data, data_from_str("text filecontent"));
@@ -235,7 +276,9 @@ mod tests {
     #[test]
     fn join_line_with_previous_does_nothing_on_line_zero_offset_zero() {
         let mut buffer = setup_buffer();
-        buffer.join_line_with_previous(0, 0);
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
+        buffer.join_line_with_previous(&mut transaction, 0, 0);
 
         assert_eq!(buffer.lines.len(), 4);
         assert_eq!(buffer.lines[0].data, data_from_str("test"));
@@ -253,8 +296,10 @@ mod tests {
     #[test]
     fn joining_line_with_non_existant_next_line_does_nothing() {
         let mut buffer = setup_buffer();
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
         buffer.lines = vec!(Line::new(String::new(), 0));
-        buffer.join_line_with_previous(0, 1);
+        buffer.join_line_with_previous(&mut transaction, 0, 1);
     }
 
 }
