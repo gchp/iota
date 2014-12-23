@@ -11,17 +11,24 @@ use std::io::{File, Reader, BufferedReader};
 
 use gapbuffer::GapBuffer;
 
+#[deriving(PartialEq, Eq, Hash)]
+pub enum Mark {
+    Cursor(uint),
+    UserDefined(uint),
+}
+
 #[deriving(Copy, Show)]
 pub enum Direction {
     Up, Down, Left, Right,
 }
 
+
 pub struct Buffer {
-    pub cursor: &'static str,                   //Key for the current editing cursor.
-    text: GapBuffer<char>,                      //Actual text data being edited.
-    marks: HashMap<&'static str, (uint, uint)>, //Table of marked indices in the text.
-                                                // KEY: name => VALUE : (absolute index, line index)
-    file_path: Option<Path>,                    //TODO: replace with a general metadata table
+    pub cursor: uint,                       // current active cursor
+    text: GapBuffer<char>,                  //Actual text data being edited.
+    marks: HashMap<Mark, (uint, uint)>,     //Table of marked indices in the text.
+                                            // KEY: mark id => VALUE : (absolute index, line index)
+    file_path: Option<Path>,                //TODO: replace with a general metadata table
 }
 
 impl Buffer {
@@ -32,12 +39,12 @@ impl Buffer {
     pub fn new() -> Buffer {
         let text = GapBuffer::new();
         let mut marks = HashMap::new();
-        marks.insert("cursor", (0,0));
+        marks.insert(Mark::Cursor(0), (0,0));
         Buffer {
             file_path: None,
             text: text,
             marks: marks,
-            cursor: "cursor",
+            cursor: 0,
         }
     }
 
@@ -65,28 +72,40 @@ impl Buffer {
         self.text.len()
     }
 
+    pub fn lines(&self) -> Lines {
+        self.lines_from(0)
+    }
+
+    pub fn lines_from(&self, idx: uint) -> Lines {
+        Lines {
+            buffer: self.text[idx..],
+            tail: 0,
+            head: self.len() - idx,
+        }
+    }
+
     //----- MUTATORS -------------------------------------------------------------------------------
 
     //Shift the cursor by one in any of the four directions.
-    pub fn shift_mark(&mut self, mark: &str, direction: Direction) {
+    pub fn shift_mark(&mut self, mark: Mark, direction: Direction) {
         if let Some(tuple) = match direction {
             Direction::Left     =>  self.offset_mark(mark, -1),
             Direction::Right    =>  self.offset_mark(mark,  1),
             Direction::Up       =>  self.offset_mark_line(mark, -1),
             Direction::Down     =>  self.offset_mark_line(mark,  1),
-        } { *self.marks.get_mut(mark).unwrap() = tuple; }
+        } { *self.marks.get_mut(&mark).unwrap() = tuple; }
     }
 
     //Remove the char the cursor is at the index of.
     pub fn remove_char(&mut self) -> Option<char> {
-        if let Some(tuple) = self.marks.get(self.cursor) {
+        if let Some(tuple) = self.marks.get(&Mark::Cursor(self.cursor)) {
             self.text.remove((*tuple).val0())
         } else { None }
     }
 
     //Insert the char the cursor is at the index of.
     pub fn insert_char(&mut self, ch: char) {
-        if let Some(tuple) = self.marks.get(self.cursor) {
+        if let Some(tuple) = self.marks.get(&Mark::Cursor(self.cursor)) {
             self.text.insert((*tuple).val0(), ch);
         }
     }
@@ -112,7 +131,7 @@ impl Buffer {
     //Returns the index of the newline character at the end of the line mark is in.
     //Newline after mark (INCLUSIVE).
     //None iff mark is outside the len of text.
-    fn get_line_end(&self, mark:uint) -> Option<uint> {
+    fn get_line_end(&self, mark: uint) -> Option<uint> {
     //FIXME unicode support
         if mark < self.len() {
             let mut idx = mark;
@@ -126,20 +145,26 @@ impl Buffer {
     }
 
     //Returns the mark offset by some number of chars.
-    fn offset_mark(&self, mark: &str, offset: int) -> Option<(uint, uint)> {
+    //None iff mark is not in the hashmap.
+    fn offset_mark(&self, mark: Mark, offset: int) -> Option<(uint, uint)> {
     //FIXME unicode support
-        if let Some(tuple) = self.marks.get(mark) {
+        if let Some(tuple) = self.marks.get(&mark) {
             let idx = (*tuple).val0() as int + offset;
-            if idx > 0 && idx < self.len() as int {
-                Some((idx as uint, idx as uint - self.get_line(idx as uint).unwrap()))
-            } else { None }
+            match (idx >= 0, idx < self.len() as int ) {
+                (true, true)    => Some((idx as uint,
+                                         idx as uint - self.get_line(idx as uint).unwrap())),
+                (false, true)   => Some((0, 0)),
+                (_, false)      => Some((self.len() -1,
+                                        self.len() - 1 - self.get_line(self.len() -1).unwrap())),
+            }
         } else { None }
     }
 
     //Returns the mark offset by some number of line breaks.
-    fn offset_mark_line(&self, mark: &str, offset: int) -> Option<(uint, uint)> {
+    // None iff mark is not in the hashmap.
+    fn offset_mark_line(&self, mark: Mark, offset: int) -> Option<(uint, uint)> {
     //FIXME unicode support
-        if let Some(tuple) = self.marks.get(mark) {
+        if let Some(tuple) = self.marks.get(&mark) {
             let mut line = self.get_line((*tuple).val0());
             let line_idx = (*tuple).val1();
             if offset >= 0 {
@@ -160,7 +185,34 @@ impl Buffer {
 
 }
 
-//----- TESTS---------------------------------------------------------------------------------------
+//----- ITERATE BY LINES ---------------------------------------------------------------------------
+pub struct Lines<'a> {
+    buffer: &'a [char],
+    tail: uint,
+    head: uint,
+}
+
+impl<'a> Iterator<&'a [char]> for Lines<'a> {
+//FIXME unicode support?
+
+    fn next(&mut self) -> Option<&'a [char]> {
+        if self.tail != self.head {
+            let tail = range(self.tail, self.head).filter(|idx| -> bool {
+                self.buffer[*idx] == '\n' || *idx + 1 == self.head
+            }).min().unwrap() + 1;
+            let line = self.buffer[self.tail..tail];
+            self.tail = tail;
+            Some(line)
+        } else { None }
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        (1, Some(self.head))
+    }
+
+}
+
+//----- TESTS --------------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod test {

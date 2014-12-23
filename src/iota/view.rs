@@ -180,10 +180,10 @@ impl<'v> View<'v> {
         match direction {
             Direction::Left => {
                 self.remove_char();
-                self.buffer.shift_cursor(direction);
+                self.buffer.shift_mark(buffer.cursor, direction);
             }
             Direction::Right => {
-                self.buffer.shift_cursor(direction);
+                self.buffer.shift_mark(buffer.cursor, direction);
                 self.remove_char();
             }
             _
@@ -199,7 +199,7 @@ impl<'v> View<'v> {
 
     pub fn insert_char(&mut self, ch: char) {
         self.buffer.insert_char(ch);
-        self.shift_cursor(Right);
+        self.shift_mark(buffer.cursor, Right);
     }
 
 }
