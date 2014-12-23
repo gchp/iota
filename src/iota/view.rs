@@ -316,6 +316,18 @@ impl<'v> View<'v> {
             self.buffer.replay(change);
         }
         self.cursor_data = *cursor_end;
+        // Readjust top line position.
+        // TODO: refactor with move_cursor(up|down)
+        let cursor_offset = self.cursor_data.linenum as int - self.top_line_num as int;
+        let height = self.get_height() as int;
+        let times = if cursor_offset < self.threshold {
+            cursor_offset - self.threshold
+        } else if cursor_offset >= (height - self.threshold) {
+            cursor_offset - (height - self.threshold) + 1
+        } else {
+            0
+        };
+        self.move_top_line_n_times(times);
     }
 }
 
