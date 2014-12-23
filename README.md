@@ -18,18 +18,30 @@ others were platform specific and I couldn't use them on all my machines.
 I started building Iota with the view of combining ideas and features from serveral different
 editors while designing it to work on modern hardware.
 
+Why Rust? Because its fun and why not!
+
 ## Goals
 
 The goals for Iota are that it would be:
 
 - 100% open source
-- highly extensible/customisable
+- highly extensible/customisable/scriptable
 - fast & efficient - designed with modern hardware in mind
 - cross platform - it should work anywhere
 - developer friendly - it should just "get out of the way"
+- Rust tooling integration (see note below)
 
 Iota is still in the very early stages, and is probably not ready for every day use.
 Right now the focus is on implementing and polishing the basic editing functionality.
+
+Windows support is coming, but it's somewhat slow right now. Help with this would
+be greatly appreciated!
+
+### Note on Rust integration
+The aim is to support code editing in all languages (and of course plain text),
+with a lean towards Rust and integration with Rust tools. I don't intend it to
+be a "Rust IDE" or "Rust only", however I think it would be cool to experiment with
+integration with Rust tooling. This could also be applied to other languages too.
 
 ## Usage
 
