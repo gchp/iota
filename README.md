@@ -37,11 +37,11 @@ Right now the focus is on implementing and polishing the basic editing functiona
 Windows support is coming, but it's somewhat slow right now. Help with this would
 be greatly appreciated!
 
-### Note on Rust integration
-The aim is to support code editing in all languages (and of course plain text),
+**Note on Rust integration:**
+_The aim is to support code editing in all languages (and of course plain text),
 with a lean towards Rust and integration with Rust tools. I don't intend it to
 be a "Rust IDE" or "Rust only", however I think it would be cool to experiment with
-integration with Rust tooling. This could also be applied to other languages too.
+integration with Rust tooling. This could also be applied to other languages too._
 
 ## Usage
 
