@@ -72,8 +72,8 @@ Iota currently supports Emacs-style keybindings for simple movement.
 - `Ctrl-e` move to end of line
 - `Ctrl-d` delete forwards
 - `Ctrl-h` delete backwards
-- `Ctrl-q` quit
-- `Ctrl-s` save
+- `Ctrl-x Ctrl-c` quit
+- `Ctrl-x Ctrl-s` save
 - `Ctrl-y` undo
 - `Ctrl-z` redo
 
