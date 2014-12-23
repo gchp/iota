@@ -74,7 +74,7 @@ Iota currently supports Emacs-style keybindings for simple movement.
 - `Ctrl-h` delete backwards
 - `Ctrl-x Ctrl-c` quit
 - `Ctrl-x Ctrl-s` save
-- `Ctrl-y` undo
-- `Ctrl-z` redo
+- `Ctrl-z` undo
+- `Ctrl-y` redo
 
 There are also plans to optionally enable Vi-like keybindings & modes.
