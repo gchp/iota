@@ -8,7 +8,6 @@ use input::Input;
 use buffer::Direction;
 use keyboard::Key;
 use keymap::{ KeyMap, KeyMapState };
-use log::LogEntries;
 use view::View;
 
 
@@ -25,7 +24,10 @@ pub enum Command {
 
     Delete(Direction),
     InsertTab,
-    InsertChar(char)
+    InsertChar(char),
+
+    Undo,
+    Redo,
 }
 
 enum EventStatus {
@@ -38,8 +40,6 @@ pub struct Editor<'e> {
     keymap: KeyMap,
     view: View<'e>,
     rb: &'e RustBox,
-    /// Undo / redo log
-    log: LogEntries,
 }
 
 impl<'e> Editor<'e> {
@@ -51,7 +51,6 @@ impl<'e> Editor<'e> {
             view: view,
             rb: rb,
             keymap: keymap,
-            log: LogEntries::new(),
         }
     }
 
@@ -127,19 +126,24 @@ impl<'e> Editor<'e> {
     fn handle_command(&mut self, c: Command) -> Response {
         match c {
             // Editor Commands
-            Command::ExitEditor      => return Response::Quit,
-            Command::SaveBuffer      => self.save_active_buffer(),
-            Command::ResizeView      => self.view.resize(self.rb),
+            Command::ExitEditor         =>  return Response::Quit,
+            Command::SaveBuffer         =>  self.save_active_buffer(),
+            Command::ResizeView         =>  self.view.resize(self.rb),
 
             // Navigation
-            Command::MoveCursor(dir) => self.view.move_cursor(dir),
-            Command::LineEnd         => self.view.move_cursor_to_line_end(),
-            Command::LineStart       => self.view.move_cursor_to_line_start(),
+            Command::MoveCursor(dir)    =>  self.view.move_cursor(dir),
+            Command::LineEnd            =>  self.view.move_cursor_to_line_end(),
+            Command::LineStart          =>  self.view.move_cursor_to_line_start(),
 
             // Editing
-            Command::Delete(dir)     => self.view.delete_char(dir),
-            Command::InsertTab       => self.view.insert_tab(),
-            Command::InsertChar(c)   => self.view.insert_char(c)
+            Command::Delete(dir)        =>  self.view.delete_char(dir),
+            Command::InsertTab          =>  self.view.insert_tab(),
+            Command::InsertChar(c)      =>  self.view.insert_char(c),
+
+            //History
+            Command::Redo               => self.view.redo(),
+            Command::Undo               => self.view.undo(),
+
         }
         Response::Continue
     }
@@ -165,9 +169,8 @@ impl<'e> Editor<'e> {
         // if the key is a character that is not part of a keybinding, insert into the buffer
         // otherwise, ignore it.
         if let Key::Char(c) = key {
-            let Editor {ref mut log, ref mut view, .. } = *self;
-            let mut transaction = log.start(view.cursor_data);
-            view.insert_char(&mut transaction, c);
+            let Editor {ref mut view, .. } = *self;
+            view.insert_char(c);
             EventStatus::Handled(Response::Continue)
         } else {
             EventStatus::NotHandled

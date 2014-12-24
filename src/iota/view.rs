@@ -2,7 +2,6 @@ use rustbox::{Color, RustBox};
 
 use buffer::{Buffer, Direction, Mark};
 use input::Input;
-use log::{LogEntry, Transaction};
 use uibuf::UIBuffer;
 
 use utils;
@@ -167,16 +166,24 @@ impl<'v> View<'v> {
         }
     }
 
-    pub fn insert_tab(&mut self, transaction: &mut Transaction) {
+    pub fn insert_tab(&mut self) {
         // A tab is just 4 spaces
         for _ in range(0i, 4) {
-            self.insert_char(transaction, ' ');
+            self.insert_char(' ');
         }
     }
 
     pub fn insert_char(&mut self, ch: char) {
         self.buffer.insert_char(ch as u8);
         self.move_cursor(Direction::Right(1))
+    }
+
+    pub fn undo(&mut self) {
+        self.buffer.undo();
+    }
+
+    pub fn redo(&mut self) {
+        self.buffer.redo();
     }
 
 }

@@ -3,11 +3,10 @@ name = "iota"
 version = "0.1.0"
 authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
-#[dependencies.docopt]
-#git = "https://github.com/docopt/docopt.rs"
-
-[dependencies.rustbox]
-git = "https://github.com/gchp/rustbox"
+[dependencies]
+docopt = "0.6.19"
+rustbox = "0.2.1"
+rustc-serialize = "0.1.4"
 
 [dependencies.gapbuffer]
 git = "https://github.com/dlaronson/gapbuffer"

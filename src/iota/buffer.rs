@@ -1,12 +1,13 @@
 //TODO: Write tests
 //TODO: UTF8 support
-//TODO: Incorporate undo/redo history from pythonesque
+
+use log::{Log, Change, LogEntry};
+
+use gapbuffer::GapBuffer;
 
 use std::cmp;
 use std::collections::HashMap;
 use std::io::{File, Reader, BufferedReader};
-
-use gapbuffer::GapBuffer;
 
 #[deriving(PartialEq, Eq, Hash)]
 pub enum Mark {
@@ -22,11 +23,11 @@ pub enum Direction {
     LineStart, LineEnd,
 }
 
-
 pub struct Buffer {
     text: GapBuffer<u8>,                    //Actual text data being edited.
     marks: HashMap<Mark, (uint, uint)>,     //Table of marked indices in the text.
                                             // KEY: mark id => VALUE : (absolute index, line index)
+    log: Log,                            //History of undoable transactions.
     pub file_path: Option<Path>,            //TODO: replace with a general metadata table
 }
 
@@ -43,6 +44,7 @@ impl Buffer {
             file_path: None,
             text: text,
             marks: marks,
+            log: Log::new(),
         }
     }
 
@@ -174,15 +176,21 @@ impl Buffer {
 
     ///Remove the char at the point.
     pub fn remove_char(&mut self) -> Option<u8> {
-        if let Some(tuple) = self.marks.get(&Mark::Point) {
-            self.text.remove((*tuple).val0())   
+        if let Some(&(idx, _)) = self.marks.get(&Mark::Point) {
+            if let Some(ch) = self.text.remove(idx) {
+                let mut transaction = self.log.start(idx);
+                transaction.log(Change::Remove(idx, ch), idx);
+                Some(ch)
+            } else { None }
         } else { None }
     }
 
     ///Insert a char at the point.
     pub fn insert_char(&mut self, ch: u8) {
-        if let Some(tuple) = self.marks.get(&Mark::Point) {
-            self.text.insert((*tuple).val0(), ch);
+        if let Some(&(idx, _)) = self.marks.get(&Mark::Point) {
+            self.text.insert(idx, ch);
+            let mut transaction = self.log.start(idx);
+            transaction.log(Change::Insert(idx, ch), idx);
         }
     }
 
@@ -192,6 +200,18 @@ impl Buffer {
             if tuple.val0() < self.len() {
                 *self.marks.get_mut(&Mark::Point).unwrap() = tuple;
             }
+        }
+    }
+
+    pub fn redo(&mut self) {
+        if let Some(transaction) = self.log.redo() {
+            self.reverse(transaction);
+        }
+    }
+
+    pub fn undo(&mut self) {
+        if let Some(transaction) = self.log.undo() {
+            self.reverse(transaction);
         }
     }
 
@@ -276,6 +296,21 @@ impl Buffer {
             Some((cmp::min(line.unwrap() + line_idx, self.get_line_end(line.unwrap()).unwrap()),
                  line_idx))
         } else { None }
+    }
+
+    fn reverse(&mut self, transaction: &LogEntry) {
+        for change in transaction.changes.iter() {
+            match change {
+                &Change::Insert(idx, ch) => { 
+                    self.set_mark(Mark::Point, idx);
+                    self.insert_char(ch);
+                }
+                &Change::Remove(idx, _) => {
+                    self.set_mark(Mark::Point, idx);
+                    self.remove_char();
+                }
+            }
+        }
     }
 
 }
