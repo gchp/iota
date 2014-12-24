@@ -41,7 +41,6 @@ enum EventStatus {
 pub struct Editor<'e> {
     keymap: KeyMap,
     view: View<'e>,
-    rb: &'e RustBox,
 
     frontend: Box<Frontend + 'e>,
 
@@ -51,14 +50,16 @@ pub struct Editor<'e> {
 
 impl<'e> Editor<'e> {
     pub fn new(source: Input, rb: &'e RustBox) -> Editor<'e> {
-        let view = View::new(source, rb);
+        let frontend = box RustboxFrontend::new(rb);
+        let height = frontend.get_window_height();
+        let width = frontend.get_window_width();
+        let view = View::new(source, width, height);
         let keymap = KeyMap::load_defaults();
 
         Editor {
             view: view,
-            rb: rb,
             keymap: keymap,
-            frontend: box RustboxFrontend::new(rb),
+            frontend: frontend,
             log: LogEntries::new(),
         }
     }
@@ -118,7 +119,7 @@ impl<'e> Editor<'e> {
         loop {
             self.view.clear(&mut self.frontend);
             self.draw();
-            self.rb.present();
+            self.frontend.present();
             let event = self.frontend.poll_event();
             if let EditorEvent::KeyEvent(key) = event {
                 if let Response::Quit = self.handle_key_event(key) {

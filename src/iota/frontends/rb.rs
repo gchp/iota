@@ -46,6 +46,18 @@ impl<'f> Frontend for RustboxFrontend<'f> {
 
         self.rb.print_char(offset, linenum, style, fg, bg, ch);
     }
+
+    fn present(&self) {
+        self.rb.present()
+    }
+
+    fn get_window_height(&self) -> uint {
+        self.rb.height()
+    }
+
+    fn get_window_width(&self) -> uint {
+        self.rb.width()
+    }
 }
 
 fn get_color(c: CharColor) -> Color {

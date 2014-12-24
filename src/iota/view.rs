@@ -1,13 +1,9 @@
-use rustbox::RustBox;
-
 use buffer::{Line, Buffer};
 use cursor::{Cursor, CursorData, Direction};
 use input::Input;
 use log::{LogEntry, Transaction};
 use uibuf::{UIBuffer, CharColor};
 use frontends::Frontend;
-
-use utils;
 
 pub struct CursorGuard<'a> {
     data: &'a mut CursorData,
@@ -54,7 +50,7 @@ pub struct View<'v> {
 }
 
 impl<'v> View<'v> {
-    pub fn new(source: Input, rb: &RustBox) -> View<'v> {
+    pub fn new(source: Input, width: uint, height: uint) -> View<'v> {
         let buffer = match source {
             Input::Filename(path) => {
                 match path {
@@ -66,9 +62,6 @@ impl<'v> View<'v> {
                 Buffer::new_from_reader(reader)
             },
         };
-
-        let height: uint = utils::get_term_height(rb);
-        let width: uint = utils::get_term_width(rb);
 
         // NOTE(greg): this may not play well with resizing
         let uibuf = UIBuffer::new(width, height);

@@ -1,13 +1,3 @@
-use rustbox::RustBox;
-
-pub fn get_term_height(rb: &RustBox) -> uint {
-    rb.height()
-}
-
-pub fn get_term_width(rb: &RustBox) -> uint {
-    rb.width()
-}
-
 #[cfg(test)]
 pub fn data_from_str(s: &'static str) -> String {
     s.into_string()

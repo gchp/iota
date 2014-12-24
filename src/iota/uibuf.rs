@@ -189,7 +189,6 @@ mod tests {
         let cell = &uibuf.rows[row_num][cell_num];
         assert_eq!(cell.ch, ch);
 
-        // FIXME(greg): this fails cos '==' is not implemented for rustbox::Color.
         // assert_eq!(cell.fg, fg);
         // assert_eq!(cell.bg, bg);
     }
