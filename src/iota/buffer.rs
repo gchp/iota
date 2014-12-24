@@ -18,7 +18,8 @@ pub enum Mark {
 
 #[deriving(Copy, Show)]
 pub enum Direction {
-    Up, Down, Left, Right,
+    Up(uint), Down(uint), Left(uint), Right(uint),
+    LineStart, LineEnd,
 }
 
 
@@ -26,7 +27,7 @@ pub struct Buffer {
     text: GapBuffer<u8>,                    //Actual text data being edited.
     marks: HashMap<Mark, (uint, uint)>,     //Table of marked indices in the text.
                                             // KEY: mark id => VALUE : (absolute index, line index)
-    file_path: Option<Path>,                //TODO: replace with a general metadata table
+    pub file_path: Option<Path>,            //TODO: replace with a general metadata table
 }
 
 impl Buffer {
@@ -49,7 +50,7 @@ impl Buffer {
     pub fn new_from_reader<R: Reader>(reader: R) -> Buffer {
         let mut buff = Buffer::new();
         if let Ok(contents) = BufferedReader::new(reader).read_to_string() {
-            buff.text.extend(contents.as_bytes().iter());
+            buff.text.extend(contents.bytes());
         }
         buff
     }
@@ -71,8 +72,12 @@ impl Buffer {
 
     pub fn get_mark_coords(&self, mark: Mark) -> Option<(uint, uint)> {
         if let Some(idx) = self.get_mark_idx(mark) {
-            let Some(line) = self.get_line(idx);
-            Some((idx - line, self.text[..line].filter(|ch| -> bool { ch == &'\n' }).len()))
+            if let Some(line) = self.get_line(idx) {
+                let newlines: Vec<&u8> = self.text[..line].iter()
+                                                          .filter(|ch| -> bool { *ch == &b'\n' })
+                                                          .collect();
+                Some((idx - line, newlines.len()))
+            } else { None }
         } else { None }
     }
 
@@ -105,45 +110,50 @@ impl Buffer {
 
     //----- MUTATORS -------------------------------------------------------------------------------
 
-    pub fn add_mark(&mut self, mark: Mark, idx: uint) {
+    pub fn set_mark(&mut self, mark: Mark, idx: uint) {
         if let Some(line) = self.get_line(idx) {
+            if let Some(tuple) = self.marks.get_mut(&mark) {
+                *tuple = (idx, idx - line);
+                return;
+            }
             self.marks.insert(mark, (idx, idx - line));
         }
     }
 
-    pub fn move_mark_to_line_term(&mut self, mark: Mark, direction: Direction) {
-        if let Some(&(idx, _)) = self.marks.get(&mark) {
-            if let Some(line) = self.get_line(idx) {
-                match direction {
-                    Direction::Left  | Direction::Up    => {
-                        let end = self.get_line_end(idx).unwrap();
-                        *self.marks.get_mut(&mark).unwrap() = (end, end - self.get_line(idx).unwrap());
-                    }
-                    Direction::Right | Direction::Down  => {
-                        *self.marks.get_mut(&mark).unwrap() = (line, 0);
-                    }
-                }
-            }
-        }
-    }
-
     pub fn set_mark_by_coords(&mut self, mark: Mark, x: uint, y: uint) {
-        if let Some(tuple) = self.marks.get(&mark) {
-            let mut y_idx = 0;
-            for _ in range(0, y) {
-                y_idx = self.get_line_end(y_idx).unwrap() + 1;
-            }
-            *self.marks.get_mut(&mark).unwrap() = (y_idx + x, x);
+        let mut y_idx = 0;
+        for _ in range(0, y) {
+            y_idx = self.get_line_end(y_idx).unwrap() + 1;
         }
+        if y_idx + x < self.len() {
+            if let Some(tuple) = self.marks.get_mut(&mark) {
+                *tuple = (y_idx + x, x);
+                return;
+            }
+            self.marks.insert(mark, (y_idx + x, x));
+        }        
     }
 
-    //Shift a mark by one in any of the four directions.
+    //Shift a mark according to the direction given.
     pub fn shift_mark(&mut self, mark: Mark, direction: Direction) {
         if let Some(tuple) = match direction {
-            Direction::Left     =>  self.offset_mark(mark, -1),
-            Direction::Right    =>  self.offset_mark(mark,  1),
-            Direction::Up       =>  self.offset_mark_line(mark, -1),
-            Direction::Down     =>  self.offset_mark_line(mark,  1),
+            Direction::Left(n)      =>  self.offset_mark(mark, -(n as int)),
+            Direction::Right(n)     =>  self.offset_mark(mark,   n as int),
+            Direction::Up(n)        =>  self.offset_mark_line(mark, -(n as int)),
+            Direction::Down(n)      =>  self.offset_mark_line(mark,   n as int),
+            Direction::LineStart    =>  {
+                if let Some(&(idx, _)) = self.marks.get(&mark) {
+                    let start = self.get_line(idx).unwrap();
+                    Some((start, 0))
+                }
+                else { None}
+            }
+            Direction::LineEnd      =>  {
+                if let Some(&(idx, _)) = self.marks.get(&mark) {
+                    let end = self.get_line_end(idx).unwrap();
+                    Some((end, end - self.get_line(idx).unwrap()))
+                } else { None }
+            }
         } { *self.marks.get_mut(&mark).unwrap() = tuple; }
     }
 
@@ -180,7 +190,7 @@ impl Buffer {
             let mut idx = mark;
             loop {
                 match self.text[0..mark].iter().next_back() {
-                    Some(&'\n') | None => { return Some(idx); }
+                    Some(&b'\n') | None => { return Some(idx); }
                     _ => { idx -= 1; }
                 }
             }
@@ -196,7 +206,7 @@ impl Buffer {
             let mut idx = mark;
             loop {
                 match self.text[mark..self.len()].iter().next() {
-                    Some(&'\n') | None => { return Some(idx); }
+                    Some(&b'\n') | None => { return Some(idx); }
                     _ => { idx += 1; }
                 }
             }
@@ -262,7 +272,7 @@ impl<'a> Iterator<&'a [u8]> for Lines<'a> {
 
             //update tail to either the first char after the next \n or to self.head
             self.tail = range(old_tail, self.head).filter(|idx| -> bool {
-                self.buffer[*idx] == '\n' || *idx + 1 == self.head
+                self.buffer[*idx] == b'\n' || *idx + 1 == self.head
             }).min().unwrap() + 1;
 
             Some(self.buffer[old_tail..self.tail])
@@ -270,8 +280,9 @@ impl<'a> Iterator<&'a [u8]> for Lines<'a> {
         } else { None }
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {   
-        (1, None)
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        //TODO: this is technically correct but a better estimate could be implemented
+        (1, Some(self.head))
     }
 
 }

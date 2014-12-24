@@ -24,7 +24,6 @@ pub enum Command {
 
     Delete(Direction),
     InsertTab,
-    InsertLine,
     InsertChar(char)
 }
 
@@ -65,7 +64,6 @@ impl<'e> Editor<'e> {
     }
 
     pub fn save_active_buffer(&mut self) {
-        let lines = &self.view.buffer.lines;
         let path = match self.view.buffer.file_path {
             Some(ref p) => Cow::Borrowed(p),
             None => {
@@ -86,10 +84,9 @@ impl<'e> Editor<'e> {
             Err(e) => panic!("file error: {}", e)
         };
 
-        for line in lines.iter() {
-            let mut data = line.data.clone();
-            data.push('\n');
-            let result = file.write(data.as_bytes());
+        //TODO (lee): Is iteration still necessary in this format?
+        for line in self.view.buffer.lines() {
+            let result = file.write(line);
 
             if result.is_err() {
                 // TODO(greg): figure out what to do here.

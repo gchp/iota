@@ -137,15 +137,15 @@ impl KeyMap {
         keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('s')].as_slice(), Command::SaveBuffer);
 
         // Navigation
-        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up));
-        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down));
-        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left));
-        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right));
+        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up(1)));
+        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down(1)));
+        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left(1)));
+        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right(1)));
 
-        keymap.bind_key(Key::Ctrl('p'), Command::MoveCursor(Direction::Up));
-        keymap.bind_key(Key::Ctrl('n'), Command::MoveCursor(Direction::Down));
-        keymap.bind_key(Key::Ctrl('b'), Command::MoveCursor(Direction::Left));
-        keymap.bind_key(Key::Ctrl('f'), Command::MoveCursor(Direction::Right));
+        keymap.bind_key(Key::Ctrl('p'), Command::MoveCursor(Direction::Up(1)));
+        keymap.bind_key(Key::Ctrl('n'), Command::MoveCursor(Direction::Down(1)));
+        keymap.bind_key(Key::Ctrl('b'), Command::MoveCursor(Direction::Left(1)));
+        keymap.bind_key(Key::Ctrl('f'), Command::MoveCursor(Direction::Right(1)));
 
         keymap.bind_key(Key::Ctrl('e'), Command::LineEnd);
         keymap.bind_key(Key::Ctrl('a'), Command::LineStart);
@@ -153,10 +153,10 @@ impl KeyMap {
         // Editing
         keymap.bind_key(Key::Tab, Command::InsertTab);
         keymap.bind_key(Key::Enter, Command::InsertChar('\n'));
-        keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left));
-        keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left));
-        keymap.bind_key(Key::Delete, Command::Delete(Direction::Right));
-        keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right));
+        keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left(1)));
+        keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left(1)));
+        keymap.bind_key(Key::Delete, Command::Delete(Direction::Right(1)));
+        keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right(1)));
 
         return keymap
     }

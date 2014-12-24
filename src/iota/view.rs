@@ -13,7 +13,7 @@ use utils;
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
 pub struct View<'v> {
-    buffer: Buffer,         //Text buffer
+    pub buffer: Buffer,     //Text buffer
     first_char: Mark,       //First character to be displayed
     cursor: Mark,           //Cursor displayed by this buffer.
     uibuf: UIBuffer,        //UIBuffer
@@ -24,7 +24,7 @@ impl<'v> View<'v> {
     //----- CONSTRUCTORS ---------------------------------------------------------------------------
 
     pub fn new(source: Input, rb: &RustBox) -> View<'v> {
-        let buffer = match source {
+        let mut buffer = match source {
             Input::Filename(path) => {
                 match path {
                     Some(s) => Buffer::new_from_file(Path::new(s)),
@@ -43,9 +43,9 @@ impl<'v> View<'v> {
         let uibuf = UIBuffer::new(width, height);
 
         let cursor = Mark::Cursor(0);
-        buffer.add_mark(cursor, 0);
+        buffer.set_mark(cursor, 0);
         let first_char = Mark::DisplayMark(0);
-        buffer.add_mark(first_char, 0);
+        buffer.set_mark(first_char, 0);
 
         View {
             buffer: buffer,
@@ -124,12 +124,12 @@ impl<'v> View<'v> {
     }
 
     pub fn move_cursor_to_line_end(&mut self) {
-        self.buffer.move_mark_to_line_term(self.cursor, Direction::Right);
+        self.buffer.shift_mark(self.cursor, Direction::LineEnd);
         self.cursor_movement();
     }
 
     pub fn move_cursor_to_line_start(&mut self) {
-        self.buffer.move_mark_to_line_term(self.cursor, Direction::Left);
+        self.buffer.shift_mark(self.cursor, Direction::LineStart);
         self.cursor_movement();
     }
 
@@ -142,9 +142,9 @@ impl<'v> View<'v> {
         let cursor_y = self.buffer.get_mark_coords(self.cursor).unwrap().val1();
         let first_char_y = self.buffer.get_mark_coords(self.first_char).unwrap().val1();
         if cursor_y < first_char_y {
-            self.buffer.shift_mark(self.first_char, Direction::Up);
+            self.buffer.shift_mark(self.first_char, Direction::Up(1));
         } else if cursor_y > first_char_y + self.get_height() {
-            self.buffer.shift_mark(self.first_char, Direction::Down);
+            self.buffer.shift_mark(self.first_char, Direction::Down(1));
         }
 
     }
@@ -153,14 +153,15 @@ impl<'v> View<'v> {
 
     pub fn delete_char(&mut self, direction: Direction) {
         match direction {
-            Direction::Left => {
+            Direction::Left(0) => {
                 self.buffer.remove_char();
                 self.move_cursor(direction);
             }
-            Direction::Right => {
+            Direction::Right(0) => {
                 self.move_cursor(direction);
                 self.buffer.remove_char();
             }
+            _ => {}
         }
     }
 
@@ -172,8 +173,8 @@ impl<'v> View<'v> {
     }
 
     pub fn insert_char(&mut self, ch: char) {
-        self.buffer.insert_char(ch);
-        self.move_cursor(Direction::Right)
+        self.buffer.insert_char(ch as u8);
+        self.move_cursor(Direction::Right(1))
     }
 
 }
@@ -184,17 +185,17 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: uint) {
     for line_idx in range(0, width) {
         if line_idx < line.len() {
             match line[line_idx] {
-                '\t'    => {
+                b'\t'   => {
                     let w = 4 - line_idx % 4;
                     for _ in range(0, w) {
                         buf.update_cell_content(line_idx + wide_chars, idx, ' ');
-                        line_idx += 1;
                     }
                 }
-                '\n'    => buf.update_cell_content(line_idx + wide_chars, idx, ' '),
-                _       => buf.update_cell_content(line_idx + wide_chars, idx, line[line_idx]),
+                b'\n'   => buf.update_cell_content(line_idx + wide_chars, idx, ' '),
+                _       => buf.update_cell_content(line_idx + wide_chars, idx,
+                                                   line[line_idx] as char),
             }
-            wide_chars += line[line_idx].width(false).unwrap_or(1) - 1;
+            wide_chars += (line[line_idx] as char).width(false).unwrap_or(1) - 1;
         } else { buf.update_cell_content(line_idx + wide_chars, idx, ' '); }
     }
     if line.len() >= width {
