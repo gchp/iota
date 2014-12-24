@@ -8,6 +8,7 @@ use input::Input;
 use buffer::Direction;
 use keyboard::Key;
 use keymap::{ KeyMap, KeyMapState };
+use log::LogEntries;
 use view::View;
 
 
@@ -37,6 +38,8 @@ pub struct Editor<'e> {
     keymap: KeyMap,
     view: View<'e>,
     rb: &'e RustBox,
+    /// Undo / redo log
+    log: LogEntries,
 }
 
 impl<'e> Editor<'e> {
@@ -48,6 +51,7 @@ impl<'e> Editor<'e> {
             view: view,
             rb: rb,
             keymap: keymap,
+            log: LogEntries::new(),
         }
     }
 
@@ -153,7 +157,7 @@ impl<'e> Editor<'e> {
             },
             KeyMapState::Continue => {
                 // keep going and wait for more keypresses
-                return EventStatus::Handled(Response::Continue) 
+                return EventStatus::Handled(Response::Continue)
             },
             KeyMapState::None => {}  // do nothing and handle the key normally
         }
@@ -161,7 +165,9 @@ impl<'e> Editor<'e> {
         // if the key is a character that is not part of a keybinding, insert into the buffer
         // otherwise, ignore it.
         if let Key::Char(c) = key {
-            self.view.insert_char(c);
+            let Editor {ref mut log, ref mut view, .. } = *self;
+            let mut transaction = log.start(view.cursor_data);
+            view.insert_char(&mut transaction, c);
             EventStatus::Handled(Response::Continue)
         } else {
             EventStatus::NotHandled
