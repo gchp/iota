@@ -1,16 +1,15 @@
 use rustbox::{Color, RustBox};
 
 use buffer::{Line, Buffer};
-use cursor::Direction;
-use cursor::Cursor;
+use cursor::{Cursor, CursorData, Direction};
 use input::Input;
+use log::{LogEntry, Transaction};
 use uibuf::UIBuffer;
 
 use utils;
 
 pub struct CursorGuard<'a> {
-    linenum: &'a mut uint,
-    offset: &'a mut uint,
+    data: &'a mut CursorData,
     cursor: Cursor<'a>,
 }
 
@@ -30,8 +29,10 @@ impl<'a> DerefMut<Cursor<'a>> for CursorGuard<'a> {
 impl<'a> Drop for CursorGuard<'a> {
     fn drop(&mut self) {
         // Update line number and offset
-        *self.linenum = self.cursor.get_linenum();
-        *self.offset = self.cursor.get_actual_offset();
+        *self.data = CursorData {
+            linenum: self.cursor.get_linenum(),
+            offset: self.cursor.get_actual_offset(),
+        }
     }
 }
 
@@ -45,8 +46,7 @@ pub struct View<'v> {
     pub buffer: Buffer,
     // the line number of the topmost `Line` for the View to render
     pub top_line_num: uint,
-    pub linenum: uint,
-    pub offset: uint,
+    pub cursor_data: CursorData,
 
     uibuf: UIBuffer,
     threshold: int,
@@ -77,15 +77,20 @@ impl<'v> View<'v> {
             top_line_num: 0,
             uibuf: uibuf,
             threshold: 5,
-            linenum: 0,
-            offset: 0,
+            cursor_data: CursorData {
+                linenum: 0,
+                offset: 0,
+            }
         }
     }
 
     pub fn cursor<'b>(&'b mut self) -> CursorGuard<'b> {
-        let View {ref mut buffer, ref mut offset, ref mut linenum, .. } = *self;
-        let cursor = Cursor::new(&mut buffer.lines[*linenum], *offset);
-        CursorGuard { cursor: cursor, offset: offset, linenum: linenum }
+        let View {ref mut buffer, ref mut cursor_data, .. } = *self;
+        let cursor = Cursor::new(&mut buffer.lines[cursor_data.linenum], cursor_data.offset);
+        CursorGuard {
+            cursor: cursor,
+            data: cursor_data,
+        }
     }
 
     /// Clear the buffer
@@ -231,9 +236,10 @@ impl<'v> View<'v> {
             vis_acc += ::utils::char_width(c, false, 4, vis_acc).unwrap_or(0);
             vis_acc < vis_width
         }) {}
-        if self.offset == 0 { offset = 0 }
-        self.offset = offset;
-        self.linenum = linenum;
+        self.cursor_data = CursorData {
+            linenum: linenum,
+            offset: if self.cursor_data.offset == 0 { 0 } else { offset },
+        };
     }
 
     fn move_top_line_n_times(&mut self, mut num_times: int) {
@@ -259,13 +265,13 @@ impl<'v> View<'v> {
         }
     }
 
-    pub fn delete_char(&mut self, direction: Direction) {
-        let (offset, line_num) = self.cursor().get_position();
+    pub fn delete_char(&mut self, transaction: &mut Transaction, direction: Direction) {
+        let CursorData { offset, linenum } = self.cursor().get_position();
 
         if offset == 0 && direction.is_left() {
             // Must move the cursor up first so we aren't pointing at dangling memory
             self.move_cursor_up();
-            let offset = self.buffer.join_line_with_previous(offset, line_num);
+            let offset = self.buffer.join_line_with_previous(transaction, offset, linenum);
             self.cursor().set_offset(offset);
             return
         }
@@ -274,34 +280,54 @@ impl<'v> View<'v> {
         if offset == line_len && direction.is_right() {
             // try to join the next line with the current line
             // if there is no next line, nothing will happen
-            self.buffer.join_line_with_previous(offset, line_num+1);
+            self.buffer.join_line_with_previous(transaction, offset, linenum+1);
             return
         }
 
         match direction {
-            Direction::Left  => self.cursor().delete_backward_char(),
-            Direction::Right => self.cursor().delete_forward_char(),
+            Direction::Left  => self.cursor().delete_backward_char(transaction),
+            Direction::Right => self.cursor().delete_forward_char(transaction),
             _                => {}
         }
     }
 
-    pub fn insert_tab(&mut self) {
+    pub fn insert_tab(&mut self, transaction: &mut Transaction) {
         // A tab is just 4 spaces
         for _ in range(0i, 4) {
-            self.insert_char(' ');
+            self.insert_char(transaction, ' ');
         }
     }
 
-    pub fn insert_char(&mut self, ch: char) {
-        self.cursor().insert_char(ch);
+    pub fn insert_char(&mut self, transaction: &mut Transaction, ch: char) {
+        self.cursor().insert_char(transaction, ch);
     }
 
-    pub fn insert_line(&mut self) {
-        let (offset, line_num) = self.cursor().get_position();
-        self.buffer.insert_line(offset, line_num);
+    pub fn insert_line(&mut self, transaction: &mut Transaction,) {
+        let CursorData { offset, linenum } = self.cursor().get_position();
+        self.buffer.insert_line(transaction, offset, linenum);
 
         self.move_cursor_down();
         self.cursor().set_offset(0);
+    }
+
+    pub fn replay(&mut self, entry: &LogEntry) {
+        let LogEntry { ref changes, ref cursor_end, .. } = *entry;
+        for change in changes.iter() {
+            self.buffer.replay(change);
+        }
+        self.cursor_data = *cursor_end;
+        // Readjust top line position.
+        // TODO: refactor with move_cursor(up|down)
+        let cursor_offset = self.cursor_data.linenum as int - self.top_line_num as int;
+        let height = self.get_height() as int;
+        let times = if cursor_offset < self.threshold {
+            cursor_offset - self.threshold
+        } else if cursor_offset >= (height - self.threshold) {
+            cursor_offset - (height - self.threshold) + 1
+        } else {
+            0
+        };
+        self.move_top_line_n_times(times);
     }
 }
 
@@ -339,7 +365,8 @@ pub fn draw_line(buf: &mut UIBuffer, line: &Line, top_line_num: uint) {
 mod tests {
 
     use buffer::{Line, Buffer};
-    use cursor::{Direction};
+    use cursor::{CursorData, Direction};
+    use log::LogEntries;
     use view::View;
     use uibuf::UIBuffer;
     use utils::data_from_str;
@@ -348,8 +375,10 @@ mod tests {
         let mut view = View {
             buffer: Buffer::new(),
             top_line_num: 0,
-            linenum: 0,
-            offset: 0,
+            cursor_data: CursorData {
+                linenum: 0,
+                offset: 0,
+            },
             uibuf: UIBuffer::new(50, 50),
             threshold: 5,
         };
@@ -384,8 +413,10 @@ mod tests {
     #[test]
     fn test_insert_line() {
         let mut view = setup_view();
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(view.cursor_data);
         view.cursor().move_right();
-        view.insert_line();
+        view.insert_line(&mut transaction);
 
         assert_eq!(view.buffer.lines.len(), 3);
         assert_eq!(view.cursor().get_offset(), 0);
@@ -395,7 +426,9 @@ mod tests {
     #[test]
     fn test_insert_char() {
         let mut view = setup_view();
-        view.insert_char('t');
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(view.cursor_data);
+        view.insert_char(&mut transaction, 't');
 
         assert_eq!(view.cursor().get_line().data, data_from_str("ttest"));
     }
@@ -403,7 +436,9 @@ mod tests {
     #[test]
     fn test_delete_char_to_right() {
         let mut view = setup_view();
-        view.delete_char(Direction::Right);
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(view.cursor_data);
+        view.delete_char(&mut transaction, Direction::Right);
 
         assert_eq!(view.cursor().get_line().data, data_from_str("est"));
     }
@@ -411,8 +446,10 @@ mod tests {
     #[test]
     fn test_delete_char_to_left() {
         let mut view = setup_view();
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(view.cursor_data);
         view.cursor().move_right();
-        view.delete_char(Direction::Left);
+        view.delete_char(&mut transaction, Direction::Left);
 
         assert_eq!(view.cursor().get_line().data, data_from_str("est"));
     }
@@ -420,8 +457,10 @@ mod tests {
     #[test]
     fn test_delete_char_at_start_of_line() {
         let mut view = setup_view();
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(view.cursor_data);
         view.move_cursor_down();
-        view.delete_char(Direction::Left);
+        view.delete_char(&mut transaction, Direction::Left);
 
         assert_eq!(view.cursor().get_line().data, data_from_str("testsecond"));
     }
@@ -429,8 +468,10 @@ mod tests {
     #[test]
     fn test_delete_char_at_end_of_line() {
         let mut view = setup_view();
-        view.offset = 4;
-        view.delete_char(Direction::Right);
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(view.cursor_data);
+        view.cursor_data.offset = 4;
+        view.delete_char(&mut transaction, Direction::Right);
 
         assert_eq!(view.cursor().get_line().data, data_from_str("testsecond"));
     }
@@ -438,16 +479,20 @@ mod tests {
     #[test]
     fn delete_char_when_line_is_empty_does_nothing() {
         let mut view = setup_view();
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(view.cursor_data);
         view.buffer.lines = vec!(Line::new(String::new(), 0));
-        view.linenum = 0;
-        view.delete_char(Direction::Right);
+        view.cursor_data.linenum = 0;
+        view.delete_char(&mut transaction, Direction::Right);
         assert_eq!(view.cursor().get_line().data, data_from_str(""));
     }
 
     #[test]
     fn deleting_backward_at_start_of_first_line_does_nothing() {
         let mut view = setup_view();
-        view.delete_char(Direction::Left);
+        let mut log = LogEntries::new();
+        let mut transaction = log.start(view.cursor_data);
+        view.delete_char(&mut transaction, Direction::Left);
 
         assert_eq!(view.buffer.lines.len(), 2);
         assert_eq!(view.cursor().get_line().data, data_from_str("test"));

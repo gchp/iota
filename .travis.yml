@@ -3,8 +3,8 @@ os:
     - linux
     - osx
 before_script:
-    - rustc -v
-    - cargo -V
+    - rustc --version
+    - cargo --version
 script:
-    - cargo build -v
-    - cargo test -v
+    - cargo build --verbose
+    - cargo test --verbose

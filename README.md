@@ -18,18 +18,30 @@ others were platform specific and I couldn't use them on all my machines.
 I started building Iota with the view of combining ideas and features from serveral different
 editors while designing it to work on modern hardware.
 
+Why Rust? Because its fun and why not!
+
 ## Goals
 
 The goals for Iota are that it would be:
 
 - 100% open source
-- highly extensible/customisable
+- highly extensible/customisable/scriptable
 - fast & efficient - designed with modern hardware in mind
 - cross platform - it should work anywhere
 - developer friendly - it should just "get out of the way"
+- Rust tooling integration (see note below)
 
 Iota is still in the very early stages, and is probably not ready for every day use.
 Right now the focus is on implementing and polishing the basic editing functionality.
+
+Windows support is coming, but it's somewhat slow right now. Help with this would
+be greatly appreciated!
+
+**Note on Rust integration:**
+_The aim is to support code editing in all languages (and of course plain text),
+with a lean towards Rust and integration with Rust tools. I don't intend it to
+be a "Rust IDE" or "Rust only", however I think it would be cool to experiment with
+integration with Rust tooling. This could also be applied to other languages too._
 
 ## Usage
 
@@ -41,24 +53,28 @@ to open an empty buffer.
 You can also create buffers from `stdin`.
 
 ```bash
-# open a buffer with the output of `ls`
-ls | ./target/iota
+# open a buffer with the output of `ifconfig`
+ifconfig | ./target/iota
 ```
 
 You can move the cursor around with the arrow keys.
 
 To save, press `Ctrl-s`.
-To exit, press `Ctrl-q`, followed by `Ctrl-c`.
+To exit, press `Ctrl-q`.
 
 Iota currently supports Emacs-style keybindings for simple movement.
 
 - `Ctrl-p` move up
 - `Ctrl-n` move down
+- `Ctrl-b` move backwards
+- `Ctrl-f` move forwards
 - `Ctrl-a` move to start of line
 - `Ctrl-e` move to end of line
 - `Ctrl-d` delete forwards
 - `Ctrl-h` delete backwards
 - `Ctrl-x Ctrl-c` quit
 - `Ctrl-x Ctrl-s` save
+- `Ctrl-z` undo
+- `Ctrl-y` redo
 
 There are also plans to optionally enable Vi-like keybindings & modes.

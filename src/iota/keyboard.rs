@@ -33,6 +33,8 @@ impl Key {
             18    => Some(Key::Ctrl('r')),
             19    => Some(Key::Ctrl('s')),
             24    => Some(Key::Ctrl('x')),
+            25    => Some(Key::Ctrl('y')),
+            26    => Some(Key::Ctrl('z')),
             27    => Some(Key::Esc),
             32    => Some(Key::Char(' ')),
             127   => Some(Key::Backspace),
