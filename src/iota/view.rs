@@ -4,7 +4,7 @@ use buffer::{Line, Buffer};
 use cursor::{Cursor, CursorData, Direction};
 use input::Input;
 use log::{LogEntry, Transaction};
-use uibuf::UIBuffer;
+use uibuf::{UIBuffer, CharColor};
 use frontends::Frontend;
 
 use utils;
@@ -139,7 +139,7 @@ impl<'v> View<'v> {
             if index < status_text_len {
                 ch = status_text[index] as char;
             }
-            self.uibuf.update_cell(index, height, ch, Color::Black, Color::Blue);
+            self.uibuf.update_cell(index, height, ch, CharColor::Black, CharColor::Blue);
         }
 
         self.uibuf.draw_range(frontend, height, height+1);

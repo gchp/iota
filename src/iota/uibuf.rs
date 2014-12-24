@@ -8,6 +8,22 @@ pub struct UIBuffer {
     rows: Vec<Vec<Cell>>
 }
 
+#[deriving(Copy, PartialEq)]
+pub enum CharStyle {
+    Normal,
+    // TODO: add other styles
+    // Bold,
+    // Underline,
+}
+
+#[deriving(Copy, PartialEq)]
+pub enum CharColor {
+    Default,
+    Blue,
+    Black,
+    // TODO: add other colors
+}
+
 impl UIBuffer {
     pub fn new(width: uint, height: uint) -> UIBuffer {
         let rows = Cell::create_grid(width, height, ' ');
@@ -24,7 +40,7 @@ impl UIBuffer {
         for row in rows.iter_mut() {
             for cell in row.iter_mut().filter(|cell| cell.dirty) {
                 // frontend.print_char(cell.x, cell.y, Style::empty(), cell.fg, cell.bg, cell.ch);
-                frontend.draw_char(cell.x, cell.y, cell.ch);
+                frontend.draw_char(cell.x, cell.y, cell.ch, cell.fg, cell.bg, CharStyle::Normal);
                 cell.dirty = false;
             }
         }
@@ -58,7 +74,7 @@ impl UIBuffer {
     }
 
     /// Update the `ch`, `fg`, and `bg` attributes of an indivudual cell
-    pub fn update_cell(&mut self, cell_num: uint, row_num: uint, ch: char, fg: Color, bg: Color) {
+    pub fn update_cell(&mut self, cell_num: uint, row_num: uint, ch: char, fg: CharColor, bg: CharColor) {
         self.get_cell_mut(cell_num, row_num).set(ch, fg, bg);
     }
 
@@ -69,8 +85,8 @@ impl UIBuffer {
 
 
 pub struct Cell {
-    pub bg: Color,
-    pub fg: Color,
+    pub bg: CharColor,
+    pub fg: CharColor,
     pub ch: char,
     pub x: uint,
     pub y: uint,
@@ -81,8 +97,8 @@ pub struct Cell {
 impl Cell {
     pub fn new() -> Cell {
         Cell {
-            bg: Color::Default,
-            fg: Color::Default,
+            bg: CharColor::Default,
+            fg: CharColor::Default,
             ch: ' ',
             x: 0,
             y: 0,
@@ -97,7 +113,7 @@ impl Cell {
         }
     }
 
-    pub fn set(&mut self, ch: char, fg: Color, bg: Color) {
+    pub fn set(&mut self, ch: char, fg: CharColor, bg: CharColor) {
         if self.ch != ch || self.fg != fg || self.bg != bg {
             self.dirty = true;
         }

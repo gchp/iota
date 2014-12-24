@@ -5,6 +5,7 @@ use rustbox::{InitOption, RustBox, Event};
 use rustbox::{Style, Color};
 
 use super::Frontend;
+use super::{CharStyle, CharColor};
 use super::Key;
 use super::EditorEvent;
 use super::View;
@@ -40,7 +41,25 @@ impl<'f> Frontend for RustboxFrontend<'f> {
         self.rb.set_cursor(offset, linenum)
     }
 
-    fn draw_char(&mut self, offset: uint, linenum: uint, ch: char) {
-        self.rb.print_char(offset, linenum, Style::empty(), Color::Default, Color::Default, ch);
+    fn draw_char(&mut self, offset: uint, linenum: uint, ch: char, fg: CharColor, bg: CharColor, style: CharStyle) {
+        let bg = get_color(bg);
+        let fg = get_color(fg);
+        let style = get_style(style);
+
+        self.rb.print_char(offset, linenum, style, fg, bg, ch);
+    }
+}
+
+fn get_color(c: CharColor) -> Color {
+    match c {
+        CharColor::Default => Color::Default,
+        CharColor::Blue    => Color::Blue,
+        CharColor::Black   => Color::Black,
+    }
+}
+
+fn get_style(s: CharStyle) -> Style {
+    match s {
+        CharStyle::Normal => Style::empty(),
     }
 }
