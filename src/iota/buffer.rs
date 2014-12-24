@@ -16,7 +16,7 @@ pub enum Mark {
     UserDefined(uint),      //For user defined marks.
 }
 
-#[deriving(Copy, Show)]
+#[deriving(Copy, Show, PartialEq, Eq)]
 pub enum Direction {
     Up(uint), Down(uint), Left(uint), Right(uint),
     LineStart, LineEnd,
@@ -66,10 +66,12 @@ impl Buffer {
 
     //----- ACCESSORS ------------------------------------------------------------------------------
 
+    ///Length of the text stored in this buffer.
     pub fn len(&self) -> uint {
         self.text.len()
     }
 
+    ///The x,y coordinates of a mark within the file. None if not a valid mark.
     pub fn get_mark_coords(&self, mark: Mark) -> Option<(uint, uint)> {
         if let Some(idx) = self.get_mark_idx(mark) {
             if let Some(line) = self.get_line(idx) {
@@ -81,6 +83,7 @@ impl Buffer {
         } else { None }
     }
 
+    ///The absolute index of a mark within the file. None if not a valid mark.
     pub fn get_mark_idx(&self, mark: Mark) -> Option<uint> {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
             if idx < self.len() {
@@ -89,26 +92,29 @@ impl Buffer {
         } else { None }
     }
 
+    ///Creates an iterator on the text by lines.
     pub fn lines(&self) -> Lines {
         Lines {
-            buffer: self.text[]
+            buffer: self.text[],
             tail: 0,
             head: self.len()
         }
     }
 
+    ///Creates an iterator on the text by lines that begins at the specified mark.
     pub fn lines_from(&self, mark: Mark) -> Option<Lines> {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
             if idx < self.len() {
-                Lines {
+                Some(Lines {
                     buffer: self.text[idx..],
                     tail: 0,
                     head: self.len() - idx,
-                }
+                })
             } else { None }
         } else { None }
     }
 
+    ///Returns the status text for this buffer.
     pub fn status_text(&self) -> String {
         match self.file_path {
             Some(ref path)  =>  format!("{}", path.display()),
@@ -118,6 +124,7 @@ impl Buffer {
 
     //----- MUTATORS -------------------------------------------------------------------------------
 
+    ///Sets the mark to a given absolute index. Adds a new mark or overwrites an existing mark.
     pub fn set_mark(&mut self, mark: Mark, idx: uint) {
         if let Some(line) = self.get_line(idx) {
             if let Some(tuple) = self.marks.get_mut(&mark) {
@@ -128,6 +135,7 @@ impl Buffer {
         }
     }
 
+    ///Sets the mark to a given x,y coordinates. Adds a new mark or overwrites an existing mark.
     pub fn set_mark_by_coords(&mut self, mark: Mark, x: uint, y: uint) {
         let mut y_idx = 0;
         for _ in range(0, y) {
@@ -142,43 +150,43 @@ impl Buffer {
         }        
     }
 
-    //Shift a mark according to the direction given.
+    //Shift a mark relative to its position according to the direction given.
     pub fn shift_mark(&mut self, mark: Mark, direction: Direction) {
         if let Some(tuple) = match direction {
-            Direction::Left(n) | Direction::Right(n)    =>  self.offset_mark(mark, direction),
-            Direction::Up(n)   | Direction::Down(n)     =>  self.offset_mark_line(mark, direction),
-            Direction::LineStart    =>  {
+            Direction::Left(_)   | Direction::Right(_)  =>  self.offset_mark(mark, direction),
+            Direction::Up(_)     | Direction::Down(_)   =>  self.offset_mark_line(mark, direction),
+            Direction::LineStart | Direction::LineEnd   =>  {
                 if let Some(&(idx, _)) = self.marks.get(&mark) {
-                    let start = self.get_line(idx).unwrap();
-                    Some((start, 0))
+                    if direction == Direction::LineStart {
+                        let start = self.get_line(idx).unwrap();
+                        Some((start, 0))
+                    } else {
+                        let end = self.get_line_end(idx).unwrap();
+                        Some((end, end - self.get_line(idx).unwrap()))
+                    }
                 }
-                else { None}
-            }
-            Direction::LineEnd      =>  {
-                if let Some(&(idx, _)) = self.marks.get(&mark) {
-                    let end = self.get_line_end(idx).unwrap();
-                    Some((end, end - self.get_line(idx).unwrap()))
-                } else { None }
+                else { None }
             }
         } {
             if let Some(old_mark) = self.marks.get_mut(&mark) { *old_mark = tuple; }
         }
     }
 
-    //Remove the char at the point.
+    ///Remove the char at the point.
     pub fn remove_char(&mut self) -> Option<u8> {
         if let Some(tuple) = self.marks.get(&Mark::Point) {
             self.text.remove((*tuple).val0())   
         } else { None }
     }
 
-    //Insert a char at the point.
+    ///Insert a char at the point.
     pub fn insert_char(&mut self, ch: u8) {
         if let Some(tuple) = self.marks.get(&Mark::Point) {
             self.text.insert((*tuple).val0(), ch);
         }
     }
 
+    ///Updates the point to be equivalent to a given mark.
     pub fn update_point(&mut self, mark: Mark) {
         if let Some(&tuple) = self.marks.get(&mark) {
             if tuple.val0() < self.len() {
@@ -229,7 +237,7 @@ impl Buffer {
             Direction::Left(n)  =>  -(n as int),
             Direction::Right(n) =>    n as int ,
             _ => 0,
-        }
+        };
         if let Some(tuple) = self.marks.get(&mark) {
             let idx = (*tuple).val0() as int + offset;
             match (idx >= 0, idx < self.len() as int ) {
@@ -250,7 +258,7 @@ impl Buffer {
             Direction::Up(n)    =>  -(n as int),
             Direction::Down(n)  =>    n as int ,
             _ => 0,
-        }
+        };
         if let Some(tuple) = self.marks.get(&mark) {
             let mut line = self.get_line((*tuple).val0());
             let line_idx = (*tuple).val1();
