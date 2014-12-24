@@ -145,10 +145,8 @@ impl Buffer {
     //Shift a mark according to the direction given.
     pub fn shift_mark(&mut self, mark: Mark, direction: Direction) {
         if let Some(tuple) = match direction {
-            Direction::Left(n)      =>  self.offset_mark(mark, -(n as int)),
-            Direction::Right(n)     =>  self.offset_mark(mark,   n as int),
-            Direction::Up(n)        =>  self.offset_mark_line(mark, -(n as int)),
-            Direction::Down(n)      =>  self.offset_mark_line(mark,   n as int),
+            Direction::Left(n) | Direction::Right(n)    =>  self.offset_mark(mark, direction),
+            Direction::Up(n)   | Direction::Down(n)     =>  self.offset_mark_line(mark, direction),
             Direction::LineStart    =>  {
                 if let Some(&(idx, _)) = self.marks.get(&mark) {
                     let start = self.get_line(idx).unwrap();
@@ -162,7 +160,9 @@ impl Buffer {
                     Some((end, end - self.get_line(idx).unwrap()))
                 } else { None }
             }
-        } { *self.marks.get_mut(&mark).unwrap() = tuple; }
+        } {
+            if let Some(old_mark) = self.marks.get_mut(&mark) { *old_mark = tuple; }
+        }
     }
 
     //Remove the char at the point.
@@ -223,8 +223,13 @@ impl Buffer {
 
     //Returns the mark offset by some number of chars.
     //None iff mark is not in the hashmap.
-    fn offset_mark(&self, mark: Mark, offset: int) -> Option<(uint, uint)> {
+    fn offset_mark(&self, mark: Mark, direction: Direction) -> Option<(uint, uint)> {
     //FIXME unicode support
+        let offset = match direction {
+            Direction::Left(n)  =>  -(n as int),
+            Direction::Right(n) =>    n as int ,
+            _ => 0,
+        }
         if let Some(tuple) = self.marks.get(&mark) {
             let idx = (*tuple).val0() as int + offset;
             match (idx >= 0, idx < self.len() as int ) {
@@ -239,8 +244,13 @@ impl Buffer {
 
     //Returns the mark offset by some number of line breaks.
     // None iff mark is not in the hashmap.
-    fn offset_mark_line(&self, mark: Mark, offset: int) -> Option<(uint, uint)> {
+    fn offset_mark_line(&self, mark: Mark, direction: Direction) -> Option<(uint, uint)> {
     //FIXME unicode support
+        let offset = match direction {
+            Direction::Up(n)    =>  -(n as int),
+            Direction::Down(n)  =>    n as int ,
+            _ => 0,
+        }
         if let Some(tuple) = self.marks.get(&mark) {
             let mut line = self.get_line((*tuple).val0());
             let line_idx = (*tuple).val1();
