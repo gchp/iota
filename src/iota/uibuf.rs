@@ -1,5 +1,7 @@
 use rustbox::{Color, RustBox, Style};
 
+use frontends::Frontend;
+
 pub struct UIBuffer {
     width: uint,
     height: uint,
@@ -17,19 +19,20 @@ impl UIBuffer {
         }
     }
 
-    pub fn draw_range(&mut self, rb: &RustBox, start: uint, stop: uint) {
+    pub fn draw_range(&mut self, frontend: &mut Box<Frontend>, start: uint, stop: uint) {
         let rows = self.rows.slice_mut(start, stop);
         for row in rows.iter_mut() {
             for cell in row.iter_mut().filter(|cell| cell.dirty) {
-                rb.print_char(cell.x, cell.y, Style::empty(), cell.fg, cell.bg, cell.ch);
+                // frontend.print_char(cell.x, cell.y, Style::empty(), cell.fg, cell.bg, cell.ch);
+                frontend.draw_char(cell.x, cell.y, cell.ch);
                 cell.dirty = false;
             }
         }
     }
 
-    pub fn draw_everything(&mut self, rb: &RustBox) {
+    pub fn draw_everything(&mut self, frontend: &mut Box<Frontend>) {
         let height = self.height;
-        self.draw_range(rb, 0, height);
+        self.draw_range(frontend, 0, height);
     }
 
     pub fn get_width(&self) -> uint {

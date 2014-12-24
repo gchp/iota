@@ -2,10 +2,12 @@ use std::io::stdio;
 use std::char;
 
 use rustbox::{InitOption, RustBox, Event};
+use rustbox::{Style, Color};
 
 use super::Frontend;
 use super::Key;
 use super::EditorEvent;
+use super::View;
 
 
 pub struct RustboxFrontend<'f> {
@@ -32,5 +34,13 @@ impl<'f> Frontend for RustboxFrontend<'f> {
             }
             _ => EditorEvent::UnSupported
         }
+    }
+
+    fn draw_cursor(&mut self, offset: int, linenum: int) {
+        self.rb.set_cursor(offset, linenum)
+    }
+
+    fn draw_char(&mut self, offset: uint, linenum: uint, ch: char) {
+        self.rb.print_char(offset, linenum, Style::empty(), Color::Default, Color::Default, ch);
     }
 }

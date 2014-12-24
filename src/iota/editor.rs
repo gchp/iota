@@ -110,14 +110,14 @@ impl<'e> Editor<'e> {
     }
 
     pub fn draw(&mut self) {
-        self.view.draw(self.rb);
-        self.view.draw_status(self.rb);
-        self.view.draw_cursor(self.rb);
+        self.view.draw(&mut self.frontend);
+        self.view.draw_status(&mut self.frontend);
+        self.view.draw_cursor(&mut self.frontend);
     }
 
     pub fn start(&mut self) {
         loop {
-            self.view.clear(self.rb);
+            self.view.clear(&mut self.frontend);
             self.draw();
             self.rb.present();
             let event = self.frontend.poll_event();
@@ -135,7 +135,7 @@ impl<'e> Editor<'e> {
             // Editor Commands
             Command::ExitEditor      => return Response::Quit,
             Command::SaveBuffer      => self.save_active_buffer(),
-            Command::ResizeView      => self.view.resize(self.rb),
+            Command::ResizeView      => self.view.resize(&mut self.frontend),
 
             // Navigation
             Command::MoveCursor(dir) => self.view.move_cursor(dir),
