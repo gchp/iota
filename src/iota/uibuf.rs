@@ -1,5 +1,3 @@
-use rustbox::{Color, RustBox, Style};
-
 use frontends::Frontend;
 
 pub struct UIBuffer {
@@ -39,7 +37,6 @@ impl UIBuffer {
         let rows = self.rows.slice_mut(start, stop);
         for row in rows.iter_mut() {
             for cell in row.iter_mut().filter(|cell| cell.dirty) {
-                // frontend.print_char(cell.x, cell.y, Style::empty(), cell.fg, cell.bg, cell.ch);
                 frontend.draw_char(cell.x, cell.y, cell.ch, cell.fg, cell.bg, CharStyle::Normal);
                 cell.dirty = false;
             }

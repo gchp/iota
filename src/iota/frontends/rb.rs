@@ -1,14 +1,12 @@
-use std::io::stdio;
 use std::char;
 
-use rustbox::{InitOption, RustBox, Event};
+use rustbox::{RustBox, Event};
 use rustbox::{Style, Color};
 
 use super::Frontend;
 use super::{CharStyle, CharColor};
 use super::Key;
 use super::EditorEvent;
-use super::View;
 
 
 pub struct RustboxFrontend<'f> {

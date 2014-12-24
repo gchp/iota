@@ -1,4 +1,4 @@
-use rustbox::{Color, RustBox};
+use rustbox::RustBox;
 
 use buffer::{Line, Buffer};
 use cursor::{Cursor, CursorData, Direction};

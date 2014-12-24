@@ -1,6 +1,5 @@
-use rustbox::{Event, RustBox};
+use rustbox::RustBox;
 use std::borrow::Cow;
-use std::char;
 use std::io::{fs, File, FileMode, FileAccess, TempDir};
 
 use super::Response;

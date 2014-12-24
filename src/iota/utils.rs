@@ -1,11 +1,5 @@
 use rustbox::RustBox;
 
-pub fn draw_cursor(rb: &RustBox, x: uint, y: uint) {
-    let x = x.to_int().unwrap();
-    let y = y.to_int().unwrap();
-    rb.set_cursor(x, y);
-}
-
 pub fn get_term_height(rb: &RustBox) -> uint {
     rb.height()
 }
