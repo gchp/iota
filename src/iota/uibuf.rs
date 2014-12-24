@@ -141,7 +141,7 @@ impl Cell {
 #[cfg(test)]
 mod tests {
     use uibuf::UIBuffer;
-    use rustbox::Color;
+    use uibuf::CharColor;
 
     fn setup_uibuf() -> UIBuffer {
         UIBuffer::new(50, 50)
@@ -181,8 +181,8 @@ mod tests {
         let cell_num = 10u;
         let row_num = 0u;
         let ch = 'q';
-        let fg = Color::Red;
-        let bg = Color::Blue;
+        let fg = CharColor::Default;
+        let bg = CharColor::Blue;
 
         uibuf.update_cell(cell_num, row_num, ch, fg, bg);
 
