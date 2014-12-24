@@ -4,8 +4,9 @@ version = "0.1.0"
 authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
 [dependencies]
-docopt = "0.6.18"
+docopt = "0.6.19"
 rustbox = "0.2.1"
+rustc-serialize = "0.1.4"
 
 [lib]
 name = "iota"
