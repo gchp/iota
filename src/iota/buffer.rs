@@ -90,15 +90,23 @@ impl Buffer {
     }
 
     pub fn lines(&self) -> Lines {
-        self.lines_from(0)
+        Lines {
+            buffer: self.text[]
+            tail: 0,
+            head: self.len()
+        }
     }
 
-    pub fn lines_from(&self, idx: uint) -> Lines {
-        Lines {
-            buffer: self.text[idx..],
-            tail: 0,
-            head: self.len() - idx,
-        }
+    pub fn lines_from(&self, mark: Mark) -> Option<Lines> {
+        if let Some(&(idx, _)) = self.marks.get(&mark) {
+            if idx < self.len() {
+                Lines {
+                    buffer: self.text[idx..],
+                    tail: 0,
+                    head: self.len() - idx,
+                }
+            } else { None }
+        } else { None }
     }
 
     pub fn status_text(&self) -> String {

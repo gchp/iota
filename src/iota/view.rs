@@ -76,7 +76,8 @@ impl<'v> View<'v> {
 
     pub fn draw(&mut self, rb: &RustBox) {
         for (index,line) in self.buffer
-                                .lines_from(self.buffer.get_mark_idx(self.first_char).unwrap())
+                                .lines_from(self.first_char)
+                                .unwrap()
                                 .enumerate() {
             draw_line(&mut self.uibuf, line, index);
             if index == self.get_height() { break; }
@@ -202,4 +203,122 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: uint) {
         buf.update_cell_content(width + wide_chars, idx, '→');
     }
 
+}
+
+#[cfg(test)]
+mod tests {
+
+    use buffer::{Buffer, Direction};
+    use view::View;
+    use uibuf::UIBuffer;
+    use utils::data_from_str;
+
+    fn setup_view<'v>() -> View<'v> {
+        let mut view = View {
+            buffer: Buffer::new(),
+            top_line_num: 0,
+            linenum: 0,
+            offset: 0,
+            uibuf: UIBuffer::new(50, 50),
+            threshold: 5,
+        };
+
+        let first_line = Line::new(data_from_str("test"), 0);
+        let second_line = Line::new(data_from_str("second"), 1);
+
+        view.buffer.lines = vec!(first_line, second_line);
+        view.set_cursor_line(0);
+
+        return view
+    }
+
+    #[test]
+    fn test_move_cursor_down() {
+        let mut view = setup_view();
+        view.move_cursor_down();
+
+        assert_eq!(view.cursor().get_linenum(), 1);
+        assert_eq!(view.cursor().get_line().data, data_from_str("second"));
+    }
+
+    #[test]
+    fn test_move_cursor_up() {
+        let mut view = setup_view();
+        view.move_cursor_down();
+        view.move_cursor_up();
+        assert_eq!(view.cursor().get_linenum(), 0);
+        assert_eq!(view.cursor().get_line().data, data_from_str("test"));
+    }
+
+    #[test]
+    fn test_insert_line() {
+        let mut view = setup_view();
+        view.cursor().move_right();
+        view.insert_line();
+
+        assert_eq!(view.buffer.lines.len(), 3);
+        assert_eq!(view.cursor().get_offset(), 0);
+        assert_eq!(view.cursor().get_line().linenum, 1);
+    }
+
+    #[test]
+    fn test_insert_char() {
+        let mut view = setup_view();
+        view.insert_char('t');
+
+        assert_eq!(view.cursor().get_line().data, data_from_str("ttest"));
+    }
+
+    #[test]
+    fn test_delete_char_to_right() {
+        let mut view = setup_view();
+        view.delete_char(Direction::Right);
+
+        assert_eq!(view.cursor().get_line().data, data_from_str("est"));
+    }
+
+    #[test]
+    fn test_delete_char_to_left() {
+        let mut view = setup_view();
+        view.cursor().move_right();
+        view.delete_char(Direction::Left);
+
+        assert_eq!(view.cursor().get_line().data, data_from_str("est"));
+    }
+
+    #[test]
+    fn test_delete_char_at_start_of_line() {
+        let mut view = setup_view();
+        view.move_cursor_down();
+        view.delete_char(Direction::Left);
+
+        assert_eq!(view.cursor().get_line().data, data_from_str("testsecond"));
+    }
+
+    #[test]
+    fn test_delete_char_at_end_of_line() {
+        let mut view = setup_view();
+        view.offset = 4;
+        view.delete_char(Direction::Right);
+
+        assert_eq!(view.cursor().get_line().data, data_from_str("testsecond"));
+    }
+
+    #[test]
+    fn delete_char_when_line_is_empty_does_nothing() {
+        let mut view = setup_view();
+        view.buffer.lines = vec!(Line::new(String::new(), 0));
+        view.linenum = 0;
+        view.delete_char(Direction::Right);
+        assert_eq!(view.cursor().get_line().data, data_from_str(""));
+    }
+
+    #[test]
+    fn deleting_backward_at_start_of_first_line_does_nothing() {
+        let mut view = setup_view();
+        view.delete_char(Direction::Left);
+
+        assert_eq!(view.buffer.lines.len(), 2);
+        assert_eq!(view.cursor().get_line().data, data_from_str("test"));
+    }
 }
