@@ -10,6 +10,7 @@ use keyboard::Key;
 use keymap::{ KeyMap, KeyMapState };
 use log::LogEntries;
 use view::View;
+use frontends::{Frontend, RustboxFrontend, EditorEvent};
 
 
 #[deriving(Copy, Show)]
@@ -42,6 +43,9 @@ pub struct Editor<'e> {
     keymap: KeyMap,
     view: View<'e>,
     rb: &'e RustBox,
+
+    frontend: Box<Frontend + 'e>,
+
     /// Undo / redo log
     log: LogEntries,
 }
@@ -55,16 +59,12 @@ impl<'e> Editor<'e> {
             view: view,
             rb: rb,
             keymap: keymap,
+            frontend: box RustboxFrontend::new(rb),
             log: LogEntries::new(),
         }
     }
 
-    pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
-        let key = match key {
-            0 => char::from_u32(ch).map(|c| Key::Char(c)),
-            a => Key::from_special_code(a),
-        };
-
+    pub fn handle_key_event(&mut self, key: Option<Key>) -> Response {
         match self.handle_system_event(key) {
             EventStatus::Handled(response) => { response }
             EventStatus::NotHandled        => { Response::Continue }
@@ -120,9 +120,9 @@ impl<'e> Editor<'e> {
             self.view.clear(self.rb);
             self.draw();
             self.rb.present();
-            let event = self.rb.poll_event().unwrap();
-            if let Event::KeyEvent(_, key, ch) = event {
-                if let Response::Quit = self.handle_key_event(key, ch) {
+            let event = self.frontend.poll_event();
+            if let EditorEvent::KeyEvent(key) = event {
+                if let Response::Quit = self.handle_key_event(key) {
                     break;
                 }
             }
