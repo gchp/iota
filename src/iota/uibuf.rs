@@ -1,9 +1,25 @@
-use rustbox::{Color, RustBox, Style};
+use frontends::Frontend;
 
 pub struct UIBuffer {
     width: uint,
     height: uint,
     rows: Vec<Vec<Cell>>
+}
+
+#[deriving(Copy, PartialEq)]
+pub enum CharStyle {
+    Normal,
+    // TODO: add other styles
+    // Bold,
+    // Underline,
+}
+
+#[deriving(Copy, PartialEq)]
+pub enum CharColor {
+    Default,
+    Blue,
+    Black,
+    // TODO: add other colors
 }
 
 impl UIBuffer {
@@ -17,19 +33,19 @@ impl UIBuffer {
         }
     }
 
-    pub fn draw_range(&mut self, rb: &RustBox, start: uint, stop: uint) {
+    pub fn draw_range(&mut self, frontend: &mut Box<Frontend>, start: uint, stop: uint) {
         let rows = self.rows.slice_mut(start, stop);
         for row in rows.iter_mut() {
             for cell in row.iter_mut().filter(|cell| cell.dirty) {
-                rb.print_char(cell.x, cell.y, Style::empty(), cell.fg, cell.bg, cell.ch);
+                frontend.draw_char(cell.x, cell.y, cell.ch, cell.fg, cell.bg, CharStyle::Normal);
                 cell.dirty = false;
             }
         }
     }
 
-    pub fn draw_everything(&mut self, rb: &RustBox) {
+    pub fn draw_everything(&mut self, frontend: &mut Box<Frontend>) {
         let height = self.height;
-        self.draw_range(rb, 0, height);
+        self.draw_range(frontend, 0, height);
     }
 
     pub fn get_width(&self) -> uint {
@@ -55,7 +71,7 @@ impl UIBuffer {
     }
 
     /// Update the `ch`, `fg`, and `bg` attributes of an indivudual cell
-    pub fn update_cell(&mut self, cell_num: uint, row_num: uint, ch: char, fg: Color, bg: Color) {
+    pub fn update_cell(&mut self, cell_num: uint, row_num: uint, ch: char, fg: CharColor, bg: CharColor) {
         self.get_cell_mut(cell_num, row_num).set(ch, fg, bg);
     }
 
@@ -66,8 +82,8 @@ impl UIBuffer {
 
 
 pub struct Cell {
-    pub bg: Color,
-    pub fg: Color,
+    pub bg: CharColor,
+    pub fg: CharColor,
     pub ch: char,
     pub x: uint,
     pub y: uint,
@@ -78,8 +94,8 @@ pub struct Cell {
 impl Cell {
     pub fn new() -> Cell {
         Cell {
-            bg: Color::Default,
-            fg: Color::Default,
+            bg: CharColor::Default,
+            fg: CharColor::Default,
             ch: ' ',
             x: 0,
             y: 0,
@@ -94,7 +110,7 @@ impl Cell {
         }
     }
 
-    pub fn set(&mut self, ch: char, fg: Color, bg: Color) {
+    pub fn set(&mut self, ch: char, fg: CharColor, bg: CharColor) {
         if self.ch != ch || self.fg != fg || self.bg != bg {
             self.dirty = true;
         }
@@ -125,7 +141,7 @@ impl Cell {
 #[cfg(test)]
 mod tests {
     use uibuf::UIBuffer;
-    use rustbox::Color;
+    use uibuf::CharColor;
 
     fn setup_uibuf() -> UIBuffer {
         UIBuffer::new(50, 50)
@@ -165,15 +181,14 @@ mod tests {
         let cell_num = 10u;
         let row_num = 0u;
         let ch = 'q';
-        let fg = Color::Red;
-        let bg = Color::Blue;
+        let fg = CharColor::Default;
+        let bg = CharColor::Blue;
 
         uibuf.update_cell(cell_num, row_num, ch, fg, bg);
 
         let cell = &uibuf.rows[row_num][cell_num];
         assert_eq!(cell.ch, ch);
 
-        // FIXME(greg): this fails cos '==' is not implemented for rustbox::Color.
         // assert_eq!(cell.fg, fg);
         // assert_eq!(cell.bg, bg);
     }

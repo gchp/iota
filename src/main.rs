@@ -1,4 +1,4 @@
-extern crate serialize;
+extern crate "rustc-serialize" as rustc_serialize;
 extern crate rustbox;
 extern crate docopt;
 extern crate iota;
@@ -16,7 +16,7 @@ Options:
 ";
 
 
-#[deriving(Decodable, Show)]
+#[deriving(RustcDecodable, Show)]
 struct Args {
     arg_filename: Option<String>,
     flag_help: bool,
