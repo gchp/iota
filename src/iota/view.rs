@@ -36,9 +36,6 @@ impl<'v> View<'v> {
             },
         };
 
-        let height: uint = utils::get_term_height(rb);
-        let width: uint = utils::get_term_width(rb);
-
         // NOTE(greg): this may not play well with resizing
         let uibuf = UIBuffer::new(width, height);
 
@@ -99,10 +96,10 @@ impl<'v> View<'v> {
             if index < status_text_len {
                 ch = status_text[index] as char;
             }
-            self.uibuf.update_cell(index, height, ch, Color::Black, Color::Blue);
+            self.uibuf.update_cell(index, height, ch, CharColor::Black, CharColor::Blue);
         }
 
-        self.uibuf.draw_range(rb, height, height+1);
+        self.uibuf.draw_range(frontend, height, height+1);
     }
 
     pub fn draw_cursor(&mut self, rb: &RustBox) {
@@ -111,9 +108,9 @@ impl<'v> View<'v> {
         }
     }
 
-    pub fn resize(&mut self, rb: &RustBox) {
+    pub fn resize(&mut self, frontend: &mut Box<Frontend + 'v>) {
         let width = self.uibuf.get_width();
-        self.clear(rb);
+        self.clear(frontend);
         self.uibuf = UIBuffer::new(width, 15);
     }
 

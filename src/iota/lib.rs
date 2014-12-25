@@ -17,6 +17,7 @@ mod keymap;
 mod view;
 mod uibuf;
 mod log;
+mod frontends;
 
 #[deriving(Copy)]
 pub enum Response {

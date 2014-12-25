@@ -1,6 +1,5 @@
-use rustbox::{Event, RustBox};
+use rustbox::RustBox;
 use std::borrow::Cow;
-use std::char;
 use std::io::{fs, File, FileMode, FileAccess, TempDir};
 
 use super::Response;
@@ -9,6 +8,7 @@ use buffer::Direction;
 use keyboard::Key;
 use keymap::{ KeyMap, KeyMapState };
 use view::View;
+use frontends::{Frontend, RustboxFrontend, EditorEvent};
 
 
 #[deriving(Copy, Show)]
@@ -44,22 +44,19 @@ pub struct Editor<'e> {
 
 impl<'e> Editor<'e> {
     pub fn new(source: Input, rb: &'e RustBox) -> Editor<'e> {
-        let view = View::new(source, rb);
+        let frontend = box RustboxFrontend::new(rb);
+        let height = frontend.get_window_height();
+        let width = frontend.get_window_width();
+        let view = View::new(source, width, height);
         let keymap = KeyMap::load_defaults();
 
         Editor {
             view: view,
-            rb: rb,
             keymap: keymap,
         }
     }
 
-    pub fn handle_key_event(&mut self, key: u16, ch: u32) -> Response {
-        let key = match key {
-            0 => char::from_u32(ch).map(|c| Key::Char(c)),
-            a => Key::from_special_code(a),
-        };
-
+    pub fn handle_key_event(&mut self, key: Option<Key>) -> Response {
         match self.handle_system_event(key) {
             EventStatus::Handled(response) => { response }
             EventStatus::NotHandled        => { Response::Continue }
@@ -103,19 +100,19 @@ impl<'e> Editor<'e> {
     }
 
     pub fn draw(&mut self) {
-        self.view.draw(self.rb);
-        self.view.draw_status(self.rb);
-        self.view.draw_cursor(self.rb);
+        self.view.draw(&mut self.frontend);
+        self.view.draw_status(&mut self.frontend);
+        self.view.draw_cursor(&mut self.frontend);
     }
 
     pub fn start(&mut self) {
         loop {
-            self.view.clear(self.rb);
+            self.view.clear(&mut self.frontend);
             self.draw();
-            self.rb.present();
-            let event = self.rb.poll_event().unwrap();
-            if let Event::KeyEvent(_, key, ch) = event {
-                if let Response::Quit = self.handle_key_event(key, ch) {
+            self.frontend.present();
+            let event = self.frontend.poll_event();
+            if let EditorEvent::KeyEvent(key) = event {
+                if let Response::Quit = self.handle_key_event(key) {
                     break;
                 }
             }
