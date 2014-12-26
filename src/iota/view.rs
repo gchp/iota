@@ -81,7 +81,8 @@ impl<'v> View<'v> {
 
     pub fn draw_status(&mut self, frontend: &mut Box<Frontend + 'v>) {
         let buffer_status = self.buffer.status_text();
-        let cursor_status = self.buffer.get_mark_coords(self.cursor);
+        let mut cursor_status = self.buffer.get_mark_coords(self.cursor).unwrap_or((0,0));
+        cursor_status = (cursor_status.0 + 1, cursor_status.1 + 1);
         let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
         let status_text_len = status_text.len();
         let width = self.get_width();
