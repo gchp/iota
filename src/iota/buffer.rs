@@ -189,16 +189,18 @@ impl Buffer {
         }
     }
 
-    pub fn redo(&mut self) {
+    pub fn redo(&mut self) -> Option<&LogEntry> {
         if let Some(transaction) = self.log.redo() {
             commit(transaction, &mut self.text);
-        }
+            Some(transaction)
+        } else { None }
     }
 
-    pub fn undo(&mut self) {
+    pub fn undo(&mut self) -> Option<&LogEntry> {
         if let Some(transaction) = self.log.undo() {
             commit(transaction, &mut self.text);
-        }
+            Some(transaction)
+        } else { None }
     }
 
     //----- PRIVATE METHODS ------------------------------------------------------------------------

@@ -170,11 +170,15 @@ impl<'v> View<'v> {
     }
 
     pub fn undo(&mut self) {
-        self.buffer.undo();
+        let point = if let Some(transaction) = self.buffer.undo() { transaction.end_point }
+                    else { return; };
+        self.buffer.set_mark(self.cursor, point);
     }
 
     pub fn redo(&mut self) {
-        self.buffer.redo();
+        let point = if let Some(transaction) = self.buffer.redo() { transaction.end_point }
+                    else { return; };
+        self.buffer.set_mark(self.cursor, point);
     }
 
 }

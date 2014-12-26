@@ -30,7 +30,7 @@ pub struct LogEntry {
     /// The OLD point position.
     init_point: uint,
     /// The NEW point position.
-    end_point: uint,
+    pub end_point: uint,
     /// The changes associated with this log entry, in order of occurence (an undo will replay
     /// their inverses, backwards).
     pub changes: Vec<Change>,
