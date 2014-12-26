@@ -39,7 +39,7 @@ enum EventStatus {
 pub struct Editor<'e> {
     keymap: KeyMap,
     view: View<'e>,
-    rb: &'e RustBox,
+    frontend: Box<Frontend + 'e>,
 }
 
 impl<'e> Editor<'e> {
@@ -53,6 +53,7 @@ impl<'e> Editor<'e> {
         Editor {
             view: view,
             keymap: keymap,
+            frontend: frontend,
         }
     }
 
@@ -125,7 +126,7 @@ impl<'e> Editor<'e> {
             // Editor Commands
             Command::ExitEditor         =>  return Response::Quit,
             Command::SaveBuffer         =>  self.save_active_buffer(),
-            Command::ResizeView         =>  self.view.resize(self.rb),
+            Command::ResizeView         =>  self.view.resize(&mut self.frontend),
 
             // Navigation
             Command::MoveCursor(dir)    =>  self.view.move_cursor(dir),

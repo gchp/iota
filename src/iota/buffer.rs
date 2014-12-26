@@ -1,5 +1,4 @@
-//TODO: Write tests
-//TODO: UTF8 support
+//FIXME: Check unicode support
 
 use log::{Log, Change, LogEntry};
 
@@ -9,15 +8,14 @@ use std::cmp;
 use std::collections::HashMap;
 use std::io::{File, Reader, BufferedReader};
 
-#[deriving(PartialEq, Eq, Hash)]
+#[deriving(Copy, PartialEq, Eq, Hash, Show)]
 pub enum Mark {
-    Point,                  //The active index being edited (there is always exactly 1).
-    Cursor(uint),           //For keeping track of a cursor, which the point could be set to.
+    Cursor(uint),           //For keeping track of cursors.
     DisplayMark(uint),      //For using in determining some display of characters.
     UserDefined(uint),      //For user defined marks.
 }
 
-#[deriving(Copy, Show, PartialEq, Eq)]
+#[deriving(Copy, PartialEq, Eq, Show)]
 pub enum Direction {
     Up(uint), Down(uint), Left(uint), Right(uint),
     LineStart, LineEnd,
@@ -27,7 +25,7 @@ pub struct Buffer {
     text: GapBuffer<u8>,                    //Actual text data being edited.
     marks: HashMap<Mark, (uint, uint)>,     //Table of marked indices in the text.
                                             // KEY: mark id => VALUE : (absolute index, line index)
-    log: Log,                            //History of undoable transactions.
+    log: Log,                               //History of undoable transactions.
     pub file_path: Option<Path>,            //TODO: replace with a general metadata table
 }
 
@@ -37,13 +35,10 @@ impl Buffer {
 
     /// Constructor for empty buffer.
     pub fn new() -> Buffer {
-        let text = GapBuffer::new();
-        let mut marks = HashMap::new();
-        marks.insert(Mark::Point, (0,0));
         Buffer {
             file_path: None,
-            text: text,
-            marks: marks,
+            text: GapBuffer::new(),
+            marks: HashMap::new(),
             log: Log::new(),
         }
     }
@@ -70,17 +65,17 @@ impl Buffer {
 
     ///Length of the text stored in this buffer.
     pub fn len(&self) -> uint {
-        self.text.len()
+        self.text.len() + 1
     }
 
     ///The x,y coordinates of a mark within the file. None if not a valid mark.
     pub fn get_mark_coords(&self, mark: Mark) -> Option<(uint, uint)> {
         if let Some(idx) = self.get_mark_idx(mark) {
             if let Some(line) = self.get_line(idx) {
-                let newlines: Vec<&u8> = self.text[..line].iter()
-                                                          .filter(|ch| -> bool { *ch == &b'\n' })
-                                                          .collect();
-                Some((idx - line, newlines.len()))
+                Some((idx - line, self.text[..line].iter()
+                                                   .filter(|ch| -> bool { *ch == &b'\n' })
+                                                   .collect::<Vec<&u8>>()
+                                                   .len()))
             } else { None }
         } else { None }
     }
@@ -160,23 +155,24 @@ impl Buffer {
             Direction::LineStart | Direction::LineEnd   =>  {
                 if let Some(&(idx, _)) = self.marks.get(&mark) {
                     if direction == Direction::LineStart {
-                        let start = self.get_line(idx).unwrap();
-                        Some((start, 0))
+                        if let Some(start) = self.get_line(idx) {
+                            Some((start, 0))
+                        } else { None }
                     } else {
-                        let end = self.get_line_end(idx).unwrap();
-                        Some((end, end - self.get_line(idx).unwrap()))
+                        if let Some(end) = self.get_line_end(idx) {
+                            Some((end, end - self.get_line(idx).unwrap()))
+                        } else { None }
                     }
-                }
-                else { None }
+                } else { None }
             }
         } {
             if let Some(old_mark) = self.marks.get_mut(&mark) { *old_mark = tuple; }
         }
     }
 
-    ///Remove the char at the point.
-    pub fn remove_char(&mut self) -> Option<u8> {
-        if let Some(&(idx, _)) = self.marks.get(&Mark::Point) {
+    ///Remove the char at the mark.
+    pub fn remove_char(&mut self, mark: Mark) -> Option<u8> {
+        if let Some(&(idx, _)) = self.marks.get(&mark) {
             if let Some(ch) = self.text.remove(idx) {
                 let mut transaction = self.log.start(idx);
                 transaction.log(Change::Remove(idx, ch), idx);
@@ -185,87 +181,48 @@ impl Buffer {
         } else { None }
     }
 
-    ///Insert a char at the point.
-    pub fn insert_char(&mut self, ch: u8) {
-        if let Some(&(idx, _)) = self.marks.get(&Mark::Point) {
+    ///Insert a char at the mark.
+    pub fn insert_char(&mut self, mark: Mark, ch: u8) {
+        if let Some(&(idx, _)) = self.marks.get(&mark) {
             self.text.insert(idx, ch);
             let mut transaction = self.log.start(idx);
             transaction.log(Change::Insert(idx, ch), idx);
         }
     }
 
-    ///Updates the point to be equivalent to a given mark.
-    pub fn update_point(&mut self, mark: Mark) {
-        if let Some(&tuple) = self.marks.get(&mark) {
-            if tuple.val0() < self.len() {
-                *self.marks.get_mut(&Mark::Point).unwrap() = tuple;
-            }
-        }
-    }
-
     pub fn redo(&mut self) {
         if let Some(transaction) = self.log.redo() {
-            self.reverse(transaction);
+            commit(transaction, &mut self.text);
         }
     }
 
     pub fn undo(&mut self) {
         if let Some(transaction) = self.log.undo() {
-            self.reverse(transaction);
+            commit(transaction, &mut self.text);
         }
     }
 
     //----- PRIVATE METHODS ------------------------------------------------------------------------
 
-    //Returns the index of the first character of the line the mark is in.
-    //Newline prior to mark (EXCLUSIVE) + 1.
-    //None iff mark is outside of the len of text.
-    fn get_line(&self, mark: uint) -> Option<uint> {
-    //FIXME unicode support
-        if mark < self.len() {
-            let mut idx = mark;
-            loop {
-                match self.text[0..mark].iter().next_back() {
-                    Some(&b'\n') | None => { return Some(idx); }
-                    _ => { idx -= 1; }
-                }
-            }
-        } else { None }
-    }
-
-    //Returns the index of the newline character at the end of the line mark is in.
-    //Newline after mark (INCLUSIVE).
-    //None iff mark is outside the len of text.
-    fn get_line_end(&self, mark: uint) -> Option<uint> {
-    //FIXME unicode support
-        if mark < self.len() {
-            let mut idx = mark;
-            loop {
-                match self.text[mark..self.len()].iter().next() {
-                    Some(&b'\n') | None => { return Some(idx); }
-                    _ => { idx += 1; }
-                }
-            }
-        } else { None }
-    }
+    fn get_line(&self, mark: uint) -> Option<uint> { get_line(mark, &self.text) }
+    fn get_line_end(&self, mark: uint) -> Option<uint> { get_line_end(mark, &self.text) }
 
     //Returns the mark offset by some number of chars.
     //None iff mark is not in the hashmap.
     fn offset_mark(&self, mark: Mark, direction: Direction) -> Option<(uint, uint)> {
-    //FIXME unicode support
         let offset = match direction {
             Direction::Left(n)  =>  -(n as int),
             Direction::Right(n) =>    n as int ,
             _ => 0,
         };
         if let Some(tuple) = self.marks.get(&mark) {
-            let idx = (*tuple).val0() as int + offset;
+            let idx = (*tuple).0 as int + offset;
             match (idx >= 0, idx < self.len() as int ) {
                 (true, true)    => Some((idx as uint,
                                          idx as uint - self.get_line(idx as uint).unwrap())),
                 (false, true)   => Some((0, 0)),
-                (_, false)      => Some((self.len() -1,
-                                        self.len() - 1 - self.get_line(self.len() -1).unwrap())),
+                (_, false)      => Some((self.len() - 1,
+                                         self.len() - 1 - self.get_line(self.len()-1).unwrap())),
             }
         } else { None }
     }
@@ -273,46 +230,57 @@ impl Buffer {
     //Returns the mark offset by some number of line breaks.
     // None iff mark is not in the hashmap.
     fn offset_mark_line(&self, mark: Mark, direction: Direction) -> Option<(uint, uint)> {
-    //FIXME unicode support
         let offset = match direction {
             Direction::Up(n)    =>  -(n as int),
             Direction::Down(n)  =>    n as int ,
             _ => 0,
         };
-        if let Some(tuple) = self.marks.get(&mark) {
-            let mut line = self.get_line((*tuple).val0());
-            let line_idx = (*tuple).val1();
-            if offset >= 0 {
-                for _ in range(0, offset as uint) {
-                    line = Some(self.get_line_end(line.unwrap()).unwrap() + 1);
-                    if line == None { line = self.get_line(self.len() - 1); break; }
-                }
+        if let Some(&(idx, line_idx)) = self.marks.get(&mark) {
+            let line = if offset >= 0 {
+                let nlines = range(idx, self.len()).filter(|i| *i == 0 || self.text[*i-1] == b'\n')
+                                                   .collect::<Vec<uint>>();
+                nlines[cmp::min(offset as uint, nlines.len() - 1)]
             } else {
-                for _ in range(0, -offset as uint) {
-                    line = self.get_line(line.unwrap() - 1);
-                    if line == None { line = Some(0); break; }
-                }
-            }
-            Some((cmp::min(line.unwrap() + line_idx, self.get_line_end(line.unwrap()).unwrap()),
-                 line_idx))
+                let nlines = range(0, idx+1).filter(|i| *i == 0 || self.text[*i - 1] == b'\n')
+                                            .collect::<Vec<uint>>();
+                nlines[cmp::max(nlines.len() as int - 1 + offset, 0) as uint]
+            };
+            Some((cmp::min(line + line_idx, self.get_line_end(line).unwrap()), line_idx))
         } else { None }
     }
 
-    fn reverse(&mut self, transaction: &LogEntry) {
-        for change in transaction.changes.iter() {
-            match change {
-                &Change::Insert(idx, ch) => { 
-                    self.set_mark(Mark::Point, idx);
-                    self.insert_char(ch);
-                }
-                &Change::Remove(idx, _) => {
-                    self.set_mark(Mark::Point, idx);
-                    self.remove_char();
-                }
+}
+
+//Returns the index of the first character of the line the mark is in.
+//Newline prior to mark (EXCLUSIVE) + 1.
+//None iff mark is outside of the len of text.
+fn get_line(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
+    if mark <= text.len() {
+        range(0, mark + 1).filter(|idx| *idx == 0 || text[*idx - 1] == b'\n').max()
+    } else { None }
+}
+
+//Returns the index of the newline character at the end of the line mark is in.
+//Newline after mark (INCLUSIVE).
+//None iff mark is outside the len of text.
+fn get_line_end(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
+    if mark <= text.len() {
+        range(mark, text.len()).filter(|idx| *idx == text.len() - 1 ||text[*idx] == b'\n').min()
+    } else { None }
+}
+
+//Performs a transaction on the passed in buffer.
+fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
+    for change in transaction.changes.iter() {
+        match change {
+            &Change::Insert(idx, ch) => { 
+                text.insert(idx, ch);
+            }
+            &Change::Remove(idx, _) => {
+                text.remove(idx);
             }
         }
     }
-
 }
 
 //----- ITERATE BY LINES ---------------------------------------------------------------------------
@@ -324,19 +292,17 @@ pub struct Lines<'a> {
 }
 
 impl<'a> Iterator<&'a [u8]> for Lines<'a> {
-//FIXME unicode support?
 
     fn next(&mut self) -> Option<&'a [u8]> {
         if self.tail != self.head {
 
             let old_tail = self.tail;
-
             //update tail to either the first char after the next \n or to self.head
             self.tail = range(old_tail, self.head).filter(|idx| -> bool {
-                self.buffer[*idx] == b'\n' || *idx + 1 == self.head
+                *idx + 1 == self.head || self.buffer[*idx] == b'\n'
             }).min().unwrap() + 1;
-
-            Some(self.buffer[old_tail..self.tail])
+            if self.tail == self.head { Some(self.buffer[old_tail..self.tail-1]) }
+            else { Some(self.buffer[old_tail..self.tail]) }
 
         } else { None }
     }
@@ -353,6 +319,110 @@ impl<'a> Iterator<&'a [u8]> for Lines<'a> {
 #[cfg(test)]
 mod test {
 
-    //TODO Tests
+    use buffer::{Buffer, Direction, Mark};
+
+    fn setup_buffer(testcase: &'static str) -> Buffer {
+        let mut buffer = Buffer::new();
+        buffer.text.extend(testcase.bytes());
+        buffer.set_mark(Mark::Cursor(0), 0);
+        buffer
+    }
+
+    #[test]
+    fn test_insert() {
+        let mut buffer = setup_buffer("");
+        buffer.insert_char(Mark::Cursor(0), b'A');
+        assert_eq!(buffer.len(), 2);
+        assert_eq!(buffer.lines().next().unwrap(), [b'A']);
+    }
+
+    #[test]
+    fn test_remove() {
+        let mut buffer = setup_buffer("ABCD");
+        buffer.remove_char(Mark::Cursor(0));
+
+        assert_eq!(buffer.len(), 4);
+        assert_eq!(buffer.lines().next().unwrap(), [b'B', b'C', b'D']);
+    }
+
+    #[test]
+    fn test_set_mark() {
+        let mut buffer = setup_buffer("Test");
+        buffer.set_mark(Mark::Cursor(0), 2);
+
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 2);
+    }
+
+    #[test]
+    fn test_shift_down() {
+        let mut buffer = setup_buffer("Test\nA\nTest");
+        buffer.set_mark(Mark::Cursor(0), 2);
+        buffer.shift_mark(Mark::Cursor(0), Direction::Down(2));
+
+        assert_eq!(buffer.get_mark_coords(Mark::Cursor(0)).unwrap(), (2, 2));
+    }
+
+    #[test]
+    fn test_shift_right() {
+        let mut buffer = setup_buffer("Test");
+        buffer.shift_mark(Mark::Cursor(0), Direction::Right(1));
+
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 1);
+    }
+
+    #[test]
+    fn test_shift_up() {
+        let mut buffer = setup_buffer("Test\nA\nTest");
+        buffer.set_mark_by_coords(Mark::Cursor(0), 2, 2);
+        buffer.shift_mark(Mark::Cursor(0), Direction::Up(1));
+
+        assert_eq!(buffer.get_mark_coords(Mark::Cursor(0)).unwrap(), (1, 1));
+    }
+
+    #[test]
+    fn test_shift_left() {
+        let mut buffer = setup_buffer("Test");
+        buffer.set_mark(Mark::Cursor(0), 2);
+        buffer.shift_mark(Mark::Cursor(0), Direction::Left(1));
+
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 1);
+    }
+
+    #[test]
+    fn test_shift_linestart() {
+        let mut buffer = setup_buffer("Test");
+        buffer.set_mark(Mark::Cursor(0), 2);
+        buffer.shift_mark(Mark::Cursor(0), Direction::LineStart);
+
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_shift_lineend() {
+        let mut buffer = setup_buffer("Test");
+        buffer.shift_mark(Mark::Cursor(0), Direction::LineEnd);
+
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 3);
+    }
+
+    #[test]
+    fn test_to_lines() {
+        let mut buffer = setup_buffer("Test\nA\nTest");
+        let mut lines = buffer.lines();
+
+        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't',b'\n']);
+        assert_eq!(lines.next().unwrap(), [b'A',b'\n']);
+        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't']);
+    }
+
+    #[test]
+    fn test_to_lines_from() {
+        let mut buffer = setup_buffer("Test\nA\nTest");
+        buffer.set_mark(Mark::Cursor(0), 6);
+        let mut lines = buffer.lines_from(Mark::Cursor(0)).unwrap();
+
+        assert_eq!(lines.next().unwrap(), [b'\n']);
+        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't']);
+    }
 
 }

@@ -1,10 +1,7 @@
-use rustbox::{Color, RustBox};
-
 use buffer::{Buffer, Direction, Mark};
 use input::Input;
-use uibuf::UIBuffer;
-
-use utils;
+use uibuf::{UIBuffer, CharColor};
+use frontends::Frontend;
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -23,7 +20,7 @@ impl<'v> View<'v> {
 
     //----- CONSTRUCTORS ---------------------------------------------------------------------------
 
-    pub fn new(source: Input, rb: &RustBox) -> View<'v> {
+    pub fn new(source: Input, width: uint, height: uint) -> View<'v> {
         let mut buffer = match source {
             Input::Filename(path) => {
                 match path {
@@ -66,12 +63,12 @@ impl<'v> View<'v> {
     /// Clear the buffer
     ///
     /// Fills every cell in the UIBuffer with the space (' ') char.
-    pub fn clear(&mut self, rb: &RustBox) {
+    pub fn clear(&mut self, frontend: &mut Box<Frontend + 'v>) {
         self.uibuf.fill(' ');
-        self.uibuf.draw_everything(rb);
+        self.uibuf.draw_everything(frontend);
     }
 
-    pub fn draw(&mut self, rb: &RustBox) {
+    pub fn draw(&mut self, frontend: &mut Box<Frontend + 'v>) {
         for (index,line) in self.buffer
                                 .lines_from(self.first_char)
                                 .unwrap()
@@ -79,10 +76,10 @@ impl<'v> View<'v> {
             draw_line(&mut self.uibuf, line, index);
             if index == self.get_height() { break; }
         }
-        self.uibuf.draw_everything(rb);
+        self.uibuf.draw_everything(frontend);
     }
 
-    pub fn draw_status(&mut self, rb: &RustBox) {
+    pub fn draw_status(&mut self, frontend: &mut Box<Frontend + 'v>) {
         let buffer_status = self.buffer.status_text();
         let cursor_status = self.buffer.get_mark_coords(self.cursor);
         let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
@@ -102,9 +99,9 @@ impl<'v> View<'v> {
         self.uibuf.draw_range(frontend, height, height+1);
     }
 
-    pub fn draw_cursor(&mut self, rb: &RustBox) {
+    pub fn draw_cursor(&mut self, frontend: &mut Box<Frontend + 'v>) {
         if let Some((x, y)) = self.buffer.get_mark_coords(self.cursor) {
-            utils::draw_cursor(rb, x, y);
+            frontend.draw_cursor(x as int, y as int);
         }
     }
 
@@ -118,27 +115,24 @@ impl<'v> View<'v> {
 
     pub fn move_cursor(&mut self, direction: Direction) {
         self.buffer.shift_mark(self.cursor, direction);
-        self.cursor_movement();
+        self.move_screen();
     }
 
     pub fn move_cursor_to_line_end(&mut self) {
         self.buffer.shift_mark(self.cursor, Direction::LineEnd);
-        self.cursor_movement();
+        self.move_screen();
     }
 
     pub fn move_cursor_to_line_start(&mut self) {
         self.buffer.shift_mark(self.cursor, Direction::LineStart);
-        self.cursor_movement();
+        self.move_screen();
     }
 
-    fn cursor_movement(&mut self) {
-
-        //Update the point to be at the cursor.
-        self.buffer.update_point(self.cursor);
+    fn move_screen(&mut self) {
 
         //Update the first_char mark if necessary to keep the cursor on the screen.
-        let cursor_y = self.buffer.get_mark_coords(self.cursor).unwrap().val1();
-        let first_char_y = self.buffer.get_mark_coords(self.first_char).unwrap().val1();
+        let cursor_y = self.buffer.get_mark_coords(self.cursor).unwrap().1;
+        let first_char_y = self.buffer.get_mark_coords(self.first_char).unwrap().1;
         if cursor_y < first_char_y {
             self.buffer.shift_mark(self.first_char, Direction::Up(1));
         } else if cursor_y > first_char_y + self.get_height() {
@@ -151,13 +145,13 @@ impl<'v> View<'v> {
 
     pub fn delete_char(&mut self, direction: Direction) {
         match direction {
-            Direction::Left(0) => {
-                self.buffer.remove_char();
+            Direction::Left(1) if self.buffer.get_mark_idx(self.cursor) != Some(0) => {
                 self.move_cursor(direction);
+                self.buffer.remove_char(self.cursor);
             }
-            Direction::Right(0) => {
+            Direction::Right(1) if self.buffer.get_mark_idx(self.cursor) != Some(self.buffer.len()) => {
+                self.buffer.remove_char(self.cursor);
                 self.move_cursor(direction);
-                self.buffer.remove_char();
             }
             _ => {}
         }
@@ -171,7 +165,7 @@ impl<'v> View<'v> {
     }
 
     pub fn insert_char(&mut self, ch: char) {
-        self.buffer.insert_char(ch as u8);
+        self.buffer.insert_char(self.cursor, ch as u8);
         self.move_cursor(Direction::Right(1))
     }
 
@@ -213,35 +207,25 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: uint) {
 #[cfg(test)]
 mod tests {
 
-    use buffer::{Buffer, Direction, Mark};
+    use buffer::Direction;
     use view::View;
-    use uibuf::UIBuffer;
-    use utils::data_from_str;
+    use input::Input;
 
     fn setup_view<'v>(testcase: &'static str) -> View<'v> {
-        let mut buffer = Buffer::new();
-        for ch in testcase.bytes() {    
-            buffer.shift_mark(Mark::Point, Direction::Right(1));
-            buffer.insert_char(ch);
+        let mut view = View::new(Input::Filename(None), 50, 50);
+        for ch in testcase.chars() {
+            view.insert_char(ch);
         }
-
-        buffer.set_mark(Mark::DisplayMark(0), 0);
-        buffer.set_mark(Mark::Cursor(0), 0);
-
-        View {
-            buffer: Buffer::new(),
-            first_char: Mark::DisplayMark(0),
-            cursor: Mark::Cursor(0),
-            uibuf: UIBuffer::new(50, 50),
-        }
+        view.buffer.set_mark(view.cursor, 0);
+        view
     }
 
     #[test]
     fn test_move_cursor_down() {
         let mut view = setup_view("test\nsecond");
         view.move_cursor(Direction::Down(1));
-        assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().val1(), 1);
-        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"second");
+        assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().1, 1);
+        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"second"[]);
     }
 
     #[test]
@@ -249,8 +233,8 @@ mod tests {
         let mut view = setup_view("test\nsecond");
         view.move_cursor(Direction::Down(1));
         view.move_cursor(Direction::Up(1));
-        assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().val1(), 0);
-        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"test");
+        assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().1, 0);
+        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"test\n"[]);
     }
 
     #[test]
@@ -260,7 +244,6 @@ mod tests {
         view.insert_char('\n');
         let lines: Vec<&[u8]> = view.buffer.lines().collect();
 
-        assert_eq!(lines.len(), 3);
         assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap(), (0, 1))
     }
 
@@ -269,7 +252,7 @@ mod tests {
         let mut view = setup_view("test\nsecond");
         view.insert_char('t');
 
-        assert_eq!(view.buffer.lines().next().unwrap(), b"ttest");
+        assert_eq!(view.buffer.lines().next().unwrap(), b"ttest\n"[]);
     }
 
     #[test]
@@ -277,7 +260,7 @@ mod tests {
         let mut view = setup_view("test\nsecond");
         view.delete_char(Direction::Right(1));
 
-        assert_eq!(view.buffer.lines().next().unwrap(), b"est");
+        assert_eq!(view.buffer.lines().next().unwrap(), b"est\n"[]);
     }
 
     #[test]
@@ -286,8 +269,9 @@ mod tests {
         view.move_cursor(Direction::Right(1));
         view.delete_char(Direction::Left(1));
 
-        assert_eq!(view.buffer.lines().next().unwrap(), b"est");
+        assert_eq!(view.buffer.lines().next().unwrap(), b"est\n"[]);
     }
+
 
     #[test]
     fn test_delete_char_at_start_of_line() {
@@ -295,7 +279,7 @@ mod tests {
         view.move_cursor(Direction::Down(1));
         view.delete_char(Direction::Left(1));
 
-        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond");
+        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond"[]);
     }
 
     #[test]
@@ -304,16 +288,7 @@ mod tests {
         view.move_cursor(Direction::Right(4));
         view.delete_char(Direction::Right(1));
 
-        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond");
-    }
-
-    #[test]
-    fn delete_char_when_line_is_empty_does_nothing() {
-        let mut view = setup_view("");
-        view.delete_char(Direction::Right(1));
-
-        assert_eq!(view.buffer.get_mark_idx(view.cursor).unwrap(), 0);
-        assert_eq!(view.buffer.lines().next().unwrap(), b"");
+        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond"[]);
     }
 
     #[test]
@@ -324,6 +299,6 @@ mod tests {
         let lines: Vec<&[u8]> = view.buffer.lines().collect();
 
         assert_eq!(lines.len(), 2);
-        assert_eq!(view.buffer.lines().next().unwrap(), b"test");
+        assert_eq!(view.buffer.lines().next().unwrap(), b"test\n");
     }
 }

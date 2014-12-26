@@ -10,6 +10,7 @@ rustc-serialize = "0.1.4"
 
 [dependencies.gapbuffer]
 git = "https://github.com/dlaronson/gapbuffer"
+version = "0.0.2"
 
 [lib]
 name = "iota"
