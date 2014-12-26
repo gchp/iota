@@ -1,6 +1,6 @@
 #[cfg(test)]
 pub fn data_from_str(s: &'static str) -> String {
-    s.into_string()
+    String::from_str(s)
 }
 
 pub fn char_width(c: char, is_cjk: bool, tab_width: uint, position: uint) -> Option<uint> {
