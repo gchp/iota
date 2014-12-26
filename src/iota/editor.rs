@@ -9,6 +9,7 @@ use keymap::{ KeyMap, KeyMapState };
 use log::LogEntries;
 use view::View;
 use frontends::{Frontend, EditorEvent};
+use modes::Mode;
 
 
 #[deriving(Copy, Show)]
@@ -31,24 +32,25 @@ pub enum Command {
     Redo,
 }
 
-enum EventStatus {
+pub enum EventStatus {
     Handled(Response),
     NotHandled,
 }
 
 
-pub struct Editor<'e, T> {
+pub struct Editor<'e, T: Frontend, M: Mode> {
     keymap: KeyMap,
     view: View<'e>,
 
     frontend: T,
+    mode: M,
 
     /// Undo / redo log
     log: LogEntries,
 }
 
-impl<'e, T: Frontend> Editor<'e, T> {
-    pub fn new(source: Input, frontend: T) -> Editor<'e, T> {
+impl<'e, T: Frontend, M: Mode> Editor<'e, T, M> {
+    pub fn new(source: Input, frontend: T, mode: M) -> Editor<'e, T, M> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
         let view = View::new(source, width, height);
@@ -58,12 +60,19 @@ impl<'e, T: Frontend> Editor<'e, T> {
             view: view,
             keymap: keymap,
             frontend: frontend,
+            mode: mode,
             log: LogEntries::new(),
         }
     }
 
     pub fn handle_key_event(&mut self, key: Option<Key>) -> Response {
-        match self.handle_system_event(key) {
+        // match self.handle_system_event(key) {
+        //     EventStatus::Handled(response) => { response }
+        //     EventStatus::NotHandled        => { Response::Continue }
+        // }
+        let Editor {ref mut log, ref mut view, .. } = *self;
+
+        match self.mode.handle_key_event(key, view, log) {
             EventStatus::Handled(response) => { response }
             EventStatus::NotHandled        => { Response::Continue }
         }
