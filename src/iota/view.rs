@@ -90,7 +90,7 @@ impl<'v> View<'v> {
     /// Clear the buffer
     ///
     /// Fills every cell in the UIBuffer with the space (' ') char.
-    pub fn clear(&mut self, frontend: &mut Box<Frontend + 'v>) {
+    pub fn clear<T: Frontend>(&mut self, frontend: &mut T) {
         self.uibuf.fill(' ');
         self.uibuf.draw_everything(frontend);
     }
@@ -104,7 +104,7 @@ impl<'v> View<'v> {
         self.uibuf.get_width()
     }
 
-    pub fn draw(&mut self, frontend: &mut Box<Frontend + 'v>) {
+    pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
         let end_line = self.get_height();
         let num_lines = self.buffer.lines.len();
         let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines);
@@ -118,7 +118,7 @@ impl<'v> View<'v> {
         self.uibuf.draw_everything(frontend);
     }
 
-    pub fn draw_status(&mut self, frontend: &mut Box<Frontend + 'v>) {
+    pub fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
         let buffer_status = self.buffer.get_status_text();
         let cursor_status = self.cursor().get_status_text();
         let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
@@ -138,14 +138,14 @@ impl<'v> View<'v> {
         self.uibuf.draw_range(frontend, height, height+1);
     }
 
-    pub fn draw_cursor(&mut self, frontend: &mut Box<Frontend + 'v>) {
+    pub fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
         let offset = self.cursor().get_visible_offset() as int;
         let linenum = self.cursor().get_linenum() as int;
 
         frontend.draw_cursor(offset, linenum-self.top_line_num as int);
     }
 
-    pub fn resize(&mut self, frontend: &mut Box<Frontend + 'v>) {
+    pub fn resize<T: Frontend>(&mut self, frontend: &mut T) {
         let width = self.uibuf.get_width();
         self.clear(frontend);
         self.uibuf = UIBuffer::new(width, 15);

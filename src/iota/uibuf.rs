@@ -33,7 +33,7 @@ impl UIBuffer {
         }
     }
 
-    pub fn draw_range(&mut self, frontend: &mut Box<Frontend>, start: uint, stop: uint) {
+    pub fn draw_range<T: Frontend>(&mut self, frontend: &mut T, start: uint, stop: uint) {
         let rows = self.rows.slice_mut(start, stop);
         for row in rows.iter_mut() {
             for cell in row.iter_mut().filter(|cell| cell.dirty) {
@@ -43,7 +43,7 @@ impl UIBuffer {
         }
     }
 
-    pub fn draw_everything(&mut self, frontend: &mut Box<Frontend>) {
+    pub fn draw_everything<T: Frontend>(&mut self, frontend: &mut T) {
         let height = self.height;
         self.draw_range(frontend, 0, height);
     }

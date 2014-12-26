@@ -34,7 +34,7 @@ impl Buffer {
             if data.is_char_boundary(last_index) && data.char_at(last_index) == '\n' {
                 data.pop();
             }
-            v.push(Line::new(data.trim_right_chars('\n').into_string(), index));
+            v.push(Line::new(String::from_str(data.trim_right_chars('\n')), index));
         }
         v
     }

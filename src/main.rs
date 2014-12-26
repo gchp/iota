@@ -27,16 +27,24 @@ fn main() {
     let args: Args = Docopt::new(USAGE)
                             .and_then(|d| d.decode())
                             .unwrap_or_else(|e| e.exit());
+
+    // editor source - either a filename or stdin
     let source = if stdio::stdin_raw().isatty() {
         Input::Filename(args.arg_filename)
     } else {
         Input::Stdin(stdio::stdin())
     };
+
+    // RustBox options
     let options = [
         if stdio::stderr_raw().isatty() { Some(InitOption::BufferStderr) } else { None },
     ];
+
+    // initialise the frontend
     let rb = RustBox::init(&options).unwrap();
-    let frontend = box RustboxFrontend::new(&rb);
+    let frontend = RustboxFrontend::new(&rb);
+
+    // start the editor
     let mut editor = Editor::new(source, frontend);
     editor.start();
 }

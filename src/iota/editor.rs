@@ -37,18 +37,18 @@ enum EventStatus {
 }
 
 
-pub struct Editor<'e> {
+pub struct Editor<'e, T> {
     keymap: KeyMap,
     view: View<'e>,
 
-    frontend: Box<Frontend + 'e>,
+    frontend: T,
 
     /// Undo / redo log
     log: LogEntries,
 }
 
-impl<'e> Editor<'e> {
-    pub fn new(source: Input, frontend: Box<Frontend + 'e>) -> Editor<'e> {
+impl<'e, T: Frontend> Editor<'e, T> {
+    pub fn new(source: Input, frontend: T) -> Editor<'e, T> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
         let view = View::new(source, width, height);
