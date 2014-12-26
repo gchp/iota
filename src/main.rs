@@ -5,7 +5,7 @@ extern crate iota;
 
 #[cfg(not(test))] use std::io::stdio;
 #[cfg(not(test))] use docopt::Docopt;
-#[cfg(not(test))] use iota::{Editor, Input};
+#[cfg(not(test))] use iota::{Editor, Input, RustboxFrontend};
 #[cfg(not(test))] use rustbox::{InitOption, RustBox};
 #[cfg(not(test))] static USAGE: &'static str = "
 Usage: iota [<filename>]
@@ -36,6 +36,7 @@ fn main() {
         if stdio::stderr_raw().isatty() { Some(InitOption::BufferStderr) } else { None },
     ];
     let rb = RustBox::init(&options).unwrap();
-    let mut editor = Editor::new(source, &rb);
+    let frontend = box RustboxFrontend::new(&rb);
+    let mut editor = Editor::new(source, frontend);
     editor.start();
 }

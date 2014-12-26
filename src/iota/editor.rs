@@ -1,4 +1,3 @@
-use rustbox::RustBox;
 use std::borrow::Cow;
 use std::io::{fs, File, FileMode, FileAccess, TempDir};
 
@@ -9,7 +8,7 @@ use keyboard::Key;
 use keymap::{ KeyMap, KeyMapState };
 use log::LogEntries;
 use view::View;
-use frontends::{Frontend, RustboxFrontend, EditorEvent};
+use frontends::{Frontend, EditorEvent};
 
 
 #[deriving(Copy, Show)]
@@ -49,8 +48,7 @@ pub struct Editor<'e> {
 }
 
 impl<'e> Editor<'e> {
-    pub fn new(source: Input, rb: &'e RustBox) -> Editor<'e> {
-        let frontend = box RustboxFrontend::new(rb);
+    pub fn new(source: Input, frontend: Box<Frontend + 'e>) -> Editor<'e> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
         let view = View::new(source, width, height);

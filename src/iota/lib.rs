@@ -5,6 +5,7 @@ extern crate rustbox;
 
 pub use editor::Editor;
 pub use input::Input;
+pub use frontends::RustboxFrontend;
 
 mod input;
 mod utils;
