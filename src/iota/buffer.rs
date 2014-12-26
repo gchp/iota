@@ -12,7 +12,6 @@ use std::io::{File, Reader, BufferedReader};
 pub enum Mark {
     Cursor(uint),           //For keeping track of cursors.
     DisplayMark(uint),      //For using in determining some display of characters.
-    UserDefined(uint),      //For user defined marks.
 }
 
 #[deriving(Copy, PartialEq, Eq, Show)]
@@ -236,15 +235,18 @@ impl Buffer {
             _ => 0,
         };
         if let Some(&(idx, line_idx)) = self.marks.get(&mark) {
-            let line = if offset >= 0 {
+            let line = if offset > 0 {
                 let nlines = range(idx, self.len()).filter(|i| *i == 0 || self.text[*i-1] == b'\n')
                                                    .collect::<Vec<uint>>();
-                nlines[cmp::min(offset as uint, nlines.len() - 1)]
-            } else {
+                if nlines.len() > 0 { nlines[cmp::min((offset - 1) as uint, nlines.len() - 1)] }
+                else { self.get_line(idx).unwrap() }
+            } else if offset < 0 {
                 let nlines = range(0, idx+1).filter(|i| *i == 0 || self.text[*i - 1] == b'\n')
                                             .collect::<Vec<uint>>();
-                nlines[cmp::max(nlines.len() as int - 1 + offset, 0) as uint]
-            };
+                if nlines.len() > 0 { nlines[cmp::max(nlines.len() as int + offset-1, 0) as uint] }
+                else { self.get_line(idx).unwrap() }
+            } else { self.get_line(idx).unwrap() };
+
             Some((cmp::min(line + line_idx, self.get_line_end(line).unwrap()), line_idx))
         } else { None }
     }
