@@ -3,7 +3,7 @@ name = "iota"
 version = "0.1.0"
 dependencies = [
  "docopt 0.6.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustbox 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustbox 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -23,10 +23,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustbox"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "termbox-sys 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termbox-sys 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -36,6 +36,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "termbox-sys"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
