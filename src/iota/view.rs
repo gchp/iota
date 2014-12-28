@@ -145,12 +145,6 @@ impl<'v> View<'v> {
         frontend.draw_cursor(offset, linenum-self.top_line_num as int);
     }
 
-    pub fn resize<T: Frontend>(&mut self, frontend: &mut T) {
-        let width = self.uibuf.get_width();
-        self.clear(frontend);
-        self.uibuf = UIBuffer::new(width, 15);
-    }
-
     pub fn move_cursor(&mut self, direction: Direction) {
         match direction {
             Direction::Up    => { self.move_cursor_up(); },

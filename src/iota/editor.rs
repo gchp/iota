@@ -1,11 +1,7 @@
-use std::borrow::Cow;
-use std::io::{fs, File, FileMode, FileAccess, TempDir};
-
 use super::Response;
 use input::Input;
 use cursor::Direction;
 use keyboard::Key;
-use keymap::{ KeyMap, KeyMapState };
 use log::LogEntries;
 use view::View;
 use frontends::{Frontend, EditorEvent};
@@ -17,7 +13,6 @@ use modes::Mode;
 pub enum Command {
     SaveBuffer,
     ExitEditor,
-    ResizeView,
 
     MoveCursor(Direction),
     LineEnd,
@@ -39,7 +34,6 @@ pub enum EventStatus {
 
 
 pub struct Editor<'e, T: Frontend, M: Mode> {
-    keymap: KeyMap,
     view: View<'e>,
 
     frontend: T,
@@ -54,11 +48,9 @@ impl<'e, T: Frontend, M: Mode> Editor<'e, T, M> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
         let view = View::new(source, width, height);
-        let keymap = KeyMap::load_defaults();
 
         Editor {
             view: view,
-            keymap: keymap,
             frontend: frontend,
             mode: mode,
             log: LogEntries::new(),
@@ -66,53 +58,11 @@ impl<'e, T: Frontend, M: Mode> Editor<'e, T, M> {
     }
 
     pub fn handle_key_event(&mut self, key: Option<Key>) -> Response {
-        // match self.handle_system_event(key) {
-        //     EventStatus::Handled(response) => { response }
-        //     EventStatus::NotHandled        => { Response::Continue }
-        // }
         let Editor {ref mut log, ref mut view, .. } = *self;
 
         match self.mode.handle_key_event(key, view, log) {
             EventStatus::Handled(response) => { response }
             EventStatus::NotHandled        => { Response::Continue }
-        }
-    }
-
-    pub fn save_active_buffer(&mut self) {
-        let lines = &self.view.buffer.lines;
-        let path = match self.view.buffer.file_path {
-            Some(ref p) => Cow::Borrowed(p),
-            None => {
-                // TODO: prompt user for file name here
-                Cow::Owned(Path::new("untitled"))
-            },
-        };
-
-        let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {
-            Ok(d) => d,
-            Err(e) => panic!("file error: {}", e)
-        };
-
-        let tmppath = tmpdir.path().join(Path::new("tmpfile"));
-
-        let mut file = match File::open_mode(&tmppath, FileMode::Open, FileAccess::Write) {
-            Ok(f) => f,
-            Err(e) => panic!("file error: {}", e)
-        };
-
-        for line in lines.iter() {
-            let mut data = line.data.clone();
-            data.push('\n');
-            let result = file.write(data.as_bytes());
-
-            if result.is_err() {
-                // TODO(greg): figure out what to do here.
-                panic!("Something went wrong while writing the file");
-            }
-        }
-
-        if let Err(e) = fs::rename(&tmppath, &*path) {
-            panic!("file error: {}", e);
         }
     }
 
@@ -137,80 +87,4 @@ impl<'e, T: Frontend, M: Mode> Editor<'e, T, M> {
         }
     }
 
-    fn handle_command(&mut self, c: Command) -> Response {
-        match c {
-            // Editor Commands
-            Command::ExitEditor      => return Response::Quit,
-            Command::SaveBuffer      => self.save_active_buffer(),
-            Command::ResizeView      => self.view.resize(&mut self.frontend),
-
-            // Navigation
-            Command::MoveCursor(dir) => self.view.move_cursor(dir),
-            Command::LineEnd         => self.view.move_cursor_to_line_end(),
-            Command::LineStart       => self.view.move_cursor_to_line_start(),
-
-            // Editing
-            Command::Delete(dir)     => {
-                let Editor {ref mut log, ref mut view, .. } = *self;
-                let mut transaction = log.start(view.cursor_data);
-                view.delete_char(&mut transaction, dir);
-            },
-            Command::InsertTab       => {
-                let Editor {ref mut log, ref mut view, .. } = *self;
-                let mut transaction = log.start(view.cursor_data);
-                view.insert_tab(&mut transaction);
-            },
-            Command::InsertLine      => {
-                let Editor {ref mut log, ref mut view, .. } = *self;
-                let mut transaction = log.start(view.cursor_data);
-                view.insert_line(&mut transaction);
-            },
-            Command::InsertChar(c)   => {
-                let Editor {ref mut log, ref mut view, .. } = *self;
-                let mut transaction = log.start(view.cursor_data);
-                view.insert_char(&mut transaction, c);
-            },
-            Command::Redo => {
-                if let Some(entry) = self.log.redo() {
-                    self.view.replay(entry);
-                }
-            }
-            Command::Undo            => {
-                if let Some(entry) = self.log.undo() {
-                    self.view.replay(entry);
-                }
-            }
-        }
-        Response::Continue
-    }
-
-    fn handle_system_event(&mut self, k: Option<Key>) -> EventStatus {
-        let key = match k {
-            Some(k) => k,
-            None => return EventStatus::NotHandled
-        };
-
-        // send key to the keymap
-        match self.keymap.check_key(key) {
-            KeyMapState::Match(command) => {
-                return EventStatus::Handled(self.handle_command(command));
-            },
-            KeyMapState::Continue => {
-                // keep going and wait for more keypresses
-                return EventStatus::Handled(Response::Continue)
-            },
-            KeyMapState::None => {}  // do nothing and handle the key normally
-        }
-
-        // if the key is a character that is not part of a keybinding, insert into the buffer
-        // otherwise, ignore it.
-        if let Key::Char(c) = key {
-            let Editor {ref mut log, ref mut view, .. } = *self;
-            let mut transaction = log.start(view.cursor_data);
-            view.insert_char(&mut transaction, c);
-            EventStatus::Handled(Response::Continue)
-        } else {
-            EventStatus::NotHandled
-        }
-    }
 }
