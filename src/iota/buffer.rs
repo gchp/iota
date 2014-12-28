@@ -70,10 +70,9 @@ impl Buffer {
     ///The x,y coordinates of a mark within the file. None if not a valid mark.
     pub fn get_mark_coords(&self, mark: Mark) -> Option<(uint, uint)> {
         if let Some(idx) = self.get_mark_idx(mark) {
-            if let Some(line) = self.get_line(idx) {
-                Some((idx - line, self.text[..line].iter()
-                                                   .filter(|ch| -> bool { *ch == &b'\n' })
-                                                   .fold(0, |a, &b| a + 1)))
+            if let Some(line) = get_line(idx, &self.text) {
+                Some((idx - line, range(0, idx).filter(|i| -> bool { self.text[*i] == b'\n' })
+                                               .fold(0, |a, _| a + 1)))
             } else { None }
         } else { None }
     }
@@ -121,7 +120,7 @@ impl Buffer {
 
     ///Sets the mark to a given absolute index. Adds a new mark or overwrites an existing mark.
     pub fn set_mark(&mut self, mark: Mark, idx: uint) {
-        if let Some(line) = self.get_line(idx) {
+        if let Some(line) = get_line(idx, &self.text) {
             if let Some(tuple) = self.marks.get_mut(&mark) {
                 *tuple = (idx, idx - line);
                 return;
@@ -130,44 +129,48 @@ impl Buffer {
         }
     }
 
-    ///Sets the mark to a given x,y coordinates. Adds a new mark or overwrites an existing mark.
-    pub fn set_mark_by_coords(&mut self, mark: Mark, x: uint, y: uint) {
-        let mut y_idx = 0;
-        for _ in range(0, y) {
-            y_idx = self.get_line_end(y_idx).unwrap() + 1;
-        }
-        if y_idx + x < self.len() {
-            if let Some(tuple) = self.marks.get_mut(&mark) {
-                *tuple = (y_idx + x, x);
-                return;
-            }
-            self.marks.insert(mark, (y_idx + x, x));
-        }        
-    }
-
     //Shift a mark relative to its position according to the direction given.
     pub fn shift_mark(&mut self, mark: Mark, direction: Direction) {
-        if let Some(tuple) = match direction {
-            Direction::Left(_)   | Direction::Right(_)  =>  self.offset_mark(mark, direction),
-            Direction::Up(_)     | Direction::Down(_)   =>  self.offset_mark_line(mark, direction),
-            Direction::LineStart | Direction::LineEnd   =>  {
-                if let Some(&(idx, _)) = self.marks.get(&mark) {
-                    if direction == Direction::LineStart {
-                        if let Some(start) = self.get_line(idx) {
-                            Some((start, 0))
-                        } else { None }
-                    } else {
-                        if let Some(end) = self.get_line_end(idx) {
-                            Some((end, end - self.get_line(idx).unwrap()))
-                        } else { None }
+        let last = self.len() - 1;
+        let text = &self.text;
+        if let Some(tuple) = self.marks.get_mut(&mark) {
+            let (idx, line_idx) = *tuple;
+            if let (Some(line), Some(line_end)) = (get_line(idx, text), get_line_end(idx, text)) {
+                *tuple = match direction {
+                    //For every relative motion of a mark, should return this tuple:
+                    //  value 0:    the absolute index of the mark in the file
+                    //  value 1:    the index of the mark in its line (unchanged by direct verticle
+                    //              traversals)
+                    Direction::Left(n)      =>  {
+                        if idx >= n { (idx - n, idx - n - get_line(idx - n, text).unwrap()) }
+                        else { (0, 0) }
                     }
-                } else { None }
+                    Direction::Right(n)     =>  {
+                        if idx + n < last { (idx + n, idx + n - get_line(idx + n, text).unwrap()) }
+                        else { (last, last - get_line(last, text).unwrap()) }
+                    }
+                    Direction::Up(n)        =>  {
+                        let nlines = range(0, idx).rev().filter(|i| text[*i] == b'\n')
+                                                        .take(n + 1)
+                                                        .collect::<Vec<uint>>();
+                        if n >= nlines.len() { (0, 0) }
+                        else { (cmp::min(line_idx + nlines[n] + 1, nlines[n-1]), line_idx) }
+                    }
+                    Direction::Down(n)      =>  {
+                        let nlines = range(idx, text.len()).filter(|i| text[*i] == b'\n')
+                                                           .take(n + 1)
+                                                           .collect::<Vec<uint>>();
+                        if n > nlines.len() { (last, last - get_line(last, text).unwrap())
+                        } else if n == nlines.len() {
+                            (cmp::min(line_idx + nlines[n-1] + 1, last), line_idx)
+                        } else { (cmp::min(line_idx + nlines[n-1] + 1, nlines[n]), line_idx) }
+                    }
+                    Direction::LineStart    =>  { (line, 0) }
+                    Direction::LineEnd      =>  { (line_end, line_end - line) }
+                }
             }
-        } {
-            if let Some(old_mark) = self.marks.get_mut(&mark) { *old_mark = tuple; }
         }
     }
-
     ///Remove the char at the mark.
     pub fn remove_char(&mut self, mark: Mark) -> Option<u8> {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
@@ -199,69 +202,6 @@ impl Buffer {
         if let Some(transaction) = self.log.undo() {
             commit(transaction, &mut self.text);
             Some(transaction)
-        } else { None }
-    }
-
-    //----- PRIVATE METHODS ------------------------------------------------------------------------
-
-    fn get_line(&self, mark: uint) -> Option<uint> { get_line(mark, &self.text) }
-    fn get_line_end(&self, mark: uint) -> Option<uint> { get_line_end(mark, &self.text) }
-
-    //Returns the mark offset by some number of chars.
-    //None iff mark is not in the hashmap.
-    fn offset_mark(&self, mark: Mark, direction: Direction) -> Option<(uint, uint)> {
-        let offset = match direction {
-            Direction::Left(n)  =>  -(n as int),
-            Direction::Right(n) =>    n as int ,
-            _ => 0,
-        };
-        if let Some(tuple) = self.marks.get(&mark) {
-            let idx = (*tuple).0 as int + offset;
-            match (idx >= 0, idx < self.len() as int ) {
-                (true, true)    => Some((idx as uint,
-                                         idx as uint - self.get_line(idx as uint).unwrap())),
-                (false, true)   => Some((0, 0)),
-                (_, false)      => Some((self.len() - 1,
-                                         self.len() - 1 - self.get_line(self.len()-1).unwrap())),
-            }
-        } else { None }
-    }
-
-    //Returns the mark offset by some number of line breaks.
-    // None iff mark is not in the hashmap.
-    fn offset_mark_line(&self, mark: Mark, direction: Direction) -> Option<(uint, uint)> {
-        if let Some(&(idx, line_idx)) = self.marks.get(&mark) {
-            if let (Some(mut line), Some(mut line_end)) =
-                        (self.get_line(idx), self.get_line_end(idx)) {
-                match direction {
-                    Direction::Up(n)    =>  {
-                        let nlines = range(0, idx).rev().filter(|i| self.text[*i] == b'\n')
-                                                        .take(n + 1)
-                                                        .collect::<Vec<uint>>();
-                        if n < nlines.len() {
-                            line = nlines[n] + 1;
-                            line_end = nlines[n-1];
-                        } else {
-                            line = 0;
-                            if nlines.len() > 0 { line_end = nlines[nlines.len()-1]; }
-                        }
-                    }
-                    Direction::Down(n)  =>  {
-                        let nlines = range(idx, self.text.len()).filter(|i| self.text[*i] == b'\n')
-                                                                .take(n + 1)
-                                                                .collect::<Vec<uint>>();
-                        if n < nlines.len() {
-                            line = nlines[n-1] + 1;
-                            line_end = nlines[n];
-                        } else {
-                            if nlines.len() > 0 { line = nlines[nlines.len()-1] + 1; }
-                            line_end = self.len();
-                        }
-                    }
-                    _ => { }
-                }
-                Some((cmp::min(line + line_idx, line_end), line_idx))
-            } else { None }
         } else { None }
     }
 
@@ -389,7 +329,7 @@ mod test {
     #[test]
     fn test_shift_up() {
         let mut buffer = setup_buffer("Test\nA\nTest");
-        buffer.set_mark_by_coords(Mark::Cursor(0), 2, 2);
+        buffer.set_mark(Mark::Cursor(0), 10);
         buffer.shift_mark(Mark::Cursor(0), Direction::Up(1));
 
         assert_eq!(buffer.get_mark_coords(Mark::Cursor(0)).unwrap(), (1, 1));
@@ -423,7 +363,7 @@ mod test {
 
     #[test]
     fn test_to_lines() {
-        let mut buffer = setup_buffer("Test\nA\nTest");
+        let buffer = setup_buffer("Test\nA\nTest");
         let mut lines = buffer.lines();
 
         assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't',b'\n']);

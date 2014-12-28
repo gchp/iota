@@ -246,7 +246,6 @@ mod tests {
         let mut view = setup_view("test\nsecond");
         view.move_cursor(Direction::Right(1));
         view.insert_char('\n');
-        let lines: Vec<&[u8]> = view.buffer.lines().collect();
 
         assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap(), (0, 1))
     }
