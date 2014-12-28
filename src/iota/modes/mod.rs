@@ -7,6 +7,7 @@ pub use super::keymap::KeyMapState;
 pub use super::log::LogEntries;
 pub use super::cursor::Direction;
 pub use super::Response;
+pub use super::utils;
 
 pub use self::standard::StandardMode;
 

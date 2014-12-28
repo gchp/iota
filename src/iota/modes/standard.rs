@@ -1,6 +1,3 @@
-use std::borrow::Cow;
-use std::io::{fs, File, FileMode, FileAccess, TempDir};
-
 use super::Mode;
 use super::KeyMap;
 use super::Key;
@@ -11,6 +8,7 @@ use super::LogEntries;
 use super::EventStatus;
 use super::Direction;
 use super::Response;
+use super::utils;
 
 
 /// Standard mode is Iota's default mode.
@@ -71,50 +69,11 @@ impl StandardMode {
         keymap
     }
 
-    fn save_active_buffer(&self, view: &mut View) {
-        let lines = &view.buffer.lines;
-        let path = match view.buffer.file_path {
-            Some(ref p) => Cow::Borrowed(p),
-            None => {
-                // TODO: prompt user for file name here
-                Cow::Owned(Path::new("untitled"))
-            },
-        };
-
-        let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {
-            Ok(d) => d,
-            Err(e) => panic!("file error: {}", e)
-        };
-
-        let tmppath = tmpdir.path().join(Path::new("tmpfile"));
-
-        let mut file = match File::open_mode(&tmppath, FileMode::Open, FileAccess::Write) {
-            Ok(f) => f,
-            Err(e) => panic!("file error: {}", e)
-        };
-
-        for line in lines.iter() {
-            let mut data = line.data.clone();
-            data.push('\n');
-            let result = file.write(data.as_bytes());
-
-            if result.is_err() {
-                // TODO(greg): figure out what to do here.
-                panic!("Something went wrong while writing the file");
-            }
-        }
-
-        if let Err(e) = fs::rename(&tmppath, &*path) {
-            panic!("file error: {}", e);
-        }
-    }
-
     fn handle_command(&mut self, c: Command, view: &mut View, log: &mut LogEntries) -> Response {
         match c {
             // Editor Commands
             Command::ExitEditor      => return Response::Quit,
-            // TODO
-            Command::SaveBuffer      => self.save_active_buffer(view),
+            Command::SaveBuffer      => utils::save_buffer(&view.buffer),
 
             // Navigation
             Command::MoveCursor(dir) => view.move_cursor(dir),
