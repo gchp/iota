@@ -152,7 +152,6 @@ impl<'v> View<'v> {
             }
             Direction::Right(1) if self.buffer.get_mark_idx(self.cursor) != Some(self.buffer.len()) => {
                 self.buffer.remove_char(self.cursor);
-                self.move_cursor(direction);
             }
             _ => {}
         }

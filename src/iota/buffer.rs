@@ -73,8 +73,7 @@ impl Buffer {
             if let Some(line) = self.get_line(idx) {
                 Some((idx - line, self.text[..line].iter()
                                                    .filter(|ch| -> bool { *ch == &b'\n' })
-                                                   .collect::<Vec<&u8>>()
-                                                   .len()))
+                                                   .fold(0, |a, &b| a + 1)))
             } else { None }
         } else { None }
     }
@@ -231,25 +230,38 @@ impl Buffer {
     //Returns the mark offset by some number of line breaks.
     // None iff mark is not in the hashmap.
     fn offset_mark_line(&self, mark: Mark, direction: Direction) -> Option<(uint, uint)> {
-        let offset = match direction {
-            Direction::Up(n)    =>  -(n as int),
-            Direction::Down(n)  =>    n as int ,
-            _ => 0,
-        };
         if let Some(&(idx, line_idx)) = self.marks.get(&mark) {
-            let line = if offset > 0 {
-                let nlines = range(idx, self.len()).filter(|i| *i == 0 || self.text[*i-1] == b'\n')
-                                                   .collect::<Vec<uint>>();
-                if nlines.len() > 0 { nlines[cmp::min((offset - 1) as uint, nlines.len() - 1)] }
-                else { self.get_line(idx).unwrap() }
-            } else if offset < 0 {
-                let nlines = range(0, idx+1).filter(|i| *i == 0 || self.text[*i - 1] == b'\n')
-                                            .collect::<Vec<uint>>();
-                if nlines.len() > 0 { nlines[cmp::max(nlines.len() as int + offset-1, 0) as uint] }
-                else { self.get_line(idx).unwrap() }
-            } else { self.get_line(idx).unwrap() };
-
-            Some((cmp::min(line + line_idx, self.get_line_end(line).unwrap()), line_idx))
+            if let (Some(mut line), Some(mut line_end)) =
+                        (self.get_line(idx), self.get_line_end(idx)) {
+                match direction {
+                    Direction::Up(n)    =>  {
+                        let nlines = range(0, idx).rev().filter(|i| self.text[*i] == b'\n')
+                                                        .take(n + 1)
+                                                        .collect::<Vec<uint>>();
+                        if n < nlines.len() {
+                            line = nlines[n] + 1;
+                            line_end = nlines[n-1];
+                        } else {
+                            line = 0;
+                            if nlines.len() > 0 { line_end = nlines[nlines.len()-1]; }
+                        }
+                    }
+                    Direction::Down(n)  =>  {
+                        let nlines = range(idx, self.text.len()).filter(|i| self.text[*i] == b'\n')
+                                                                .take(n + 1)
+                                                                .collect::<Vec<uint>>();
+                        if n < nlines.len() {
+                            line = nlines[n-1] + 1;
+                            line_end = nlines[n];
+                        } else {
+                            if nlines.len() > 0 { line = nlines[nlines.len()-1] + 1; }
+                            line_end = self.len();
+                        }
+                    }
+                    _ => { }
+                }
+                Some((cmp::min(line + line_idx, line_end), line_idx))
+            } else { None }
         } else { None }
     }
 
