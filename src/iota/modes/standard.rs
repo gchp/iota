@@ -13,6 +13,14 @@ use super::Direction;
 use super::Response;
 
 
+/// Standard mode is Iota's default mode.
+///
+/// Standard mode uses non-vi-like keybindings.
+/// Unlike Normal, Command and Visual modes which are all used together, Standard
+/// mode is used on its own.
+///
+/// Standard mode allows Iota to be used in a non-modal way, similar to mainstream
+/// editors like emacs or sublime.
 pub struct StandardMode {
     keymap: KeyMap,
 }
