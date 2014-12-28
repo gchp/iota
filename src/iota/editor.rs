@@ -50,7 +50,7 @@ pub struct Editor<'e, T: Frontend, M: Mode> {
 }
 
 impl<'e, T: Frontend, M: Mode> Editor<'e, T, M> {
-    pub fn new(source: Input, frontend: T, mode: M) -> Editor<'e, T, M> {
+    pub fn new(source: Input, mode: M, frontend: T) -> Editor<'e, T, M> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
         let view = View::new(source, width, height);

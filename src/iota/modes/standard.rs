@@ -16,7 +16,7 @@ pub struct StandardMode {
 
 impl StandardMode {
 
-    fn new() -> StandardMode {
+    pub fn new() -> StandardMode {
         StandardMode {
             keymap: StandardMode::key_defaults(),
         }
