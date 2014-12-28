@@ -110,14 +110,6 @@ impl<'v> View<'v> {
         }
     }
 
-    pub fn resize<T: Frontend>(&mut self, frontend: &mut T) {
-        let width = self.uibuf.get_width();
-        self.clear(frontend);
-        self.uibuf = UIBuffer::new(width, 15);
-    }
-
-    //----- CURSOR METHODS -------------------------------------------------------------------------
-
     pub fn move_cursor(&mut self, direction: Direction) {
         self.buffer.shift_mark(self.cursor, direction);
         self.move_screen();
