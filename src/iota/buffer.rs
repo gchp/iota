@@ -153,7 +153,8 @@ impl Buffer {
                         let nlines = range(0, idx).rev().filter(|i| text[*i] == b'\n')
                                                         .take(n + 1)
                                                         .collect::<Vec<uint>>();
-                        if n >= nlines.len() { (0, 0) }
+                        if n == nlines.len() { (cmp::min(line_idx, nlines[0]), line_idx) }
+                        else if n > nlines.len() { (0, 0) }
                         else { (cmp::min(line_idx + nlines[n] + 1, nlines[n-1]), line_idx) }
                     }
                     Direction::Down(n)      =>  {
@@ -221,7 +222,7 @@ fn get_line(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
 //None iff mark is outside the len of text.
 fn get_line_end(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
     if mark <= text.len() {
-        range(mark, text.len()).filter(|idx| *idx == text.len() - 1 ||text[*idx] == b'\n').min()
+        range(mark, text.len() + 1).filter(|idx| *idx == text.len() ||text[*idx] == b'\n').min()
     } else { None }
 }
 
@@ -358,7 +359,7 @@ mod test {
         let mut buffer = setup_buffer("Test");
         buffer.shift_mark(Mark::Cursor(0), Direction::LineEnd);
 
-        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 3);
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 4);
     }
 
     #[test]
@@ -379,6 +380,15 @@ mod test {
 
         assert_eq!(lines.next().unwrap(), [b'\n']);
         assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't']);
+    }
+
+    #[test]
+    fn move_from_final_position() {
+        let mut buffer = setup_buffer("Test");
+        buffer.set_mark(Mark::Cursor(0), 4);
+        buffer.shift_mark(Mark::Cursor(0), Direction::Left(1));
+
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 3);
     }
 
 }
