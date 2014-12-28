@@ -72,6 +72,7 @@ impl<'v> View<'v> {
         for (index,line) in self.buffer
                                 .lines_from(self.first_char)
                                 .unwrap()
+                                .take(self.get_height() - 1)
                                 .enumerate() {
             draw_line(&mut self.uibuf, line, index);
             if index == self.get_height() { break; }
@@ -129,9 +130,8 @@ impl<'v> View<'v> {
         self.move_screen();
     }
 
+    //Update the first_char mark if necessary to keep the cursor on the screen.
     fn move_screen(&mut self) {
-
-        //Update the first_char mark if necessary to keep the cursor on the screen.
         let cursor_y = self.buffer.get_mark_coords(self.cursor).unwrap().1;
         let first_char_y = self.buffer.get_mark_coords(self.first_char).unwrap().1;
         if cursor_y < first_char_y {

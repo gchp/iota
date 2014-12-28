@@ -111,10 +111,8 @@ impl Buffer {
     ///Returns the status text for this buffer.
     pub fn status_text(&self) -> String {
         match self.file_path {
-            Some(ref path)  =>  format!("{}, lines: {} ", path.display(),
-                                    self.lines().fold(0, |a, _| -> uint {a + 1})),
-            None            =>  format!("untitled, lines: {} ",
-                                    self.lines().fold(0, |a, _| -> uint {a + 1})),
+            Some(ref path)  =>  format!("{} ", path.display()),
+            None            =>  format!("untitled "),
         }
     }
 
