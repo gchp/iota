@@ -8,6 +8,10 @@ docopt = "0.6.19"
 rustbox = "0.2.2"
 rustc-serialize = "0.1.5"
 
+[dependencies.gapbuffer]
+git = "https://github.com/dlaronson/gapbuffer"
+version = "0.0.2"
+
 [lib]
 name = "iota"
 path = "src/iota/lib.rs"

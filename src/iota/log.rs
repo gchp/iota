@@ -1,35 +1,23 @@
 /// Primitive command log, currently used for undo / redo.
 /// This is a deliberately unoptimized representation, for simplicity.  It is by no means final.
 
-use buffer::Line;
-use cursor::CursorData;
 
 use std::mem;
 
-/// Represents a modification of data (currently by line).
+/// Represents a modification of data.
 pub enum Change {
-    /// Line insertion.
-    ///
-    /// Associated Line holds the new contents of the inserted line.
-    Insert(Line),
-    /// Line update.
-    ///
-    /// First entry holds the old contents of the Line, second holds the new contents.
-    Update(Line, String),
-    /// Line deletion.
-    ///
-    /// Associated Line holds the old contents of the line.
-    Delete(Line),
+    ///Character insertion.
+    Insert(uint, u8),
+    ///Character removal.
+    Remove(uint, u8),
 }
 
 impl Change {
     /// Reverses a change, consuming it in the process
     pub fn reverse(self) -> Change {
         match self {
-            Change::Insert(line) => Change::Delete(line),
-            Change::Update(old, new) =>
-                Change::Update(Line { linenum: old.linenum, data: new }, old.data),
-            Change::Delete(line) => Change::Insert(line),
+            Change::Insert(uint, u8) => Change::Remove(uint, u8),
+            Change::Remove(uint, u8) => Change::Insert(uint, u8),
         }
     }
 }
@@ -37,12 +25,12 @@ impl Change {
 /// Log entry
 /// Entries may only be played linearly--they don't make sense out of order.
 pub struct LogEntry {
-    /// The initial cursor position associated with this log entry.
+    /// The initial point position associated with this log entry.
     ///
-    /// The OLD cursor position.
-    pub cursor_start: CursorData,
-    /// The NEW cursor position.
-    pub cursor_end: CursorData,
+    /// The OLD point position.
+    init_point: uint,
+    /// The NEW point position.
+    pub end_point: uint,
     /// The changes associated with this log entry, in order of occurence (an undo will replay
     /// their inverses, backwards).
     pub changes: Vec<Change>,
@@ -53,8 +41,8 @@ impl LogEntry {
     pub fn reverse(mut self) -> LogEntry {
         self.changes.reverse();
         LogEntry {
-            cursor_start: self.cursor_end,
-            cursor_end: self.cursor_start,
+            init_point: self.end_point,
+            end_point: self.init_point,
             changes: self.changes.map_in_place( |change| change.reverse() ),
         }
     }
@@ -66,7 +54,7 @@ impl LogEntry {
 /// entries are committed.
 pub struct Transaction<'a> {
     /// Currently, only one transaction may be open at a time.
-    entries: &'a mut LogEntries,
+    entries: &'a mut Log,
     /// The LogEntry under construction by the transaction.  Every data modification should be
     /// recorded with the open Transaction.
     entry: LogEntry,
@@ -77,9 +65,9 @@ impl<'a> Transaction<'a> {
     ///
     /// The logging should occur after the change has been executed.  This may eventually allow
     /// rollback in case of failure.
-    pub fn log(&mut self, change: Change, cursor_data: CursorData) {
+    pub fn log(&mut self, change: Change, idx: uint) {
         self.entry.changes.push(change);
-        self.entry.cursor_end = cursor_data;
+        self.entry.end_point = idx;
     }
 }
 
@@ -101,7 +89,7 @@ impl<'a> Drop for Transaction<'a> {
 }
 
 /// Log entries structure.  Just two stacks.
-pub struct LogEntries {
+pub struct Log {
     /// Undo log entries--LIFO stack.
     undo: Vec<LogEntry>,
     /// Redo log entries--LIFO stack.  Cleared after a new change (other than an undo or redo)
@@ -109,10 +97,10 @@ pub struct LogEntries {
     redo: Vec<LogEntry>,
 }
 
-impl LogEntries {
+impl Log {
     /// Set up log entries.  They are initially empty.
-    pub fn new() -> LogEntries {
-        LogEntries {
+    pub fn new() -> Log {
+        Log {
             undo: Vec::new(),
             redo: Vec::new(),
         }
@@ -121,12 +109,12 @@ impl LogEntries {
     /// Start a new transaction.
     ///
     /// This returns a RAII guard that can be used to record edits during the transaction.
-    pub fn start<'a, 'b>(&'a mut self, cursor_data: CursorData) -> Transaction<'a> {
+    pub fn start<'a, 'b>(&'a mut self, idx: uint) -> Transaction<'a> {
         Transaction {
             entries: self,
             entry: LogEntry {
-                cursor_start: cursor_data,
-                cursor_end: cursor_data,
+                init_point: idx,
+                end_point: idx,
                 changes: Vec::new(),
             }
         }
@@ -135,7 +123,7 @@ impl LogEntries {
     /// This reverses the most recent change on the undo stack, places the new change on the redo
     /// stack, and then returns a reference to it.  It is the caller's responsibility to actually
     /// perform the change.
-    pub fn undo<'a>(&'a mut self) -> Option<&'a LogEntry> {
+    pub fn undo(&mut self) -> Option<&LogEntry> {
         match self.undo.pop() {
             Some(change) => {
                 let last = self.redo.len();
