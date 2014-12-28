@@ -111,8 +111,10 @@ impl Buffer {
     ///Returns the status text for this buffer.
     pub fn status_text(&self) -> String {
         match self.file_path {
-            Some(ref path)  =>  format!("{}", path.display()),
-            None            =>  format!("untitled"),
+            Some(ref path)  =>  format!("{}, lines: {} ", path.display(),
+                                    self.lines().fold(0, |a, _| -> uint {a + 1})),
+            None            =>  format!("untitled, lines: {} ",
+                                    self.lines().fold(0, |a, _| -> uint {a + 1})),
         }
     }
 
@@ -172,6 +174,7 @@ impl Buffer {
             }
         }
     }
+
     ///Remove the char at the mark.
     pub fn remove_char(&mut self, mark: Mark) -> Option<u8> {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
@@ -192,6 +195,7 @@ impl Buffer {
         }
     }
 
+    ///Redo most recently undone action.
     pub fn redo(&mut self) -> Option<&LogEntry> {
         if let Some(transaction) = self.log.redo() {
             commit(transaction, &mut self.text);
@@ -199,6 +203,7 @@ impl Buffer {
         } else { None }
     }
 
+    ///Undo most recently performed action.
     pub fn undo(&mut self) -> Option<&LogEntry> {
         if let Some(transaction) = self.log.undo() {
             commit(transaction, &mut self.text);
