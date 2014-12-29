@@ -11,7 +11,8 @@ use frontends::Frontend;
 /// pieces of information.
 pub struct View<'v> {
     pub buffer: Buffer,     //Text buffer
-    first_char: Mark,       //First character to be displayed
+    top_line: Mark,         //First character of the top line to be displayed.
+    left_col: uint,         //Index into the top line to set the left column to.
     cursor: Mark,           //Cursor displayed by this buffer.
     uibuf: UIBuffer,        //UIBuffer
 }
@@ -38,12 +39,13 @@ impl<'v> View<'v> {
 
         let cursor = Mark::Cursor(0);
         buffer.set_mark(cursor, 0);
-        let first_char = Mark::DisplayMark(0);
-        buffer.set_mark(first_char, 0);
+        let top_line = Mark::DisplayMark(0);
+        buffer.set_mark(top_line, 0);
 
         View {
             buffer: buffer,
-            first_char: first_char,
+            top_line: top_line,
+            left_col: 0,
             cursor: cursor,
             uibuf: uibuf,
         }
@@ -69,10 +71,11 @@ impl<'v> View<'v> {
 
     pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
         for (index,line) in self.buffer
-                                .lines_from(self.first_char)
+                                .lines_from(self.top_line)
                                 .unwrap()
+                                .take(self.get_height())
                                 .enumerate() {
-            draw_line(&mut self.uibuf, line, index);
+            draw_line(&mut self.uibuf, line, index, self.left_col);
             if index == self.get_height() { break; }
         }
         self.uibuf.draw_everything(frontend);
@@ -128,17 +131,24 @@ impl<'v> View<'v> {
         self.move_screen();
     }
 
+    //Update the top_line mark if necessary to keep the cursor on the screen.
     fn move_screen(&mut self) {
-
-        //Update the first_char mark if necessary to keep the cursor on the screen.
-        let cursor_y = self.buffer.get_mark_coords(self.cursor).unwrap().1;
-        let first_char_y = self.buffer.get_mark_coords(self.first_char).unwrap().1;
-        if cursor_y < first_char_y {
-            self.buffer.shift_mark(self.first_char, Direction::Up(1));
-        } else if cursor_y > first_char_y + self.get_height() {
-            self.buffer.shift_mark(self.first_char, Direction::Down(1));
+        if let (Some(cursor), Some(top_line)) = (self.buffer.get_mark_coords(self.cursor),
+                                                 self.buffer.get_mark_coords(self.top_line)) {
+            match cursor.0 as int - self.left_col as int {
+                x if x < 0 => { self.left_col -= x as uint; }
+                x if x > self.get_width() as int => { self.left_col += x as uint - self.get_width()}
+                _ => { }
+            }
+            match cursor.1 as int - top_line.1 as int {
+                y if y < 0 => { self.buffer.shift_mark(self.top_line, Direction::Up(y as uint)); }
+                y if y > self.get_height() as int => {
+                    let height = self.get_height();
+                    self.buffer.shift_mark(self.top_line, Direction::Down(y as uint - height));
+                }
+                _ => { }
+            }
         }
-
     }
 
     //----- TEXT EDIT METHODS ----------------------------------------------------------------------
@@ -182,24 +192,24 @@ impl<'v> View<'v> {
 
 }
 
-pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: uint) {
+pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: uint, left: uint) {
     let width = buf.get_width() - 1;
     let mut wide_chars = 0;
-    for line_idx in range(0, width) {
+    for line_idx in range(left, left + width) {
         if line_idx < line.len() {
             match line[line_idx] {
                 b'\t'   => {
                     let w = 4 - line_idx % 4;
                     for _ in range(0, w) {
-                        buf.update_cell_content(line_idx + wide_chars, idx, ' ');
+                        buf.update_cell_content(line_idx + wide_chars - left, idx, ' ');
                     }
                 }
-                b'\n'   => buf.update_cell_content(line_idx + wide_chars, idx, ' '),
-                _       => buf.update_cell_content(line_idx + wide_chars, idx,
+                b'\n'   => buf.update_cell_content(line_idx + wide_chars - left, idx, ' '),
+                _       => buf.update_cell_content(line_idx + wide_chars - left, idx,
                                                    line[line_idx] as char),
             }
             wide_chars += (line[line_idx] as char).width(false).unwrap_or(1) - 1;
-        } else { buf.update_cell_content(line_idx + wide_chars, idx, ' '); }
+        } else { buf.update_cell_content(line_idx + wide_chars - left, idx, ' '); }
     }
     if line.len() >= width {
         buf.update_cell_content(width + wide_chars, idx, '→');

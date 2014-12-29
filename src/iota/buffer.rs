@@ -72,7 +72,7 @@ impl Buffer {
         if let Some(idx) = self.get_mark_idx(mark) {
             if let Some(line) = get_line(idx, &self.text) {
                 Some((idx - line, range(0, idx).filter(|i| -> bool { self.text[*i] == b'\n' })
-                                               .fold(0, |a, _| a + 1)))
+                                               .count()))
             } else { None }
         } else { None }
     }
@@ -111,10 +111,8 @@ impl Buffer {
     ///Returns the status text for this buffer.
     pub fn status_text(&self) -> String {
         match self.file_path {
-            Some(ref path)  =>  format!("{}, lines: {} ", path.display(),
-                                    self.lines().fold(0, |a, _| -> uint {a + 1})),
-            None            =>  format!("untitled, lines: {} ",
-                                    self.lines().fold(0, |a, _| -> uint {a + 1})),
+            Some(ref path)  =>  format!("{} ", path.display()),
+            None            =>  format!("untitled "),
         }
     }
 
@@ -218,7 +216,9 @@ impl Buffer {
 //None iff mark is outside of the len of text.
 fn get_line(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
     if mark <= text.len() {
-        range(0, mark + 1).filter(|idx| *idx == 0 || text[*idx - 1] == b'\n').max()
+        range(0, mark + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
+                                .take(1)
+                                .next()
     } else { None }
 }
 
@@ -227,7 +227,9 @@ fn get_line(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
 //None iff mark is outside the len of text.
 fn get_line_end(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
     if mark <= text.len() {
-        range(mark, text.len() + 1).filter(|idx| *idx == text.len() ||text[*idx] == b'\n').min()
+        range(mark, text.len() + 1).filter(|idx| *idx == text.len() ||text[*idx] == b'\n')
+                                   .take(1)
+                                   .next()
     } else { None }
 }
 
@@ -260,9 +262,11 @@ impl<'a> Iterator<&'a [u8]> for Lines<'a> {
 
             let old_tail = self.tail;
             //update tail to either the first char after the next \n or to self.head
-            self.tail = range(old_tail, self.head).filter(|idx| -> bool {
-                *idx + 1 == self.head || self.buffer[*idx] == b'\n'
-            }).min().unwrap() + 1;
+            self.tail = range(old_tail, self.head).filter(|i| { *i + 1 == self.head 
+                                                                || self.buffer[*i] == b'\n' })
+                                                  .take(1)
+                                                  .next()
+                                                  .unwrap() + 1;
             if self.tail == self.head { Some(self.buffer[old_tail..self.tail-1]) }
             else { Some(self.buffer[old_tail..self.tail]) }
 
