@@ -195,6 +195,7 @@ impl<'v> View<'v> {
 
 pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: uint, left: uint) {
     let width = buf.get_width() - 1;
+    let mut wide_chars = 0;
     for line_idx in range(left, left + width) {
         if line_idx < line.len() {
             match line[line_idx] {

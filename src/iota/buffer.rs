@@ -72,7 +72,7 @@ impl Buffer {
         if let Some(idx) = self.get_mark_idx(mark) {
             if let Some(line) = get_line(idx, &self.text) {
                 Some((idx - line, range(0, idx).filter(|i| -> bool { self.text[*i] == b'\n' })
-                                               .fold(0, |a, _| a + 1)))
+                                               .count()))
             } else { None }
         } else { None }
     }
