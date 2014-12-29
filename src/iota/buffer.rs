@@ -1,306 +1,403 @@
+//FIXME: Check unicode support
+
+use log::{Log, Change, LogEntry};
+
+use gapbuffer::GapBuffer;
+
+use std::cmp;
+use std::collections::HashMap;
 use std::io::{File, Reader, BufferedReader};
-use std::mem;
-use cursor::CursorData;
-use log::{Change, Transaction};
+
+#[deriving(Copy, PartialEq, Eq, Hash, Show)]
+pub enum Mark {
+    Cursor(uint),           //For keeping track of cursors.
+    DisplayMark(uint),      //For using in determining some display of characters.
+}
+
+#[deriving(Copy, PartialEq, Eq, Show)]
+pub enum Direction {
+    Up(uint), Down(uint), Left(uint), Right(uint),
+    LineStart, LineEnd,
+}
 
 pub struct Buffer {
-    pub file_path: Option<Path>,
-    pub lines: Vec<Line>,
+    text: GapBuffer<u8>,                    //Actual text data being edited.
+    marks: HashMap<Mark, (uint, uint)>,     //Table of marked indices in the text.
+                                            // KEY: mark id => VALUE : (absolute index, line index)
+    log: Log,                               //History of undoable transactions.
+    pub file_path: Option<Path>,            //TODO: replace with a general metadata table
 }
 
 impl Buffer {
-    /// Create a new buffer instance
+
+    //----- CONSTRUCTORS ---------------------------------------------------------------------------
+
+    /// Constructor for empty buffer.
     pub fn new() -> Buffer {
         Buffer {
             file_path: None,
-            lines: Vec::new(),
+            text: GapBuffer::new(),
+            marks: HashMap::new(),
+            log: Log::new(),
         }
     }
 
-    /// Create a new buffer with a single line
-    pub fn new_empty() -> Buffer {
-        let mut buffer = Buffer::new();
-        buffer.lines.push(Line::new(String::new(), 0));
-
-        buffer
-    }
-
-    fn lines_from_reader<R: Reader>(reader: &mut BufferedReader<R>) -> Vec<Line> {
-        let mut v = vec![];
-        // for every line in the reader we add a corresponding line to the buffer
-        for (index, line) in reader.lines().enumerate() {
-            let mut data = line.unwrap();
-            let last_index = data.len() - 1;
-            if data.is_char_boundary(last_index) && data.char_at(last_index) == '\n' {
-                data.pop();
-            }
-            v.push(Line::new(String::from_str(data.trim_right_chars('\n')), index));
-        }
-        v
-    }
-
+    /// Constructor for buffer from reader.
     pub fn new_from_reader<R: Reader>(reader: R) -> Buffer {
-        let mut r = BufferedReader::new(reader);
-        Buffer {
-            lines: Buffer::lines_from_reader(&mut r),
-            file_path: None
+        let mut buff = Buffer::new();
+        if let Ok(contents) = BufferedReader::new(reader).read_to_string() {
+            buff.text.extend(contents.bytes());
         }
+        buff
     }
 
-    /// Create a new buffer instance and load the given file
+    /// Constructor for buffer from file.
     pub fn new_from_file(path: Path) -> Buffer {
-        let mut buffer = Buffer::new();
-
         if let Ok(file) = File::open(&path) {
-            buffer.lines = Buffer::lines_from_reader(&mut BufferedReader::new(file));
-        } else {
-            buffer.lines.push(Line::new(String::new(), 0));
-        }
-
-        buffer.file_path = Some(path);
-        buffer
+            let mut buff = Buffer::new_from_reader(file);
+            buff.file_path = Some(path);
+            buff
+        } else { Buffer::new() }
     }
 
-    pub fn get_status_text(&self) -> String {
-        match self.file_path {
-            Some(ref path) => format!("{}, lines: {}", path.display(), self.lines.len()),
-            None => format!("untitled, lines: {}", self.lines.len())
-        }
-    }
+    //----- ACCESSORS ------------------------------------------------------------------------------
 
-    fn fix_linenums(&mut self) {
-        for (index, line) in self.lines.iter_mut().enumerate() {
-            line.linenum = index;
-        }
-    }
-
-    pub fn replay(&mut self, change: &Change) {
-        match *change {
-            Change::Insert(ref line) => {
-                self.lines.insert(line.linenum, line.clone());
-                self.fix_linenums();
-            },
-            Change::Delete(ref line) => {
-                self.lines.remove(line.linenum);
-                self.fix_linenums();
-            },
-            Change::Update(ref old, ref new) => {
-                mem::replace(&mut self.get_line_at_mut(old.linenum).unwrap().data, new.clone());
-            }
-        }
-    }
-
-    pub fn insert_line(&mut self, transaction: &mut Transaction, offset: uint,
-                       mut line_num: uint) {
-        // split the current line at the cursor position
-        let (_, new_data) = self.split_line(offset, line_num);
-        {
-            // truncate the current line
-            let line = self.get_line_at_mut(line_num).unwrap();
-            let old_line = line.clone();
-            line.data.truncate(offset);
-            transaction.log(Change::Update(old_line, line.data.clone()),
-                            CursorData { linenum: line_num, offset: offset });
-        }
-
-        line_num += 1;
-
-        self.lines.insert(line_num, Line::new(new_data, line_num));
-
-        self.fix_linenums();
-        transaction.log(Change::Insert(self.get_line_at(line_num).unwrap().clone()),
-                        CursorData { linenum: line_num, offset: 0 });
-    }
-
-    /// Join the line identified by `line_num` with the one at `line_num - 1 `.
-    pub fn join_line_with_previous(&mut self, transaction: &mut Transaction, offset: uint,
-                                   line_num: uint) -> uint {
-        // if the line_num is 0 (ie the first line), don't do anything
-        if line_num == 0 { return offset }
-
-        let current_line = {
-            let current_line = match self.get_line_at(line_num) {
-                Some(line) => line,
-                None => return offset,
-            };
-            current_line.clone()
-        };
-
-        // update the previous line
-        let new_cursor_offset = match self.get_line_at_mut(line_num -1) {
-            None => offset,
-            Some(line) => {
-                let old_line = line.clone();
-                let line_len = line.data.len();
-                line.data.push_str(&*current_line.data);
-                transaction.log(Change::Update(old_line, line.data.clone()),
-                                CursorData { linenum: line_num, offset: offset });
-                line_len
-            }
-        };
-
-        if let Some(line) = self.lines.remove(line_num) {
-            self.fix_linenums();
-            transaction.log(Change::Delete(line),
-                            CursorData { linenum: line_num - 1, offset: new_cursor_offset });
-        }
-
-        return new_cursor_offset
-    }
-
-    /// Split the line identified by `line_num` at `offset`
-    fn split_line(&mut self, offset: uint, line_num: uint) -> (String, String) {
-        let line = self.get_line_at(line_num).unwrap();
-
-        let data = &line.data;
-        let old_data = data.slice_to(offset);
-        let new_data = data.slice_from(offset);
-
-        let mut new = String::new(); new.push_str(new_data);
-        let mut old = String::new(); old.push_str(old_data);
-
-        return (old, new)
-    }
-
-    fn get_line_at(&self, line_num: uint) -> Option<&Line> {
-        let num_lines = self.lines.len() -1;
-        if line_num > num_lines { return None }
-        Some(&self.lines[line_num])
-    }
-
-    fn get_line_at_mut(&mut self, line_num: uint) -> Option<&mut Line> {
-        let num_lines = self.lines.len() -1;
-        if line_num > num_lines { return None }
-        Some(&mut self.lines[line_num])
-    }
-
-}
-
-#[deriving(Clone)]
-pub struct Line {
-    pub data: String,
-    pub linenum: uint,
-}
-
-impl Line {
-    /// Create a new line instance
-    pub fn new(data: String, line_num: uint) -> Line {
-        Line{
-            data: data,
-            linenum: line_num,
-        }
-    }
-
-    /// Get the length of the current line
+    ///Length of the text stored in this buffer.
     pub fn len(&self) -> uint {
-        self.data.len()
+        self.text.len() + 1
+    }
+
+    ///The x,y coordinates of a mark within the file. None if not a valid mark.
+    pub fn get_mark_coords(&self, mark: Mark) -> Option<(uint, uint)> {
+        if let Some(idx) = self.get_mark_idx(mark) {
+            if let Some(line) = get_line(idx, &self.text) {
+                Some((idx - line, range(0, idx).filter(|i| -> bool { self.text[*i] == b'\n' })
+                                               .count()))
+            } else { None }
+        } else { None }
+    }
+
+    ///The absolute index of a mark within the file. None if not a valid mark.
+    pub fn get_mark_idx(&self, mark: Mark) -> Option<uint> {
+        if let Some(&(idx, _)) = self.marks.get(&mark) {
+            if idx < self.len() {
+                Some(idx)
+            } else { None }
+        } else { None }
+    }
+
+    ///Creates an iterator on the text by lines.
+    pub fn lines(&self) -> Lines {
+        Lines {
+            buffer: self.text[],
+            tail: 0,
+            head: self.len()
+        }
+    }
+
+    ///Creates an iterator on the text by lines that begins at the specified mark.
+    pub fn lines_from(&self, mark: Mark) -> Option<Lines> {
+        if let Some(&(idx, _)) = self.marks.get(&mark) {
+            if idx < self.len() {
+                Some(Lines {
+                    buffer: self.text[idx..],
+                    tail: 0,
+                    head: self.len() - idx,
+                })
+            } else { None }
+        } else { None }
+    }
+
+    ///Returns the status text for this buffer.
+    pub fn status_text(&self) -> String {
+        match self.file_path {
+            Some(ref path)  =>  format!("{} ", path.display()),
+            None            =>  format!("untitled "),
+        }
+    }
+
+    //----- MUTATORS -------------------------------------------------------------------------------
+
+    ///Sets the mark to a given absolute index. Adds a new mark or overwrites an existing mark.
+    pub fn set_mark(&mut self, mark: Mark, idx: uint) {
+        if let Some(line) = get_line(idx, &self.text) {
+            if let Some(tuple) = self.marks.get_mut(&mark) {
+                *tuple = (idx, idx - line);
+                return;
+            }
+            self.marks.insert(mark, (idx, idx - line));
+        }
+    }
+
+    //Shift a mark relative to its position according to the direction given.
+    pub fn shift_mark(&mut self, mark: Mark, direction: Direction) {
+        let last = self.len() - 1;
+        let text = &self.text;
+        if let Some(tuple) = self.marks.get_mut(&mark) {
+            let (idx, line_idx) = *tuple;
+            if let (Some(line), Some(line_end)) = (get_line(idx, text), get_line_end(idx, text)) {
+                *tuple = match direction {
+                    //For every relative motion of a mark, should return this tuple:
+                    //  value 0:    the absolute index of the mark in the file
+                    //  value 1:    the index of the mark in its line (unchanged by direct verticle
+                    //              traversals)
+                    Direction::Left(n)      =>  {
+                        if idx >= n { (idx - n, idx - n - get_line(idx - n, text).unwrap()) }
+                        else { (0, 0) }
+                    }
+                    Direction::Right(n)     =>  {
+                        if idx + n < last { (idx + n, idx + n - get_line(idx + n, text).unwrap()) }
+                        else { (last, last - get_line(last, text).unwrap()) }
+                    }
+                    Direction::Up(n)        =>  {
+                        let nlines = range(0, idx).rev().filter(|i| text[*i] == b'\n')
+                                                        .take(n + 1)
+                                                        .collect::<Vec<uint>>();
+                        if n == nlines.len() { (cmp::min(line_idx, nlines[0]), line_idx) }
+                        else if n > nlines.len() { (0, 0) }
+                        else { (cmp::min(line_idx + nlines[n] + 1, nlines[n-1]), line_idx) }
+                    }
+                    Direction::Down(n)      =>  {
+                        let nlines = range(idx, text.len()).filter(|i| text[*i] == b'\n')
+                                                           .take(n + 1)
+                                                           .collect::<Vec<uint>>();
+                        if n > nlines.len() { (last, last - get_line(last, text).unwrap())
+                        } else if n == nlines.len() {
+                            (cmp::min(line_idx + nlines[n-1] + 1, last), line_idx)
+                        } else { (cmp::min(line_idx + nlines[n-1] + 1, nlines[n]), line_idx) }
+                    }
+                    Direction::LineStart    =>  { (line, 0) }
+                    Direction::LineEnd      =>  { (line_end, line_end - line) }
+                }
+            }
+        }
+    }
+
+    ///Remove the char at the mark.
+    pub fn remove_char(&mut self, mark: Mark) -> Option<u8> {
+        if let Some(&(idx, _)) = self.marks.get(&mark) {
+            if let Some(ch) = self.text.remove(idx) {
+                let mut transaction = self.log.start(idx);
+                transaction.log(Change::Remove(idx, ch), idx);
+                Some(ch)
+            } else { None }
+        } else { None }
+    }
+
+    ///Insert a char at the mark.
+    pub fn insert_char(&mut self, mark: Mark, ch: u8) {
+        if let Some(&(idx, _)) = self.marks.get(&mark) {
+            self.text.insert(idx, ch);
+            let mut transaction = self.log.start(idx);
+            transaction.log(Change::Insert(idx, ch), idx);
+        }
+    }
+
+    ///Redo most recently undone action.
+    pub fn redo(&mut self) -> Option<&LogEntry> {
+        if let Some(transaction) = self.log.redo() {
+            commit(transaction, &mut self.text);
+            Some(transaction)
+        } else { None }
+    }
+
+    ///Undo most recently performed action.
+    pub fn undo(&mut self) -> Option<&LogEntry> {
+        if let Some(transaction) = self.log.undo() {
+            commit(transaction, &mut self.text);
+            Some(transaction)
+        } else { None }
+    }
+
+}
+
+//Returns the index of the first character of the line the mark is in.
+//Newline prior to mark (EXCLUSIVE) + 1.
+//None iff mark is outside of the len of text.
+fn get_line(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
+    if mark <= text.len() {
+        range(0, mark + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
+                                .take(1)
+                                .next()
+    } else { None }
+}
+
+//Returns the index of the newline character at the end of the line mark is in.
+//Newline after mark (INCLUSIVE).
+//None iff mark is outside the len of text.
+fn get_line_end(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
+    if mark <= text.len() {
+        range(mark, text.len() + 1).filter(|idx| *idx == text.len() ||text[*idx] == b'\n')
+                                   .take(1)
+                                   .next()
+    } else { None }
+}
+
+//Performs a transaction on the passed in buffer.
+fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
+    for change in transaction.changes.iter() {
+        match change {
+            &Change::Insert(idx, ch) => { 
+                text.insert(idx, ch);
+            }
+            &Change::Remove(idx, _) => {
+                text.remove(idx);
+            }
+        }
     }
 }
 
+//----- ITERATE BY LINES ---------------------------------------------------------------------------
+
+pub struct Lines<'a> {
+    buffer: &'a [u8],
+    tail: uint,
+    head: uint,
+}
+
+impl<'a> Iterator<&'a [u8]> for Lines<'a> {
+
+    fn next(&mut self) -> Option<&'a [u8]> {
+        if self.tail != self.head {
+
+            let old_tail = self.tail;
+            //update tail to either the first char after the next \n or to self.head
+            self.tail = range(old_tail, self.head).filter(|i| { *i + 1 == self.head 
+                                                                || self.buffer[*i] == b'\n' })
+                                                  .take(1)
+                                                  .next()
+                                                  .unwrap() + 1;
+            if self.tail == self.head { Some(self.buffer[old_tail..self.tail-1]) }
+            else { Some(self.buffer[old_tail..self.tail]) }
+
+        } else { None }
+    }
+
+    fn size_hint(&self) -> (uint, Option<uint>) {
+        //TODO: this is technically correct but a better estimate could be implemented
+        (1, Some(self.head))
+    }
+
+}
+
+//----- TESTS --------------------------------------------------------------------------------------
 
 #[cfg(test)]
-mod tests {
+mod test {
 
-    use buffer::Buffer;
-    use buffer::Line;
-    use cursor::CursorData;
-    use log::LogEntries;
-    use utils::data_from_str;
+    use buffer::{Buffer, Direction, Mark};
 
-    fn setup_buffer() -> Buffer {
+    fn setup_buffer(testcase: &'static str) -> Buffer {
         let mut buffer = Buffer::new();
-        buffer.file_path = Some(Path::new("/some/file.txt"));
-        buffer.lines = vec!(
-            Line::new(data_from_str("test"), 0),
-            Line::new(String::new(), 1),
-            Line::new(data_from_str("text file"), 2),
-            Line::new(data_from_str("content"), 3),
-        );
+        buffer.text.extend(testcase.bytes());
+        buffer.set_mark(Mark::Cursor(0), 0);
         buffer
     }
 
     #[test]
-    fn test_get_status_text() {
-        let buffer = setup_buffer();
-        assert_eq!(buffer.get_status_text(), "/some/file.txt, lines: 4".to_string())
+    fn test_insert() {
+        let mut buffer = setup_buffer("");
+        buffer.insert_char(Mark::Cursor(0), b'A');
+        assert_eq!(buffer.len(), 2);
+        assert_eq!(buffer.lines().next().unwrap(), [b'A']);
     }
 
     #[test]
-    fn test_insert_line() {
-        let mut buffer = setup_buffer();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
-        buffer.insert_line(&mut transaction, 0, 0);
-        assert_eq!(buffer.lines.len(), 5);
+    fn test_remove() {
+        let mut buffer = setup_buffer("ABCD");
+        buffer.remove_char(Mark::Cursor(0));
+
+        assert_eq!(buffer.len(), 4);
+        assert_eq!(buffer.lines().next().unwrap(), [b'B', b'C', b'D']);
     }
 
     #[test]
-    fn test_insert_line_in_middle_of_other_line() {
-        let mut buffer = setup_buffer();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
-        buffer.insert_line(&mut transaction, 1, 0);
-        assert_eq!(buffer.lines.len(), 5);
+    fn test_set_mark() {
+        let mut buffer = setup_buffer("Test");
+        buffer.set_mark(Mark::Cursor(0), 2);
 
-        let ref line = buffer.lines[1];
-        assert_eq!(line.data, data_from_str("est"));
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 2);
     }
 
     #[test]
-    fn test_line_numbers_are_fixed_after_adding_new_line() {
-        let mut buffer = setup_buffer();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
-        buffer.insert_line(&mut transaction, 1, 2);
-        assert_eq!(buffer.lines.len(), 5);
+    fn test_shift_down() {
+        let mut buffer = setup_buffer("Test\nA\nTest");
+        buffer.set_mark(Mark::Cursor(0), 2);
+        buffer.shift_mark(Mark::Cursor(0), Direction::Down(2));
 
-        // check that all linenums are sequential
-        for (index, line) in buffer.lines.iter().enumerate() {
-            assert_eq!(index, line.linenum);
-        }
+        assert_eq!(buffer.get_mark_coords(Mark::Cursor(0)).unwrap(), (2, 2));
     }
 
     #[test]
-    fn test_join_line_with_previous() {
-        let mut buffer = setup_buffer();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
+    fn test_shift_right() {
+        let mut buffer = setup_buffer("Test");
+        buffer.shift_mark(Mark::Cursor(0), Direction::Right(1));
 
-        let offset = buffer.join_line_with_previous(&mut transaction, 0, 3);
-
-        assert_eq!(buffer.lines.len(), 3);
-        assert_eq!(buffer.lines[2].data, data_from_str("text filecontent"));
-        assert_eq!(offset, 9);
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 1);
     }
 
     #[test]
-    fn join_line_with_previous_does_nothing_on_line_zero_offset_zero() {
-        let mut buffer = setup_buffer();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
-        buffer.join_line_with_previous(&mut transaction, 0, 0);
+    fn test_shift_up() {
+        let mut buffer = setup_buffer("Test\nA\nTest");
+        buffer.set_mark(Mark::Cursor(0), 10);
+        buffer.shift_mark(Mark::Cursor(0), Direction::Up(1));
 
-        assert_eq!(buffer.lines.len(), 4);
-        assert_eq!(buffer.lines[0].data, data_from_str("test"));
+        assert_eq!(buffer.get_mark_coords(Mark::Cursor(0)).unwrap(), (1, 1));
     }
 
     #[test]
-    fn test_split_line() {
-        let mut buffer = setup_buffer();
-        let (old, new) = buffer.split_line(3, 3);
+    fn test_shift_left() {
+        let mut buffer = setup_buffer("Test");
+        buffer.set_mark(Mark::Cursor(0), 2);
+        buffer.shift_mark(Mark::Cursor(0), Direction::Left(1));
 
-        assert_eq!(old, data_from_str("con"));
-        assert_eq!(new, data_from_str("tent"));
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 1);
     }
 
     #[test]
-    fn joining_line_with_non_existant_next_line_does_nothing() {
-        let mut buffer = setup_buffer();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(CursorData { linenum: 0, offset: 0 });
-        buffer.lines = vec!(Line::new(String::new(), 0));
-        buffer.join_line_with_previous(&mut transaction, 0, 1);
+    fn test_shift_linestart() {
+        let mut buffer = setup_buffer("Test");
+        buffer.set_mark(Mark::Cursor(0), 2);
+        buffer.shift_mark(Mark::Cursor(0), Direction::LineStart);
+
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_shift_lineend() {
+        let mut buffer = setup_buffer("Test");
+        buffer.shift_mark(Mark::Cursor(0), Direction::LineEnd);
+
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 4);
+    }
+
+    #[test]
+    fn test_to_lines() {
+        let buffer = setup_buffer("Test\nA\nTest");
+        let mut lines = buffer.lines();
+
+        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't',b'\n']);
+        assert_eq!(lines.next().unwrap(), [b'A',b'\n']);
+        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't']);
+    }
+
+    #[test]
+    fn test_to_lines_from() {
+        let mut buffer = setup_buffer("Test\nA\nTest");
+        buffer.set_mark(Mark::Cursor(0), 6);
+        let mut lines = buffer.lines_from(Mark::Cursor(0)).unwrap();
+
+        assert_eq!(lines.next().unwrap(), [b'\n']);
+        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't']);
+    }
+
+    #[test]
+    fn move_from_final_position() {
+        let mut buffer = setup_buffer("Test");
+        buffer.set_mark(Mark::Cursor(0), 4);
+        buffer.shift_mark(Mark::Cursor(0), Direction::Left(1));
+
+        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 3);
     }
 
 }
-

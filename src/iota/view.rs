@@ -1,37 +1,7 @@
-use buffer::{Line, Buffer};
-use cursor::{Cursor, CursorData, Direction};
+use buffer::{Buffer, Direction, Mark};
 use input::Input;
-use log::{LogEntry, Transaction};
 use uibuf::{UIBuffer, CharColor};
 use frontends::Frontend;
-
-pub struct CursorGuard<'a> {
-    data: &'a mut CursorData,
-    cursor: Cursor<'a>,
-}
-
-impl<'a> Deref<Cursor<'a>> for CursorGuard<'a> {
-    fn deref(&self) -> &Cursor<'a> {
-        &self.cursor
-    }
-}
-
-impl<'a> DerefMut<Cursor<'a>> for CursorGuard<'a> {
-    fn deref_mut(&mut self) -> &mut Cursor<'a> {
-        &mut self.cursor
-    }
-}
-
-#[unsafe_destructor]
-impl<'a> Drop for CursorGuard<'a> {
-    fn drop(&mut self) {
-        // Update line number and offset
-        *self.data = CursorData {
-            linenum: self.cursor.get_linenum(),
-            offset: self.cursor.get_actual_offset(),
-        }
-    }
-}
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -40,22 +10,23 @@ impl<'a> Drop for CursorGuard<'a> {
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
 pub struct View<'v> {
-    pub buffer: Buffer,
-    // the line number of the topmost `Line` for the View to render
-    pub top_line_num: uint,
-    pub cursor_data: CursorData,
-
-    uibuf: UIBuffer,
-    threshold: int,
+    pub buffer: Buffer,     //Text buffer
+    top_line: Mark,         //First character of the top line to be displayed.
+    left_col: uint,         //Index into the top line to set the left column to.
+    cursor: Mark,           //Cursor displayed by this buffer.
+    uibuf: UIBuffer,        //UIBuffer
 }
 
 impl<'v> View<'v> {
+
+    //----- CONSTRUCTORS ---------------------------------------------------------------------------
+
     pub fn new(source: Input, width: uint, height: uint) -> View<'v> {
-        let buffer = match source {
+        let mut buffer = match source {
             Input::Filename(path) => {
                 match path {
                     Some(s) => Buffer::new_from_file(Path::new(s)),
-                    None    => Buffer::new_empty(),
+                    None    => Buffer::new(),
                 }
             },
             Input::Stdin(reader) => {
@@ -66,33 +37,18 @@ impl<'v> View<'v> {
         // NOTE(greg): this may not play well with resizing
         let uibuf = UIBuffer::new(width, height);
 
+        let cursor = Mark::Cursor(0);
+        buffer.set_mark(cursor, 0);
+        let top_line = Mark::DisplayMark(0);
+        buffer.set_mark(top_line, 0);
+
         View {
             buffer: buffer,
-            top_line_num: 0,
-            uibuf: uibuf,
-            threshold: 5,
-            cursor_data: CursorData {
-                linenum: 0,
-                offset: 0,
-            }
-        }
-    }
-
-    pub fn cursor<'b>(&'b mut self) -> CursorGuard<'b> {
-        let View {ref mut buffer, ref mut cursor_data, .. } = *self;
-        let cursor = Cursor::new(&mut buffer.lines[cursor_data.linenum], cursor_data.offset);
-        CursorGuard {
+            top_line: top_line,
+            left_col: 0,
             cursor: cursor,
-            data: cursor_data,
+            uibuf: uibuf,
         }
-    }
-
-    /// Clear the buffer
-    ///
-    /// Fills every cell in the UIBuffer with the space (' ') char.
-    pub fn clear<T: Frontend>(&mut self, frontend: &mut T) {
-        self.uibuf.fill(' ');
-        self.uibuf.draw_everything(frontend);
     }
 
     pub fn get_height(&self) -> uint {
@@ -104,23 +60,31 @@ impl<'v> View<'v> {
         self.uibuf.get_width()
     }
 
+    //----- DRAWING METHODS ------------------------------------------------------------------------
+    /// Clear the buffer
+    ///
+    /// Fills every cell in the UIBuffer with the space (' ') char.
+    pub fn clear<T: Frontend>(&mut self, frontend: &mut T) {
+        self.uibuf.fill(' ');
+        self.uibuf.draw_everything(frontend);
+    }
+
     pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
-        let end_line = self.get_height();
-        let num_lines = self.buffer.lines.len();
-        let lines_to_draw = self.buffer.lines.slice(self.top_line_num, num_lines);
-
-        for (index, line) in lines_to_draw.iter().enumerate() {
-            if index < end_line {
-                draw_line(&mut self.uibuf, line, self.top_line_num)
-            }
+        for (index,line) in self.buffer
+                                .lines_from(self.top_line)
+                                .unwrap()
+                                .take(self.get_height())
+                                .enumerate() {
+            draw_line(&mut self.uibuf, line, index, self.left_col);
+            if index == self.get_height() { break; }
         }
-
         self.uibuf.draw_everything(frontend);
     }
 
     pub fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
-        let buffer_status = self.buffer.get_status_text();
-        let cursor_status = self.cursor().get_status_text();
+        let buffer_status = self.buffer.status_text();
+        let mut cursor_status = self.buffer.get_mark_coords(self.cursor).unwrap_or((0,0));
+        cursor_status = (cursor_status.0 + 1, cursor_status.1 + 1);
         let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
         let status_text_len = status_text.len();
         let width = self.get_width();
@@ -139,10 +103,11 @@ impl<'v> View<'v> {
     }
 
     pub fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
-        let offset = self.cursor().get_visible_offset() as int;
-        let linenum = self.cursor().get_linenum() as int;
-
-        frontend.draw_cursor(offset, linenum-self.top_line_num as int);
+        if let Some(top_line) = self.buffer.get_mark_coords(self.top_line) {
+            if let Some((x, y)) = self.buffer.get_mark_coords(self.cursor) {
+                frontend.draw_cursor(x as int, y as int - top_line.1 as int);
+            }
+        }
     }
 
     pub fn resize<T: Frontend>(&mut self, frontend: &mut T) {
@@ -151,344 +116,209 @@ impl<'v> View<'v> {
         self.uibuf = UIBuffer::new(width, 15);
     }
 
+    //----- CURSOR METHODS -------------------------------------------------------------------------
+
     pub fn move_cursor(&mut self, direction: Direction) {
-        match direction {
-            Direction::Up    => { self.move_cursor_up(); },
-            Direction::Down  => { self.move_cursor_down(); },
-            Direction::Right => { self.move_cursor_right(); },
-            Direction::Left  => { self.cursor().move_left(); },
-        }
+        self.buffer.shift_mark(self.cursor, direction);
+        self.move_screen();
     }
 
     pub fn move_cursor_to_line_end(&mut self) {
-        self.cursor().set_offset(::std::uint::MAX);
+        self.buffer.shift_mark(self.cursor, Direction::LineEnd);
+        self.move_screen();
     }
 
     pub fn move_cursor_to_line_start(&mut self) {
-        self.cursor().set_offset(0);
+        self.buffer.shift_mark(self.cursor, Direction::LineStart);
+        self.move_screen();
     }
 
-    fn move_cursor_right(&mut self) {
-        let cursor_offset = self.cursor().get_visible_offset();
-        let next_offset = cursor_offset + 1;
-        let width = self.get_width() - 1;
+    //Update the top_line mark if necessary to keep the cursor on the screen.
+    fn move_screen(&mut self) {
+        if let (Some(cursor), Some(top_line)) = (self.buffer.get_mark_coords(self.cursor),
+                                                 self.buffer.get_mark_coords(self.top_line)) {
+            // FIXME
+            // match cursor.0 as int - self.left_col as int {
+            //     x if x < 0 => { self.left_col -= x as uint; }
+            //     x if x > self.get_width() as int => { self.left_col += x as uint - self.get_width()}
+            //     _ => { }
+            // }
 
-        if next_offset < width {
-            self.cursor().move_right()
-        }
-    }
+            let cursor_linenum = cursor.1 as int;
+            let cursor_offset = cursor_linenum - top_line.1 as int;
+            let height = self.get_height() as int;
 
-    // TODO(greg): refactor this method with move_cursor_down
-    pub fn move_cursor_up(&mut self) {
-        let cursor_linenum = self.cursor().get_linenum();
-
-        if cursor_linenum == 0 { return }
-        let prev_linenum = cursor_linenum - 1;
-
-        let num_lines = self.buffer.lines.len() - 1;
-        if prev_linenum > num_lines { return }
-
-        self.set_cursor_line(prev_linenum);
-
-        let cursor_linenum = self.cursor().get_linenum() as int;
-        let cursor_offset = cursor_linenum - self.top_line_num as int;
-
-        if cursor_offset < self.threshold {
-            let times = cursor_offset - self.threshold;
-            self.move_top_line_n_times(times);
-        }
-
-    }
-
-    // TODO(greg): refactor this method with move_cursor_up
-    pub fn move_cursor_down(&mut self) {
-        let cursor_linenum = self.cursor().get_linenum();
-        let next_linenum = cursor_linenum + 1;
-
-        let num_lines = self.buffer.lines.len() - 1;
-        if next_linenum > num_lines { return }
-
-        self.set_cursor_line(next_linenum);
-
-        let cursor_linenum = self.cursor().get_linenum() as int;
-        let cursor_offset = cursor_linenum - self.top_line_num as int;
-        let height = self.get_height() as int;
-
-        if cursor_offset >= (height - self.threshold) {
-            let times = cursor_offset - (height - self.threshold) + 1;
-            self.move_top_line_n_times(times);
-        }
-    }
-
-    fn set_cursor_line<'b>(&'b mut self, linenum: uint) {
-        let vis_width = self.cursor().get_visible_offset();
-        let mut offset = 0;
-        let mut vis_acc = 0;
-        let line = &*self.buffer.lines[linenum].data;
-        for _ in line.char_indices().take_while(|&(i, c)| {
-            offset = line.char_range_at(i).next;
-            vis_acc += ::utils::char_width(c, false, 4, vis_acc).unwrap_or(0);
-            vis_acc < vis_width
-        }) {}
-        self.cursor_data = CursorData {
-            linenum: linenum,
-            offset: if self.cursor_data.offset == 0 { 0 } else { offset },
-        };
-    }
-
-    fn move_top_line_n_times(&mut self, mut num_times: int) {
-        if num_times == 0 { return }
-
-        // moving down
-        if num_times > 0 {
-            while num_times > 0 {
-                self.top_line_num += 1;
-                num_times -= 1;
+            if cursor_offset >= (height - 5) {
+                // moving down
+                let times = cursor_offset - (height - 5) + 1;
+                self.buffer.shift_mark(self.top_line, Direction::Down(times as uint));
+            } else if cursor_offset < 5 {
+                // moving up
+                self.buffer.shift_mark(self.top_line, Direction::Up(1));
             }
-            return
-        }
-
-        // moving up
-        if num_times < 0 {
-            while num_times < 0 {
-                if self.top_line_num == 0 { return }
-                self.top_line_num -= 1;
-                num_times += 1;
-            }
-            return
         }
     }
 
-    pub fn delete_char(&mut self, transaction: &mut Transaction, direction: Direction) {
-        let CursorData { offset, linenum } = self.cursor().get_position();
+    //----- TEXT EDIT METHODS ----------------------------------------------------------------------
 
-        if offset == 0 && direction.is_left() {
-            // Must move the cursor up first so we aren't pointing at dangling memory
-            self.move_cursor_up();
-            let offset = self.buffer.join_line_with_previous(transaction, offset, linenum);
-            self.cursor().set_offset(offset);
-            return
-        }
-
-        let line_len = self.cursor().get_line_length();
-        if offset == line_len && direction.is_right() {
-            // try to join the next line with the current line
-            // if there is no next line, nothing will happen
-            self.buffer.join_line_with_previous(transaction, offset, linenum+1);
-            return
-        }
-
+    pub fn delete_char(&mut self, direction: Direction) {
         match direction {
-            Direction::Left  => self.cursor().delete_backward_char(transaction),
-            Direction::Right => self.cursor().delete_forward_char(transaction),
-            _                => {}
+            Direction::Left(1) if self.buffer.get_mark_idx(self.cursor) != Some(0) => {
+                self.move_cursor(direction);
+                self.buffer.remove_char(self.cursor);
+            }
+            Direction::Right(1) if self.buffer.get_mark_idx(self.cursor) != Some(self.buffer.len()) => {
+                self.buffer.remove_char(self.cursor);
+            }
+            _ => {}
         }
     }
 
-    pub fn insert_tab(&mut self, transaction: &mut Transaction) {
+    pub fn insert_tab(&mut self) {
         // A tab is just 4 spaces
         for _ in range(0i, 4) {
-            self.insert_char(transaction, ' ');
+            self.insert_char(' ');
         }
     }
 
-    pub fn insert_char(&mut self, transaction: &mut Transaction, ch: char) {
-        self.cursor().insert_char(transaction, ch);
+    pub fn insert_char(&mut self, ch: char) {
+        self.buffer.insert_char(self.cursor, ch as u8);
+        self.move_cursor(Direction::Right(1))
     }
 
-    pub fn insert_line(&mut self, transaction: &mut Transaction,) {
-        let CursorData { offset, linenum } = self.cursor().get_position();
-        self.buffer.insert_line(transaction, offset, linenum);
-
-        self.move_cursor_down();
-        self.cursor().set_offset(0);
+    pub fn undo(&mut self) {
+        let point = if let Some(transaction) = self.buffer.undo() { transaction.end_point }
+                    else { return; };
+        self.buffer.set_mark(self.cursor, point);
     }
 
-    pub fn replay(&mut self, entry: &LogEntry) {
-        let LogEntry { ref changes, ref cursor_end, .. } = *entry;
-        for change in changes.iter() {
-            self.buffer.replay(change);
-        }
-        self.cursor_data = *cursor_end;
-        // Readjust top line position.
-        // TODO: refactor with move_cursor(up|down)
-        let cursor_offset = self.cursor_data.linenum as int - self.top_line_num as int;
-        let height = self.get_height() as int;
-        let times = if cursor_offset < self.threshold {
-            cursor_offset - self.threshold
-        } else if cursor_offset >= (height - self.threshold) {
-            cursor_offset - (height - self.threshold) + 1
-        } else {
-            0
-        };
-        self.move_top_line_n_times(times);
+    pub fn redo(&mut self) {
+        let point = if let Some(transaction) = self.buffer.redo() { transaction.end_point }
+                    else { return; };
+        self.buffer.set_mark(self.cursor, point);
     }
+
 }
 
-pub fn draw_line(buf: &mut UIBuffer, line: &Line, top_line_num: uint) {
-    let width = buf.get_width() -1;
-    let index = line.linenum - top_line_num;
-    let mut internal_index = 0;
-    for ch in line.data.chars() {
-        if internal_index < width {
-            match ch {
-                '\t' => {
-                    let w = 4 - internal_index%4;
+pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: uint, left: uint) {
+    let width = buf.get_width() - 1;
+    let mut wide_chars = 0;
+    for line_idx in range(left, left + width) {
+        if line_idx < line.len() {
+            match line[line_idx] {
+                b'\t'   => {
+                    let w = 4 - line_idx % 4;
                     for _ in range(0, w) {
-                        buf.update_cell_content(internal_index, index, ' ');
-                        internal_index += 1;
+                        buf.update_cell_content(line_idx + wide_chars - left, idx, ' ');
                     }
                 }
-                _ => {
-                    // draw the character
-                    buf.update_cell_content(internal_index, index, ch);
-                    internal_index += ch.width(false).unwrap_or(1);
-                }
+                b'\n'   => buf.update_cell_content(line_idx + wide_chars - left, idx, ' '),
+                _       => buf.update_cell_content(line_idx + wide_chars - left, idx,
+                                                   line[line_idx] as char),
             }
-        }
-
-        // if the line is longer than the width of the view, draw a special char
-        if internal_index == width {
-            buf.update_cell_content(internal_index, index, '→');
-            break;
-        }
+            wide_chars += (line[line_idx] as char).width(false).unwrap_or(1) - 1;
+        } else { buf.update_cell_content(line_idx + wide_chars - left, idx, ' '); }
     }
+    if line.len() >= width {
+        buf.update_cell_content(width + wide_chars, idx, '→');
+    }
+
 }
 
 #[cfg(test)]
 mod tests {
 
-    use buffer::{Line, Buffer};
-    use cursor::{CursorData, Direction};
-    use log::LogEntries;
+    use buffer::Direction;
     use view::View;
-    use uibuf::UIBuffer;
-    use utils::data_from_str;
+    use input::Input;
 
-    fn setup_view<'v>() -> View<'v> {
-        let mut view = View {
-            buffer: Buffer::new(),
-            top_line_num: 0,
-            cursor_data: CursorData {
-                linenum: 0,
-                offset: 0,
-            },
-            uibuf: UIBuffer::new(50, 50),
-            threshold: 5,
-        };
-
-        let first_line = Line::new(data_from_str("test"), 0);
-        let second_line = Line::new(data_from_str("second"), 1);
-
-        view.buffer.lines = vec!(first_line, second_line);
-        view.set_cursor_line(0);
-
-        return view
+    fn setup_view<'v>(testcase: &'static str) -> View<'v> {
+        let mut view = View::new(Input::Filename(None), 50, 50);
+        for ch in testcase.chars() {
+            view.insert_char(ch);
+        }
+        view.buffer.set_mark(view.cursor, 0);
+        view
     }
 
     #[test]
     fn test_move_cursor_down() {
-        let mut view = setup_view();
-        view.move_cursor_down();
-
-        assert_eq!(view.cursor().get_linenum(), 1);
-        assert_eq!(view.cursor().get_line().data, data_from_str("second"));
+        let mut view = setup_view("test\nsecond");
+        view.move_cursor(Direction::Down(1));
+        assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().1, 1);
+        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"second"[]);
     }
 
     #[test]
     fn test_move_cursor_up() {
-        let mut view = setup_view();
-        view.move_cursor_down();
-        view.move_cursor_up();
-        assert_eq!(view.cursor().get_linenum(), 0);
-        assert_eq!(view.cursor().get_line().data, data_from_str("test"));
+        let mut view = setup_view("test\nsecond");
+        view.move_cursor(Direction::Down(1));
+        view.move_cursor(Direction::Up(1));
+        assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().1, 0);
+        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"test\n"[]);
     }
 
     #[test]
     fn test_insert_line() {
-        let mut view = setup_view();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(view.cursor_data);
-        view.cursor().move_right();
-        view.insert_line(&mut transaction);
+        let mut view = setup_view("test\nsecond");
+        view.move_cursor(Direction::Right(1));
+        view.insert_char('\n');
 
-        assert_eq!(view.buffer.lines.len(), 3);
-        assert_eq!(view.cursor().get_offset(), 0);
-        assert_eq!(view.cursor().get_line().linenum, 1);
+        assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap(), (0, 1))
     }
 
     #[test]
     fn test_insert_char() {
-        let mut view = setup_view();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(view.cursor_data);
-        view.insert_char(&mut transaction, 't');
+        let mut view = setup_view("test\nsecond");
+        view.insert_char('t');
 
-        assert_eq!(view.cursor().get_line().data, data_from_str("ttest"));
+        assert_eq!(view.buffer.lines().next().unwrap(), b"ttest\n"[]);
     }
 
     #[test]
     fn test_delete_char_to_right() {
-        let mut view = setup_view();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(view.cursor_data);
-        view.delete_char(&mut transaction, Direction::Right);
+        let mut view = setup_view("test\nsecond");
+        view.delete_char(Direction::Right(1));
 
-        assert_eq!(view.cursor().get_line().data, data_from_str("est"));
+        assert_eq!(view.buffer.lines().next().unwrap(), b"est\n"[]);
     }
 
     #[test]
     fn test_delete_char_to_left() {
-        let mut view = setup_view();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(view.cursor_data);
-        view.cursor().move_right();
-        view.delete_char(&mut transaction, Direction::Left);
+        let mut view = setup_view("test\nsecond");
+        view.move_cursor(Direction::Right(1));
+        view.delete_char(Direction::Left(1));
 
-        assert_eq!(view.cursor().get_line().data, data_from_str("est"));
+        assert_eq!(view.buffer.lines().next().unwrap(), b"est\n"[]);
     }
+
 
     #[test]
     fn test_delete_char_at_start_of_line() {
-        let mut view = setup_view();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(view.cursor_data);
-        view.move_cursor_down();
-        view.delete_char(&mut transaction, Direction::Left);
+        let mut view = setup_view("test\nsecond");
+        view.move_cursor(Direction::Down(1));
+        view.delete_char(Direction::Left(1));
 
-        assert_eq!(view.cursor().get_line().data, data_from_str("testsecond"));
+        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond"[]);
     }
 
     #[test]
     fn test_delete_char_at_end_of_line() {
-        let mut view = setup_view();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(view.cursor_data);
-        view.cursor_data.offset = 4;
-        view.delete_char(&mut transaction, Direction::Right);
+        let mut view = setup_view("test\nsecond");
+        view.move_cursor(Direction::Right(4));
+        view.delete_char(Direction::Right(1));
 
-        assert_eq!(view.cursor().get_line().data, data_from_str("testsecond"));
-    }
-
-    #[test]
-    fn delete_char_when_line_is_empty_does_nothing() {
-        let mut view = setup_view();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(view.cursor_data);
-        view.buffer.lines = vec!(Line::new(String::new(), 0));
-        view.cursor_data.linenum = 0;
-        view.delete_char(&mut transaction, Direction::Right);
-        assert_eq!(view.cursor().get_line().data, data_from_str(""));
+        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond"[]);
     }
 
     #[test]
     fn deleting_backward_at_start_of_first_line_does_nothing() {
-        let mut view = setup_view();
-        let mut log = LogEntries::new();
-        let mut transaction = log.start(view.cursor_data);
-        view.delete_char(&mut transaction, Direction::Left);
+        let mut view = setup_view("test\nsecond");
+        view.delete_char(Direction::Left(1));
 
-        assert_eq!(view.buffer.lines.len(), 2);
-        assert_eq!(view.cursor().get_line().data, data_from_str("test"));
+        let lines: Vec<&[u8]> = view.buffer.lines().collect();
+
+        assert_eq!(lines.len(), 2);
+        assert_eq!(view.buffer.lines().next().unwrap(), b"test\n");
     }
 }

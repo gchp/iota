@@ -3,10 +3,9 @@ use std::io::{fs, File, FileMode, FileAccess, TempDir};
 
 use super::Response;
 use input::Input;
-use cursor::Direction;
+use buffer::Direction;
 use keyboard::Key;
 use keymap::{ KeyMap, KeyMapState };
-use log::LogEntries;
 use view::View;
 use frontends::{Frontend, EditorEvent};
 
@@ -24,7 +23,6 @@ pub enum Command {
 
     Delete(Direction),
     InsertTab,
-    InsertLine,
     InsertChar(char),
 
     Undo,
@@ -42,9 +40,6 @@ pub struct Editor<'e, T> {
     view: View<'e>,
 
     frontend: T,
-
-    /// Undo / redo log
-    log: LogEntries,
 }
 
 impl<'e, T: Frontend> Editor<'e, T> {
@@ -58,7 +53,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
             view: view,
             keymap: keymap,
             frontend: frontend,
-            log: LogEntries::new(),
         }
     }
 
@@ -70,7 +64,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
     }
 
     pub fn save_active_buffer(&mut self) {
-        let lines = &self.view.buffer.lines;
         let path = match self.view.buffer.file_path {
             Some(ref p) => Cow::Borrowed(p),
             None => {
@@ -91,10 +84,9 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Err(e) => panic!("file error: {}", e)
         };
 
-        for line in lines.iter() {
-            let mut data = line.data.clone();
-            data.push('\n');
-            let result = file.write(data.as_bytes());
+        //TODO (lee): Is iteration still necessary in this format?
+        for line in self.view.buffer.lines() {
+            let result = file.write(line);
 
             if result.is_err() {
                 // TODO(greg): figure out what to do here.
@@ -131,46 +123,24 @@ impl<'e, T: Frontend> Editor<'e, T> {
     fn handle_command(&mut self, c: Command) -> Response {
         match c {
             // Editor Commands
-            Command::ExitEditor      => return Response::Quit,
-            Command::SaveBuffer      => self.save_active_buffer(),
-            Command::ResizeView      => self.view.resize(&mut self.frontend),
+            Command::ExitEditor         =>  return Response::Quit,
+            Command::SaveBuffer         =>  self.save_active_buffer(),
+            Command::ResizeView         =>  self.view.resize(&mut self.frontend),
 
             // Navigation
-            Command::MoveCursor(dir) => self.view.move_cursor(dir),
-            Command::LineEnd         => self.view.move_cursor_to_line_end(),
-            Command::LineStart       => self.view.move_cursor_to_line_start(),
+            Command::MoveCursor(dir)    =>  self.view.move_cursor(dir),
+            Command::LineEnd            =>  self.view.move_cursor_to_line_end(),
+            Command::LineStart          =>  self.view.move_cursor_to_line_start(),
 
             // Editing
-            Command::Delete(dir)     => {
-                let Editor {ref mut log, ref mut view, .. } = *self;
-                let mut transaction = log.start(view.cursor_data);
-                view.delete_char(&mut transaction, dir);
-            },
-            Command::InsertTab       => {
-                let Editor {ref mut log, ref mut view, .. } = *self;
-                let mut transaction = log.start(view.cursor_data);
-                view.insert_tab(&mut transaction);
-            },
-            Command::InsertLine      => {
-                let Editor {ref mut log, ref mut view, .. } = *self;
-                let mut transaction = log.start(view.cursor_data);
-                view.insert_line(&mut transaction);
-            },
-            Command::InsertChar(c)   => {
-                let Editor {ref mut log, ref mut view, .. } = *self;
-                let mut transaction = log.start(view.cursor_data);
-                view.insert_char(&mut transaction, c);
-            },
-            Command::Redo => {
-                if let Some(entry) = self.log.redo() {
-                    self.view.replay(entry);
-                }
-            }
-            Command::Undo            => {
-                if let Some(entry) = self.log.undo() {
-                    self.view.replay(entry);
-                }
-            }
+            Command::Delete(dir)        =>  self.view.delete_char(dir),
+            Command::InsertTab          =>  self.view.insert_tab(),
+            Command::InsertChar(c)      =>  self.view.insert_char(c),
+
+            //History
+            Command::Redo               => self.view.redo(),
+            Command::Undo               => self.view.undo(),
+
         }
         Response::Continue
     }
@@ -196,9 +166,8 @@ impl<'e, T: Frontend> Editor<'e, T> {
         // if the key is a character that is not part of a keybinding, insert into the buffer
         // otherwise, ignore it.
         if let Key::Char(c) = key {
-            let Editor {ref mut log, ref mut view, .. } = *self;
-            let mut transaction = log.start(view.cursor_data);
-            view.insert_char(&mut transaction, c);
+            let Editor {ref mut view, .. } = *self;
+            view.insert_char(c);
             EventStatus::Handled(Response::Continue)
         } else {
             EventStatus::NotHandled
