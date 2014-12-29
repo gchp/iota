@@ -103,8 +103,10 @@ impl<'v> View<'v> {
     }
 
     pub fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
-        if let Some((x, y)) = self.buffer.get_mark_coords(self.cursor) {
-            frontend.draw_cursor(x as int, y as int);
+        if let Some(top_line) = self.buffer.get_mark_coords(self.top_line) {
+            if let Some((x, y)) = self.buffer.get_mark_coords(self.cursor) {
+                frontend.draw_cursor(x as int, y as int - top_line.1 as int);
+            }
         }
     }
 
@@ -135,18 +137,24 @@ impl<'v> View<'v> {
     fn move_screen(&mut self) {
         if let (Some(cursor), Some(top_line)) = (self.buffer.get_mark_coords(self.cursor),
                                                  self.buffer.get_mark_coords(self.top_line)) {
-            match cursor.0 as int - self.left_col as int {
-                x if x < 0 => { self.left_col -= x as uint; }
-                x if x > self.get_width() as int => { self.left_col += x as uint - self.get_width()}
-                _ => { }
-            }
-            match cursor.1 as int - top_line.1 as int {
-                y if y < 0 => { self.buffer.shift_mark(self.top_line, Direction::Up(y as uint)); }
-                y if y > self.get_height() as int => {
-                    let height = self.get_height();
-                    self.buffer.shift_mark(self.top_line, Direction::Down(y as uint - height));
-                }
-                _ => { }
+            // FIXME
+            // match cursor.0 as int - self.left_col as int {
+            //     x if x < 0 => { self.left_col -= x as uint; }
+            //     x if x > self.get_width() as int => { self.left_col += x as uint - self.get_width()}
+            //     _ => { }
+            // }
+
+            let cursor_linenum = cursor.1 as int;
+            let cursor_offset = cursor_linenum - top_line.1 as int;
+            let height = self.get_height() as int;
+
+            if cursor_offset >= (height - 5) {
+                // moving down
+                let times = cursor_offset - (height - 5) + 1;
+                self.buffer.shift_mark(self.top_line, Direction::Down(times as uint));
+            } else if cursor_offset < 5 {
+                // moving up
+                self.buffer.shift_mark(self.top_line, Direction::Up(1));
             }
         }
     }
