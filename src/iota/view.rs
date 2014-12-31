@@ -190,12 +190,14 @@ impl<'v> View<'v> {
         let point = if let Some(transaction) = self.buffer.undo() { transaction.end_point }
                     else { return; };
         self.buffer.set_mark(self.cursor, point);
+        self.move_screen();
     }
 
     pub fn redo(&mut self) {
         let point = if let Some(transaction) = self.buffer.redo() { transaction.end_point }
                     else { return; };
         self.buffer.set_mark(self.cursor, point);
+        self.move_screen();
     }
 
 }
