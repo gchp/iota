@@ -27,6 +27,10 @@ impl NormalMode {
         let mut keymap = KeyMap::new();
 
         // movement
+        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up(1)));
+        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down(1)));
+        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left(1)));
+        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right(1)));
         keymap.bind_key(Key::Char('h'), Command::MoveCursor(Direction::Left(1)));
         keymap.bind_key(Key::Char('j'), Command::MoveCursor(Direction::Down(1)));
         keymap.bind_key(Key::Char('k'), Command::MoveCursor(Direction::Up(1)));
