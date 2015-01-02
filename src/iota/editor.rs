@@ -85,8 +85,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
     }
 
     pub fn overlay_key_event(&mut self, key: Option<Key>) -> Response {
-        let mut remove_overlay = false;
-
         if let Some(ref mut overlay) = self.overlay {
             if let OverlayEvent::Finished(data) = overlay.handle_key_event(key) {
                 if let Some(s) = data {
