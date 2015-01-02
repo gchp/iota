@@ -49,7 +49,6 @@ impl StandardMode {
         keymap.bind_key(Key::Ctrl('n'), Command::MoveCursor(Direction::Down(1)));
         keymap.bind_key(Key::Ctrl('b'), Command::MoveCursor(Direction::Left(1)));
         keymap.bind_key(Key::Ctrl('f'), Command::MoveCursor(Direction::Right(1)));
-
         keymap.bind_key(Key::Ctrl('e'), Command::LineEnd);
         keymap.bind_key(Key::Ctrl('a'), Command::LineStart);
 

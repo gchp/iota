@@ -30,6 +30,7 @@ pub fn save_buffer(buffer: &Buffer) {
             Cow::Owned(Path::new("untitled"))
         },
     };
+
     let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {
         Ok(d) => d,
         Err(e) => panic!("file error: {}", e)
@@ -44,6 +45,7 @@ pub fn save_buffer(buffer: &Buffer) {
     //TODO (lee): Is iteration still necessary in this format?
     for line in buffer.lines() {
         let result = file.write(line);
+
         if result.is_err() {
             // TODO(greg): figure out what to do here.
             panic!("Something went wrong while writing the file");
