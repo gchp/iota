@@ -67,7 +67,6 @@ impl NormalMode {
 
             // Prompt
             Command::SetOverlay(o)   => return Response::SetOverlay(o),
-
             _                        => {}
         }
         Response::Continue
