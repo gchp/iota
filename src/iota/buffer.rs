@@ -24,7 +24,7 @@ pub struct Buffer {
     text: GapBuffer<u8>,                    //Actual text data being edited.
     marks: HashMap<Mark, (uint, uint)>,     //Table of marked indices in the text.
                                             // KEY: mark id => VALUE : (absolute index, line index)
-    log: Log,                               //History of undoable transactions.
+    pub log: Log,                           //History of undoable transactions.
     pub file_path: Option<Path>,            //TODO: replace with a general metadata table
 }
 

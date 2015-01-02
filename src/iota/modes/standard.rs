@@ -4,7 +4,6 @@ use super::Key;
 use super::Command;
 use super::View;
 use super::KeyMapState;
-use super::LogEntries;
 use super::EventStatus;
 use super::Direction;
 use super::Response;
@@ -41,26 +40,26 @@ impl StandardMode {
         keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('s')].as_slice(), Command::SaveBuffer);
 
         // Navigation
-        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up));
-        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down));
-        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left));
-        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right));
+        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up(1)));
+        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down(1)));
+        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left(1)));
+        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right(1)));
 
-        keymap.bind_key(Key::Ctrl('p'), Command::MoveCursor(Direction::Up));
-        keymap.bind_key(Key::Ctrl('n'), Command::MoveCursor(Direction::Down));
-        keymap.bind_key(Key::Ctrl('b'), Command::MoveCursor(Direction::Left));
-        keymap.bind_key(Key::Ctrl('f'), Command::MoveCursor(Direction::Right));
+        keymap.bind_key(Key::Ctrl('p'), Command::MoveCursor(Direction::Up(1)));
+        keymap.bind_key(Key::Ctrl('n'), Command::MoveCursor(Direction::Down(1)));
+        keymap.bind_key(Key::Ctrl('b'), Command::MoveCursor(Direction::Left(1)));
+        keymap.bind_key(Key::Ctrl('f'), Command::MoveCursor(Direction::Right(1)));
 
         keymap.bind_key(Key::Ctrl('e'), Command::LineEnd);
         keymap.bind_key(Key::Ctrl('a'), Command::LineStart);
 
         // Editing
         keymap.bind_key(Key::Tab, Command::InsertTab);
-        keymap.bind_key(Key::Enter, Command::InsertLine);
-        keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left));
-        keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left));
-        keymap.bind_key(Key::Delete, Command::Delete(Direction::Right));
-        keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right));
+        keymap.bind_key(Key::Enter, Command::InsertChar('\n'));
+        keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left(1)));
+        keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left(1)));
+        keymap.bind_key(Key::Delete, Command::Delete(Direction::Right(1)));
+        keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right(1)));
 
         // History
         keymap.bind_key(Key::Ctrl('y'), Command::Redo);
@@ -69,7 +68,7 @@ impl StandardMode {
         keymap
     }
 
-    fn handle_command(&mut self, c: Command, view: &mut View, log: &mut LogEntries) -> Response {
+    fn handle_command(&mut self, c: Command, view: &mut View) -> Response {
         match c {
             // Editor Commands
             Command::ExitEditor      => return Response::Quit,
@@ -81,39 +80,18 @@ impl StandardMode {
             Command::LineStart       => view.move_cursor_to_line_start(),
 
             // Editing
-            Command::Delete(dir)     => {
-                let mut transaction = log.start(view.cursor_data);
-                view.delete_char(&mut transaction, dir);
-            },
-            Command::InsertTab       => {
-                let mut transaction = log.start(view.cursor_data);
-                view.insert_tab(&mut transaction);
-            },
-            Command::InsertLine      => {
-                let mut transaction = log.start(view.cursor_data);
-                view.insert_line(&mut transaction);
-            },
-            Command::InsertChar(c)   => {
-                let mut transaction = log.start(view.cursor_data);
-                view.insert_char(&mut transaction, c);
-            },
-            Command::Redo => {
-                if let Some(entry) = log.redo() {
-                    view.replay(entry);
-                }
-            }
-            Command::Undo            => {
-                if let Some(entry) = log.undo() {
-                    view.replay(entry);
-                }
-            }
+            Command::Delete(dir)     => view.delete_char(dir),
+            Command::InsertTab       => view.insert_tab(),
+            Command::InsertChar(c)   => view.insert_char(c),
+            Command::Redo            => view.redo(),
+            Command::Undo            => view.undo(),
         }
         Response::Continue
     }
 }
 
 impl Mode for StandardMode {
-    fn handle_key_event(&mut self, key: Option<Key>, view: &mut View, log: &mut LogEntries) -> EventStatus {
+    fn handle_key_event(&mut self, key: Option<Key>, view: &mut View) -> EventStatus {
         let key = match key {
             Some(k) => k,
             None => return EventStatus::NotHandled
@@ -122,7 +100,7 @@ impl Mode for StandardMode {
         // send key to the keymap
         match self.keymap.check_key(key) {
             KeyMapState::Match(command) => {
-                return EventStatus::Handled(self.handle_command(command, view, log));
+                return EventStatus::Handled(self.handle_command(command, view));
             },
             KeyMapState::Continue => {
                 // keep going and wait for more keypresses
@@ -134,8 +112,7 @@ impl Mode for StandardMode {
         // if the key is a character that is not part of a keybinding, insert into the buffer
         // otherwise, ignore it.
         if let Key::Char(c) = key {
-            let mut transaction = log.start(view.cursor_data);
-            view.insert_char(&mut transaction, c);
+            view.insert_char(c);
             EventStatus::Handled(Response::Continue)
         } else {
             EventStatus::NotHandled

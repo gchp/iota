@@ -23,7 +23,6 @@ pub fn str_width(s: &str, is_cjk: bool, tab_width: uint) -> uint {
 }
 
 pub fn save_buffer(buffer: &Buffer) {
-    let lines = &buffer.lines;
     let path = match buffer.file_path {
         Some(ref p) => Cow::Borrowed(p),
         None => {
@@ -31,24 +30,20 @@ pub fn save_buffer(buffer: &Buffer) {
             Cow::Owned(Path::new("untitled"))
         },
     };
-
     let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {
         Ok(d) => d,
         Err(e) => panic!("file error: {}", e)
     };
 
     let tmppath = tmpdir.path().join(Path::new("tmpfile"));
-
     let mut file = match File::open_mode(&tmppath, FileMode::Open, FileAccess::Write) {
         Ok(f) => f,
         Err(e) => panic!("file error: {}", e)
     };
 
-    for line in lines.iter() {
-        let mut data = line.data.clone();
-        data.push('\n');
-        let result = file.write(data.as_bytes());
-
+    //TODO (lee): Is iteration still necessary in this format?
+    for line in buffer.lines() {
+        let result = file.write(line);
         if result.is_err() {
             // TODO(greg): figure out what to do here.
             panic!("Something went wrong while writing the file");
@@ -58,5 +53,4 @@ pub fn save_buffer(buffer: &Buffer) {
     if let Err(e) = fs::rename(&tmppath, &*path) {
         panic!("file error: {}", e);
     }
-
 }

@@ -60,42 +60,6 @@ impl<'e, T: Frontend, M: Mode> Editor<'e, T, M> {
         }
     }
 
-    pub fn save_active_buffer(&mut self) {
-        let path = match self.view.buffer.file_path {
-            Some(ref p) => Cow::Borrowed(p),
-            None => {
-                // TODO: prompt user for file name here
-                Cow::Owned(Path::new("untitled"))
-            },
-        };
-
-        let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {
-            Ok(d) => d,
-            Err(e) => panic!("file error: {}", e)
-        };
-
-        let tmppath = tmpdir.path().join(Path::new("tmpfile"));
-
-        let mut file = match File::open_mode(&tmppath, FileMode::Open, FileAccess::Write) {
-            Ok(f) => f,
-            Err(e) => panic!("file error: {}", e)
-        };
-
-        //TODO (lee): Is iteration still necessary in this format?
-        for line in self.view.buffer.lines() {
-            let result = file.write(line);
-
-            if result.is_err() {
-                // TODO(greg): figure out what to do here.
-                panic!("Something went wrong while writing the file");
-            }
-        }
-
-        if let Err(e) = fs::rename(&tmppath, &*path) {
-            panic!("file error: {}", e);
-        }
-    }
-
     pub fn draw(&mut self) {
         self.view.draw(&mut self.frontend);
         self.view.draw_status(&mut self.frontend);
