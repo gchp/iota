@@ -9,8 +9,10 @@ pub use super::Response;
 pub use super::utils;
 
 pub use self::standard::StandardMode;
+pub use self::normal::NormalMode;
 
 mod standard;
+mod normal;
 
 
 pub trait Mode {

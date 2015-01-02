@@ -8,7 +8,7 @@ extern crate gapbuffer;
 pub use editor::Editor;
 pub use input::Input;
 pub use frontends::RustboxFrontend;
-pub use modes::StandardMode;
+pub use modes::{StandardMode, NormalMode, Mode};
 
 mod input;
 mod utils;

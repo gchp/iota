@@ -5,13 +5,18 @@ extern crate iota;
 
 #[cfg(not(test))] use std::io::stdio;
 #[cfg(not(test))] use docopt::Docopt;
-#[cfg(not(test))] use iota::{Editor, Input, StandardMode, RustboxFrontend};
+#[cfg(not(test))] use iota::{
+    Editor, Input,
+    StandardMode, NormalMode,
+    RustboxFrontend, Mode
+};
 #[cfg(not(test))] use rustbox::{InitOption, RustBox};
 #[cfg(not(test))] static USAGE: &'static str = "
-Usage: iota [<filename>]
+Usage: iota [<filename>] [options]
        iota --help
 
 Options:
+    --vi           Start Iota with vi-like modes
     -h, --help     Show this message.
 ";
 
@@ -19,6 +24,7 @@ Options:
 #[deriving(RustcDecodable, Show)]
 struct Args {
     arg_filename: Option<String>,
+    flag_vi: bool,
     flag_help: bool,
 }
 
@@ -45,7 +51,11 @@ fn main() {
     let frontend = RustboxFrontend::new(&rb);
 
     // initialise the editor mode
-    let mode = box StandardMode::new();
+    let mode: Box<Mode> = if args.flag_vi {
+        box NormalMode::new()
+    } else {
+         box StandardMode::new()
+    };
 
     // start the editor
     let mut editor = Editor::new(source, mode, frontend);
