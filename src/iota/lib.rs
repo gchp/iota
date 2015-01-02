@@ -8,6 +8,7 @@ extern crate gapbuffer;
 pub use editor::Editor;
 pub use input::Input;
 pub use frontends::RustboxFrontend;
+pub use modes::StandardMode;
 
 mod input;
 mod utils;
@@ -19,6 +20,7 @@ mod view;
 mod uibuf;
 mod log;
 mod frontends;
+mod modes;
 
 #[deriving(Copy)]
 pub enum Response {
