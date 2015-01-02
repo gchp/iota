@@ -7,6 +7,7 @@ pub use super::keymap::KeyMapState;
 pub use super::buffer::Direction;
 pub use super::Response;
 pub use super::utils;
+pub use super::overlay::OverlayType;
 
 pub use self::standard::StandardMode;
 pub use self::normal::NormalMode;
@@ -17,4 +18,5 @@ mod normal;
 
 pub trait Mode {
     fn handle_key_event(&mut self, key: Option<Key>, view: &mut View) -> EventStatus;
+    fn interpret_input(&mut self, input: Vec<u8>) -> Response;
 }
