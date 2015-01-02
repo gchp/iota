@@ -32,10 +32,8 @@ impl NormalMode {
         keymap.bind_key(Key::Char('k'), Command::MoveCursor(Direction::Up(1)));
         keymap.bind_key(Key::Char('l'), Command::MoveCursor(Direction::Right(1)));
 
+        // open a prompt to the user
         keymap.bind_key(Key::Char(':'), Command::SetOverlay(OverlayType::Prompt));
-
-        // TODO: remove this - temporary workaround until overlays are done
-        keymap.bind_key(Key::Ctrl('q'), Command::ExitEditor);
 
         keymap
     }

@@ -121,7 +121,7 @@ impl Mode for StandardMode {
 
     }
 
-    fn interpret_input(&mut self, input: Vec<u8>) -> Response {
+    fn interpret_input(&mut self, _input: Vec<u8>) -> Response {
         Response::Continue
     }
 }

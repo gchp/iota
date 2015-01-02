@@ -85,9 +85,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
         }
     }
 
-    pub fn overlay_keyevent(&mut self, key: Option<Key>) -> Response {
-        let mut remove_overlay = false;
-
+    pub fn overlay_key_event(&mut self, key: Option<Key>) -> Response {
         if let Some(ref mut overlay) = self.overlay {
             if let OverlayEvent::Finished(data) = overlay.handle_key_event(key) {
                 if let Some(s) = data {
@@ -95,13 +93,9 @@ impl<'e, T: Frontend> Editor<'e, T> {
                         return Response::Quit
                     }
                 };
-                remove_overlay = true
+                return Response::SetOverlay(OverlayType::None)
             }
         };
-
-        if remove_overlay {
-            self.overlay = None
-        }
 
         Response::Continue
     }
@@ -113,11 +107,11 @@ impl<'e, T: Frontend> Editor<'e, T> {
             self.frontend.present();
             let event = self.frontend.poll_event();
 
-            let mut remove_overlay = false;
-
             if let EditorEvent::KeyEvent(key) = event {
-                if let Response::Quit = self.overlay_keyevent(key) {
-                    break;    
+                match self.overlay_key_event(key) {
+                    Response::Quit          => break,
+                    Response::SetOverlay(_) => self.overlay = None,
+                    _                       => {}
                 };
 
                 if let Response::Quit = self.handle_key_event(key) {

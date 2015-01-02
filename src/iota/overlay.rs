@@ -10,7 +10,8 @@ pub enum OverlayEvent {
 
 #[deriving(Copy, Show)]
 pub enum OverlayType {
-    Prompt
+    Prompt,
+    None,
 }
 
 
