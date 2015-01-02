@@ -34,6 +34,13 @@ impl NormalMode {
         keymap.bind_key(Key::Char('j'), Command::MoveCursor(Direction::Down(1)));
         keymap.bind_key(Key::Char('k'), Command::MoveCursor(Direction::Up(1)));
         keymap.bind_key(Key::Char('l'), Command::MoveCursor(Direction::Right(1)));
+        keymap.bind_key(Key::Char('^'), Command::LineStart);
+        keymap.bind_key(Key::Char('$'), Command::LineEnd);
+
+        // editing
+        keymap.bind_key(Key::Char('x'), Command::Delete(Direction::Right(1)));
+        keymap.bind_key(Key::Char('u'), Command::Undo);
+        keymap.bind_key(Key::Ctrl('r'), Command::Redo);
 
         // TODO: remove this - temporary workaround until overlays are done
         keymap.bind_key(Key::Ctrl('q'), Command::ExitEditor);
@@ -54,10 +61,10 @@ impl NormalMode {
 
             // Editing
             Command::Delete(dir)     => view.delete_char(dir),
-            Command::InsertTab       => view.insert_tab(),
-            Command::InsertChar(c)   => view.insert_char(c),
             Command::Redo            => view.redo(),
             Command::Undo            => view.undo(),
+
+            _                        => {}
         }
         Response::Continue
     }
