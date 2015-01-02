@@ -31,15 +31,15 @@ pub enum EventStatus {
 }
 
 
-pub struct Editor<'e, T: Frontend, M: Mode> {
+pub struct Editor<'e, T: Frontend> {
     view: View<'e>,
 
     frontend: T,
-    mode: M,
+    mode: Box<Mode + 'e>,
 }
 
-impl<'e, T: Frontend, M: Mode> Editor<'e, T, M> {
-    pub fn new(source: Input, mode: M, frontend: T) -> Editor<'e, T, M> {
+impl<'e, T: Frontend> Editor<'e, T> {
+    pub fn new(source: Input, mode: Box<Mode + 'e>, frontend: T) -> Editor<'e, T> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
         let view = View::new(source, width, height);

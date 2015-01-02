@@ -45,7 +45,7 @@ fn main() {
     let frontend = RustboxFrontend::new(&rb);
 
     // initialise the editor mode
-    let mode = StandardMode::new();
+    let mode = box StandardMode::new();
 
     // start the editor
     let mut editor = Editor::new(source, mode, frontend);
