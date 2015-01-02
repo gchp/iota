@@ -4,7 +4,7 @@ use frontends::Frontend;
 
 
 pub enum OverlayEvent {
-    Finished(Option<Vec<u8>>),
+    Finished(Option<String>),
     Ok,
 }
 
@@ -74,7 +74,7 @@ impl<T: Frontend> Overlay<T> for PromptOverlay {
                 Key::Enter => {
                     // FIXME: dont clone
                     let data = self.data.clone();
-                    return OverlayEvent::Finished(Some(data.into_bytes()))
+                    return OverlayEvent::Finished(Some(data))
                 }
                 Key::Char(c) => {
                     self.data.push(c);

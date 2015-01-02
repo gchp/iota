@@ -84,9 +84,8 @@ impl Mode for NormalMode {
 
     }
 
-    fn interpret_input(&mut self, input: Vec<u8>) -> Response {
-        let data = String::from_utf8(input).unwrap();
-        match &*data {
+    fn interpret_input(&mut self, input: String) -> Response {
+        match &*input {
             "q" | "quit" => Response::Quit,
             _ => Response::Continue
         }

@@ -18,5 +18,5 @@ mod normal;
 
 pub trait Mode {
     fn handle_key_event(&mut self, key: Option<Key>, view: &mut View) -> EventStatus;
-    fn interpret_input(&mut self, input: Vec<u8>) -> Response;
+    fn interpret_input(&mut self, input: String) -> Response;
 }
