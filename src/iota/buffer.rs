@@ -4,7 +4,8 @@ use log::{Log, Change, LogEntry};
 
 use gapbuffer::GapBuffer;
 
-use std::cmp;
+use std::{ cmp, char };
+use std::char::UnicodeChar;
 use std::collections::HashMap;
 use std::io::{File, Reader, BufferedReader};
 
@@ -15,9 +16,15 @@ pub enum Mark {
 }
 
 #[derive(Copy, PartialEq, Eq, Show)]
+pub enum WordEdgeMatch {
+    Alphabet,
+    Whitespace,
+}
+
+#[derive(Copy, PartialEq, Eq, Show)]
 pub enum Direction {
     Up(uint), Down(uint), Left(uint), Right(uint),
-    LeftWord(uint, bool), RightWord(uint, bool),
+    LeftWord(uint, WordEdgeMatch), RightWord(uint, WordEdgeMatch),
     LineStart, LineEnd,
 }
 
@@ -167,14 +174,14 @@ impl Buffer {
                             (cmp::min(line_idx + nlines[n-1] + 1, last), line_idx)
                         } else { (cmp::min(line_idx + nlines[n-1] + 1, nlines[n]), line_idx) }
                     }
-                    Direction::RightWord(n_words, whitespace_only)     =>  {
-                        if let Some(new_idx) = get_words(idx, n_words, whitespace_only, text) {
+                    Direction::RightWord(n_words, edger)     =>  {
+                        if let Some(new_idx) = get_words(idx, n_words, edger, text) {
                             if new_idx < last { (new_idx, new_idx - get_line(new_idx, text).unwrap()) }
                             else { (last, last - get_line(last, text).unwrap()) }
                         } else { (last, last - get_line(last, text).unwrap()) }
                     }
-                    Direction::LeftWord(n_words, whitespace_only)     =>  {
-                        if let Some(new_idx) = get_words_rev(idx, n_words, whitespace_only, text) {
+                    Direction::LeftWord(n_words, edger)     =>  {
+                        if let Some(new_idx) = get_words_rev(idx, n_words, edger, text) {
                             if new_idx > 0 { (new_idx, new_idx - get_line(new_idx, text).unwrap()) }
                             else { (0, 0) }
                         } else { (0, 0) }
@@ -193,11 +200,11 @@ impl Buffer {
             let range = match direction {
                 Direction::Left(n) => range(cmp::max(0, idx - n), idx),
                 Direction::Right(n) => range(idx, cmp::min(idx + n, text.len())),
-                Direction::RightWord(n_words, whitespace_only) => {
-                    range(idx, get_words(idx, n_words, whitespace_only, text).unwrap_or(text.len()))
+                Direction::RightWord(n_words, edger) => {
+                    range(idx, get_words(idx, n_words, edger, text).unwrap_or(text.len()))
                 }
-                Direction::LeftWord(n_words, whitespace_only) => {
-                    range(get_words_rev(idx, n_words, whitespace_only, text).unwrap_or(0), idx)
+                Direction::LeftWord(n_words, edger) => {
+                    range(get_words_rev(idx, n_words, edger, text).unwrap_or(0), idx)
                 }
                 _ => unimplemented!()
             };
@@ -240,37 +247,36 @@ impl Buffer {
 
 }
 
-/// If c1 -> c2 is a word edge
-fn is_word_edge(c1: &u8, c2: &u8, whitespace_only: bool) -> bool {
-    const WHITESPACE: &'static str = " \n\t";
-    const WORD_CHARS: &'static str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
-    if *c1 == b'\n' && *c2 == b'\n' {
-        // Blank lines are always counted as a word
-        true
-    } else if whitespace_only {
-        WHITESPACE.as_bytes().contains(c1) && !WHITESPACE.as_bytes().contains(c2)
-    } else {
-        if WHITESPACE.as_bytes().contains(c1) {
-            !WHITESPACE.as_bytes().contains(c2)
-        } else if WORD_CHARS.as_bytes().contains(c1) {
-            !WORD_CHARS.as_bytes().contains(c2) && !WHITESPACE.as_bytes().contains(c2)
-        } else {
-            WORD_CHARS.as_bytes().contains(c2) && !WHITESPACE.as_bytes().contains(c2)
+fn is_alphanumeric_or_(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
+}
+
+impl WordEdgeMatch {
+    /// If c1 -> c2 is the start of a word.
+    /// If end of word matching is wanted then pass the chars in reversed.
+    fn is_word_edge(&self, c1: &u8, c2: &u8) -> bool {
+        match (self, char::from_u32(*c1 as u32).unwrap(), char::from_u32(*c2 as u32).unwrap()) {
+            (_, '\n', '\n') => true, // Blank lines are always counted as a word
+            (&WordEdgeMatch::Whitespace, c1, c2) => c1.is_whitespace() && !c2.is_whitespace(),
+            (&WordEdgeMatch::Alphabet, c1, c2) if c1.is_whitespace() => !c2.is_whitespace(),
+            (&WordEdgeMatch::Alphabet, c1, c2) if is_alphanumeric_or_(c1) => !is_alphanumeric_or_(c2) && !c2.is_whitespace(),
+            (&WordEdgeMatch::Alphabet, c1, c2) if !is_alphanumeric_or_(c1) => is_alphanumeric_or_(c2) && !c2.is_whitespace(),
+            (&WordEdgeMatch::Alphabet, _, _) => false,
         }
     }
 }
 
-fn get_words(mark: uint, n_words: uint, whitespace_only: bool, text: &GapBuffer<u8>) -> Option<uint> {
+fn get_words(mark: uint, n_words: uint, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<uint> {
     range(mark + 1, text.len() - 1)
-        .filter(|idx| is_word_edge(&text[*idx - 1], &text[*idx], whitespace_only))
+        .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
         .take(n_words)
         .next()
 }
 
-fn get_words_rev(mark: uint, n_words: uint, whitespace_only: bool, text: &GapBuffer<u8>) -> Option<uint> {
+fn get_words_rev(mark: uint, n_words: uint, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<uint> {
     range(1, mark)
         .rev()
-        .filter(|idx| is_word_edge(&text[*idx - 1], &text[*idx], whitespace_only))
+        .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
         .take(n_words)
         .next()
 }
