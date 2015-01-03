@@ -8,13 +8,13 @@ use std::cmp;
 use std::collections::HashMap;
 use std::io::{File, Reader, BufferedReader};
 
-#[deriving(Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Copy, PartialEq, Eq, Hash, Show)]
 pub enum Mark {
     Cursor(uint),           //For keeping track of cursors.
     DisplayMark(uint),      //For using in determining some display of characters.
 }
 
-#[deriving(Copy, PartialEq, Eq, Show)]
+#[derive(Copy, PartialEq, Eq, Show)]
 pub enum Direction {
     Up(uint), Down(uint), Left(uint), Right(uint),
     LineStart, LineEnd,

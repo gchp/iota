@@ -1,4 +1,4 @@
-#[deriving(Copy, PartialEq, Eq, Hash)]
+#[derive(Copy, PartialEq, Eq, Hash)]
 pub enum Key {
     Tab,
     Enter,

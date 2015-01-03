@@ -8,8 +8,7 @@ use modes::Mode;
 use overlay::{Overlay, OverlayType, OverlayEvent, PromptOverlay};
 
 
-#[deriving(Copy, Show)]
-#[allow(dead_code)]
+#[derive(Copy, Show)]
 pub enum Command {
     SaveBuffer,
     ExitEditor,

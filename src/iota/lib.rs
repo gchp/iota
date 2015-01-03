@@ -25,7 +25,7 @@ mod frontends;
 mod modes;
 mod overlay;
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Response {
     SetOverlay(OverlayType),
     Continue,
