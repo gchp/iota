@@ -35,6 +35,10 @@ impl NormalMode {
         keymap.bind_key(Key::Char('j'), Command::MoveCursor(Direction::Down(1)));
         keymap.bind_key(Key::Char('k'), Command::MoveCursor(Direction::Up(1)));
         keymap.bind_key(Key::Char('l'), Command::MoveCursor(Direction::Right(1)));
+        keymap.bind_key(Key::Char('W'), Command::MoveCursor(Direction::RightWord(1, true)));
+        keymap.bind_key(Key::Char('B'), Command::MoveCursor(Direction::LeftWord(1, true)));
+        keymap.bind_key(Key::Char('w'), Command::MoveCursor(Direction::RightWord(1, false)));
+        keymap.bind_key(Key::Char('b'), Command::MoveCursor(Direction::LeftWord(1, false)));
         keymap.bind_key(Key::Char('^'), Command::LineStart);
         keymap.bind_key(Key::Char('$'), Command::LineEnd);
 

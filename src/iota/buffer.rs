@@ -17,6 +17,7 @@ pub enum Mark {
 #[derive(Copy, PartialEq, Eq, Show)]
 pub enum Direction {
     Up(uint), Down(uint), Left(uint), Right(uint),
+    LeftWord(uint, bool), RightWord(uint, bool),
     LineStart, LineEnd,
 }
 
@@ -166,6 +167,18 @@ impl Buffer {
                             (cmp::min(line_idx + nlines[n-1] + 1, last), line_idx)
                         } else { (cmp::min(line_idx + nlines[n-1] + 1, nlines[n]), line_idx) }
                     }
+                    Direction::RightWord(n_words, whitespace_only)     =>  {
+                        if let Some(new_idx) = get_words(idx, n_words, whitespace_only, text) {
+                            if new_idx < last { (new_idx, new_idx - get_line(new_idx, text).unwrap()) }
+                            else { (last, last - get_line(last, text).unwrap()) }
+                        } else { (last, last - get_line(last, text).unwrap()) }
+                    }
+                    Direction::LeftWord(n_words, whitespace_only)     =>  {
+                        if let Some(new_idx) = get_words_rev(idx, n_words, whitespace_only, text) {
+                            if new_idx > 0 { (new_idx, new_idx - get_line(new_idx, text).unwrap()) }
+                            else { (0, 0) }
+                        } else { (0, 0) }
+                    }
                     Direction::LineStart    =>  { (line, 0) }
                     Direction::LineEnd      =>  { (line_end, line_end - line) }
                 }
@@ -209,6 +222,41 @@ impl Buffer {
         } else { None }
     }
 
+}
+
+/// If c1 -> c2 is a word edge
+fn is_word_edge(c1: &u8, c2: &u8, whitespace_only: bool) -> bool {
+    const WHITESPACE: &'static str = " \n\t";
+    const WORD_CHARS: &'static str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_";
+    if *c1 == b'\n' && *c2 == b'\n' {
+        // Blank lines are always counted as a word
+        true
+    } else if whitespace_only {
+        WHITESPACE.as_bytes().contains(c1) && !WHITESPACE.as_bytes().contains(c2)
+    } else {
+        if WHITESPACE.as_bytes().contains(c1) {
+            !WHITESPACE.as_bytes().contains(c2)
+        } else if WORD_CHARS.as_bytes().contains(c1) {
+            !WORD_CHARS.as_bytes().contains(c2) && !WHITESPACE.as_bytes().contains(c2)
+        } else {
+            WORD_CHARS.as_bytes().contains(c2) && !WHITESPACE.as_bytes().contains(c2)
+        }
+    }
+}
+
+fn get_words(mark: uint, n_words: uint, whitespace_only: bool, text: &GapBuffer<u8>) -> Option<uint> {
+    range(mark + 1, text.len() - 1)
+        .filter(|idx| is_word_edge(&text[*idx - 1], &text[*idx], whitespace_only))
+        .take(n_words)
+        .next()
+}
+
+fn get_words_rev(mark: uint, n_words: uint, whitespace_only: bool, text: &GapBuffer<u8>) -> Option<uint> {
+    range(1, mark)
+        .rev()
+        .filter(|idx| is_word_edge(&text[*idx - 1], &text[*idx], whitespace_only))
+        .take(n_words)
+        .next()
 }
 
 //Returns the index of the first character of the line the mark is in.
