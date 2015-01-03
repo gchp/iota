@@ -6,7 +6,7 @@ pub struct UIBuffer {
     rows: Vec<Vec<Cell>>
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum CharStyle {
     Normal,
     // TODO: add other styles
@@ -14,7 +14,7 @@ pub enum CharStyle {
     // Underline,
 }
 
-#[deriving(Copy, PartialEq)]
+#[derive(Copy, PartialEq)]
 pub enum CharColor {
     Default,
     Blue,

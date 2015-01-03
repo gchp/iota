@@ -71,7 +71,7 @@ impl Trie {
     }
 }
 
-#[deriving(Copy, Show)]
+#[derive(Copy, Show)]
 pub enum KeyMapState {
     Match(Command),     // found a match
     Continue,           // needs another key to disambiguate

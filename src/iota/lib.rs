@@ -22,7 +22,7 @@ mod log;
 mod frontends;
 mod modes;
 
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Response {
     Continue,
     Quit,

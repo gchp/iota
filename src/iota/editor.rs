@@ -7,8 +7,7 @@ use frontends::{Frontend, EditorEvent};
 use modes::Mode;
 
 
-#[deriving(Copy, Show)]
-#[allow(dead_code)]
+#[derive(Copy, Show)]
 pub enum Command {
     SaveBuffer,
     ExitEditor,
