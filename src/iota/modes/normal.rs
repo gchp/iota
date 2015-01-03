@@ -43,7 +43,12 @@ impl NormalMode {
         keymap.bind_key(Key::Char('$'), Command::LineEnd);
 
         // editing
+        keymap.bind_keys(&[Key::Char('d'), Key::Char('W')], Command::Delete(Direction::RightWord(1, true)));
+        keymap.bind_keys(&[Key::Char('d'), Key::Char('B')], Command::Delete(Direction::LeftWord(1, true)));
+        keymap.bind_keys(&[Key::Char('d'), Key::Char('w')], Command::Delete(Direction::RightWord(1, false)));
+        keymap.bind_keys(&[Key::Char('d'), Key::Char('b')], Command::Delete(Direction::LeftWord(1, false)));
         keymap.bind_key(Key::Char('x'), Command::Delete(Direction::Right(1)));
+        keymap.bind_key(Key::Char('X'), Command::Delete(Direction::Left(1)));
         keymap.bind_key(Key::Char('u'), Command::Undo);
         keymap.bind_key(Key::Ctrl('r'), Command::Redo);
 
@@ -65,7 +70,7 @@ impl NormalMode {
             Command::LineStart       => view.move_cursor_to_line_start(),
 
             // Editing
-            Command::Delete(dir)     => view.delete_char(dir),
+            Command::Delete(dir)     => view.delete_chars(dir),
             Command::Redo            => view.redo(),
             Command::Undo            => view.undo(),
 

@@ -186,14 +186,30 @@ impl Buffer {
         }
     }
 
-    ///Remove the char at the mark.
-    pub fn remove_char(&mut self, mark: Mark) -> Option<u8> {
+    ///Remove the chars at the mark.
+    pub fn remove_chars(&mut self, mark: Mark, direction: Direction) -> Option<Vec<u8>> {
+        let text = &mut self.text;
         if let Some(&(idx, _)) = self.marks.get(&mark) {
-            if let Some(ch) = self.text.remove(idx) {
-                let mut transaction = self.log.start(idx);
-                transaction.log(Change::Remove(idx, ch), idx);
-                Some(ch)
-            } else { None }
+            let range = match direction {
+                Direction::Left(n) => range(cmp::max(0, idx - n), idx),
+                Direction::Right(n) => range(idx, cmp::min(idx + n, text.len())),
+                Direction::RightWord(n_words, whitespace_only) => {
+                    range(idx, get_words(idx, n_words, whitespace_only, text).unwrap_or(text.len()))
+                }
+                Direction::LeftWord(n_words, whitespace_only) => {
+                    range(get_words_rev(idx, n_words, whitespace_only, text).unwrap_or(0), idx)
+                }
+                _ => unimplemented!()
+            };
+            let mut transaction = self.log.start(idx);
+            let mut vec = range
+                .rev()
+                .filter_map(|idx| text.remove(idx).map(|ch| (idx, ch)))
+                .inspect(|&(idx, ch)| transaction.log(Change::Remove(idx, ch), idx))
+                .map(|(_, ch)| ch)
+                .collect::<Vec<u8>>();
+            vec.reverse();
+            Some(vec)
         } else { None }
     }
 

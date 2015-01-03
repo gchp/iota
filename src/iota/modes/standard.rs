@@ -79,7 +79,7 @@ impl StandardMode {
             Command::LineStart       => view.move_cursor_to_line_start(),
 
             // Editing
-            Command::Delete(dir)     => view.delete_char(dir),
+            Command::Delete(dir)     => view.delete_chars(dir),
             Command::InsertTab       => view.insert_tab(),
             Command::InsertChar(c)   => view.insert_char(c),
             Command::Redo            => view.redo(),
