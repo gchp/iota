@@ -3,6 +3,7 @@ use keyboard::Key;
 use frontends::Frontend;
 
 
+/// State for the overlay
 pub enum OverlayEvent {
     Finished(Option<String>),
     Ok,
@@ -15,6 +16,10 @@ pub enum OverlayType {
 }
 
 
+/// An interface for user interaction
+///
+/// This can be a prompt, autocompletion list, anything thatn requires input
+/// from the user.
 pub trait Overlay<T: Frontend> {
     fn draw(&mut self, frontend: &mut T, uibuf: &mut UIBuffer);
     fn draw_cursor(&mut self, frontend: &mut T);
