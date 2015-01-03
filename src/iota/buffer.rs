@@ -370,7 +370,7 @@ mod test {
     #[test]
     fn test_remove() {
         let mut buffer = setup_buffer("ABCD");
-        buffer.remove_char(Mark::Cursor(0));
+        buffer.remove_chars(Mark::Cursor(0), Direction::Right(1));
 
         assert_eq!(buffer.len(), 4);
         assert_eq!(buffer.lines().next().unwrap(), [b'B', b'C', b'D']);

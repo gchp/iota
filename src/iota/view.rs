@@ -295,7 +295,7 @@ mod tests {
     #[test]
     fn test_delete_char_to_right() {
         let mut view = setup_view("test\nsecond");
-        view.delete_char(Direction::Right(1));
+        view.delete_chars(Direction::Right(1));
 
         assert_eq!(view.buffer.lines().next().unwrap(), b"est\n"[]);
     }
@@ -304,7 +304,7 @@ mod tests {
     fn test_delete_char_to_left() {
         let mut view = setup_view("test\nsecond");
         view.move_cursor(Direction::Right(1));
-        view.delete_char(Direction::Left(1));
+        view.delete_chars(Direction::Left(1));
 
         assert_eq!(view.buffer.lines().next().unwrap(), b"est\n"[]);
     }
@@ -314,7 +314,7 @@ mod tests {
     fn test_delete_char_at_start_of_line() {
         let mut view = setup_view("test\nsecond");
         view.move_cursor(Direction::Down(1));
-        view.delete_char(Direction::Left(1));
+        view.delete_chars(Direction::Left(1));
 
         assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond"[]);
     }
@@ -323,7 +323,7 @@ mod tests {
     fn test_delete_char_at_end_of_line() {
         let mut view = setup_view("test\nsecond");
         view.move_cursor(Direction::Right(4));
-        view.delete_char(Direction::Right(1));
+        view.delete_chars(Direction::Right(1));
 
         assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond"[]);
     }
@@ -331,7 +331,7 @@ mod tests {
     #[test]
     fn deleting_backward_at_start_of_first_line_does_nothing() {
         let mut view = setup_view("test\nsecond");
-        view.delete_char(Direction::Left(1));
+        view.delete_chars(Direction::Left(1));
 
         let lines: Vec<&[u8]> = view.buffer.lines().collect();
 
