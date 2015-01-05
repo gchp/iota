@@ -84,6 +84,8 @@ impl StandardMode {
             Command::InsertChar(c)   => view.insert_char(c),
             Command::Redo            => view.redo(),
             Command::Undo            => view.undo(),
+
+            _ => {},
         }
         Response::Continue
     }
@@ -119,4 +121,7 @@ impl Mode for StandardMode {
 
     }
 
+    fn interpret_input(&mut self, _input: String) -> Response {
+        Response::Continue
+    }
 }
