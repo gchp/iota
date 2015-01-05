@@ -97,7 +97,21 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
     fn draw(&mut self) {
         self.view.draw(&mut self.frontend);
-        self.view.draw_status(&mut self.frontend);
+    }
+
+    pub fn start(&mut self) {
+        loop {
+            self.view.clear(&mut self.frontend);
+            self.draw();
+            self.frontend.present();
+            let event = self.frontend.poll_event();
+            if let EditorEvent::KeyEvent(key) = event {
+                if let Response::Quit = self.handle_key_event(key) {
+                    break;
+                }
+            }
+
+        }
     }
 
     fn handle_command(&mut self, c: Command) -> Response {
