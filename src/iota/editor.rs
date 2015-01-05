@@ -35,7 +35,7 @@ pub enum EventStatus {
 
 pub struct Editor<'e, T: Frontend> {
     view: View<'e>,
-
+    running: bool,
     frontend: T,
     mode: Box<Mode + 'e>,
     overlay: Option<Box<Overlay<T> + 'e>>,
@@ -49,13 +49,14 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
         Editor {
             view: view,
+            running: true,
             frontend: frontend,
             mode: mode,
             overlay: None,
         }
     }
 
-    pub fn handle_key_event(&mut self, key: Option<Key>) -> Response {
+    pub fn handle_key_event(&mut self, key: Option<Key>) {
         let Editor {ref mut view, .. } = *self;
 
         let response = match self.mode.handle_key_event(key, view) {
@@ -63,13 +64,17 @@ impl<'e, T: Frontend> Editor<'e, T> {
             EventStatus::NotHandled        => { Response::Continue }
         };
 
-        let height = self.frontend.get_window_height() - 1;
         if let Response::SetOverlay(OverlayType::Prompt) = response {
-            let overlay: Box<Overlay<T>> = box PromptOverlay::new(1, height as int);
-            self.overlay = Some(overlay);
+            let height = self.frontend.get_window_height() - 1;
+            let overlay = PromptOverlay::new(1, height as int);
+            let box_overlay: Box<Overlay<T>> = box overlay;
+
+            self.overlay = Some(box_overlay);
         }
 
-        response
+        if let Response::Quit = response {
+            self.running = false
+        }
     }
 
     pub fn draw(&mut self) {
@@ -84,37 +89,34 @@ impl<'e, T: Frontend> Editor<'e, T> {
         }
     }
 
-    pub fn overlay_key_event(&mut self, key: Option<Key>) -> Response {
+    pub fn overlay_key_event(&mut self, key: Option<Key>) {
+        let mut clear_overlay = false;
+
         if let Some(ref mut overlay) = self.overlay {
             if let OverlayEvent::Finished(data) = overlay.handle_key_event(key) {
                 if let Some(s) = data {
                     if let Response::Quit = self.mode.interpret_input(s) {
-                        return Response::Quit
+                        self.running = false;
                     }
                 };
-                return Response::SetOverlay(OverlayType::None)
+                clear_overlay = true
             }
         };
 
-        Response::Continue
+        if clear_overlay { self.overlay = None }
     }
 
     pub fn start(&mut self) {
-        loop {
+        while self.running {
             self.view.clear(&mut self.frontend);
             self.draw();
             self.frontend.present();
             let event = self.frontend.poll_event();
 
             if let EditorEvent::KeyEvent(key) = event {
-                match self.overlay_key_event(key) {
-                    Response::Quit          => break,
-                    Response::SetOverlay(_) => self.overlay = None,
-                    _                       => {}
-                };
-
-                if let Response::Quit = self.handle_key_event(key) {
-                    break;
+                match self.overlay {
+                    Some(_) => self.overlay_key_event(key),
+                    None    => self.handle_key_event(key),
                 }
             }
         }
