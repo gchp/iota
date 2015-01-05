@@ -255,7 +255,8 @@ pub struct Lines<'a> {
     head: uint,
 }
 
-impl<'a> Iterator<&'a [u8]> for Lines<'a> {
+impl<'a> Iterator for Lines<'a> {
+    type Item = &'a [u8];
 
     fn next(&mut self) -> Option<&'a [u8]> {
         if self.tail != self.head {
