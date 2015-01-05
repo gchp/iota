@@ -101,8 +101,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
     pub fn draw(&mut self) {
         self.view.draw(&mut self.frontend);
-        self.view.draw_status(&mut self.frontend);
-        self.view.draw_cursor(&mut self.frontend);
     }
 
     pub fn start(&mut self) {

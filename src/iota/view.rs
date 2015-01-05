@@ -3,6 +3,8 @@ use input::Input;
 use uibuf::{UIBuffer, CharColor};
 use frontends::Frontend;
 
+use std::cmp;
+
 /// A View is an abstract Window (into a Buffer).
 ///
 /// It draws a portion of a Buffer to a UIBuffer which in turn is drawn to the
@@ -80,10 +82,12 @@ impl<'v> View<'v> {
             draw_line(&mut self.uibuf, line, index, self.left_col);
             if index == self.get_height() { break; }
         }
+        self.draw_status(frontend);
+        self.draw_cursor(frontend);
         self.uibuf.draw_everything(frontend);
     }
 
-    pub fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
+    fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
         let buffer_status = self.buffer.status_text();
         let mut cursor_status = self.buffer.get_mark_coords(self.cursor).unwrap_or((0,0));
         cursor_status = (cursor_status.0 + 1, cursor_status.1 + 1);
@@ -104,10 +108,10 @@ impl<'v> View<'v> {
         self.uibuf.draw_range(frontend, height, height+1);
     }
 
-    pub fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
+    fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
         if let Some(top_line) = self.buffer.get_mark_coords(self.top_line) {
             if let Some((x, y)) = self.buffer.get_mark_coords(self.cursor) {
-                frontend.draw_cursor(x as int, y as int - top_line.1 as int);
+                frontend.draw_cursor((x - self.left_col) as int, y as int - top_line.1 as int);
             }
         }
     }
@@ -144,15 +148,15 @@ impl<'v> View<'v> {
             let height = (self.get_height() - self.threshold) as int;
 
             //left-right shifting
-            match cursor.0 as int - self.left_col as int {
-                x_offset if x_offset < self.threshold as int && self.left_col > 0 => {
-                    self.left_col -= (self.threshold as int - x_offset) as uint;
-                }   
-                x_offset if x_offset >= width => {
-                    self.left_col += (x_offset - width + 1) as uint;
+            self.left_col = match cursor.0 as int - self.left_col as int {
+                x_offset if x_offset < self.threshold as int => {
+                    cmp::max(0, self.left_col as int - (self.threshold as int - x_offset)) as uint
                 }
-                _ => { }
-            }
+                x_offset if x_offset >= width => {
+                    self.left_col + (x_offset - width + 1) as uint
+                }
+                _ => { self.left_col }
+            };
 
             //up-down shifting
             match cursor.1 as int - top_line as int {
