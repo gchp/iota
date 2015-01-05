@@ -14,7 +14,7 @@ pub struct View<'v> {
     top_line: Mark,         //First character of the top line to be displayed.
     left_col: uint,         //Index into the top line to set the left column to.
     cursor: Mark,           //Cursor displayed by this buffer.
-    uibuf: UIBuffer,        //UIBuffer
+    pub uibuf: UIBuffer,        //UIBuffer
 }
 
 impl<'v> View<'v> {
@@ -88,7 +88,7 @@ impl<'v> View<'v> {
         let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
         let status_text_len = status_text.len();
         let width = self.get_width();
-        let height = self.get_height();
+        let height = self.get_height() - 1;
 
 
         for index in range(0, width) {
