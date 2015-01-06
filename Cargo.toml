@@ -4,13 +4,12 @@ version = "0.1.0"
 authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
 [dependencies]
-docopt = "0.6.22"
-rustbox = "0.2.3"
+docopt = "0.6.23"
+rustbox = "0.2.4"
 rustc-serialize = "0.2.4"
 
 [dependencies.gapbuffer]
 git = "https://github.com/dlaronson/gapbuffer"
-version = "0.0.2"
 
 [lib]
 name = "iota"
