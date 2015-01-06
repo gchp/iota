@@ -5,7 +5,7 @@ use keyboard::Key;
 use view::View;
 use frontends::{Frontend, EditorEvent};
 use modes::Mode;
-use overlay::{Overlay, OverlayType, OverlayEvent};
+use overlay::{OverlayType};
 
 
 #[derive(Copy, Show)]
@@ -38,7 +38,6 @@ pub struct Editor<'e, T: Frontend> {
     running: bool,
     frontend: T,
     mode: Box<Mode + 'e>,
-    overlay: Overlay
 }
 
 impl<'e, T: Frontend> Editor<'e, T> {
@@ -52,7 +51,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
             running: true,
             frontend: frontend,
             mode: mode,
-            overlay: Overlay::None,
         }
     }
 
@@ -64,17 +62,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
             EventStatus::NotHandled        => { Response::Continue }
         };
 
-        if let Response::SetOverlay(OverlayType::Prompt) = response {
-            let height = self.frontend.get_window_height() - 1;
-            let prefix = ":";
-            self.overlay = Overlay::Prompt {
-                cursor_x: prefix.len(),
-                cursor_y: height,
-                data: String::new(),
-                prefix: prefix
-            };
-        }
-
         if let Response::Quit = response {
             self.running = false
         }
@@ -83,31 +70,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
     pub fn draw(&mut self) {
         self.view.draw(&mut self.frontend);
         self.view.draw_status(&mut self.frontend);
-
-        match self.overlay {
-            Overlay::None => self.view.draw_cursor(&mut self.frontend),
-            _ => {
-                self.overlay.draw(&mut self.frontend, &mut self.view.uibuf);
-                self.overlay.draw_cursor(&mut self.frontend);
-            }
-        }
-    }
-
-    pub fn overlay_key_event(&mut self, key: Option<Key>) {
-        let mut clear_overlay = false;
-
-        if !self.overlay.is_none() {
-            if let OverlayEvent::Finished(data) = self.overlay.handle_key_event(key) {
-                if let Some(s) = data {
-                    if let Response::Quit = self.mode.interpret_input(s) {
-                        self.running = false;
-                    }
-                };
-                clear_overlay = true
-            }
-        }
-
-        if clear_overlay { self.overlay = Overlay::None }
     }
 
     pub fn start(&mut self) {
@@ -118,10 +80,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
             let event = self.frontend.poll_event();
 
             if let EditorEvent::KeyEvent(key) = event {
-                match self.overlay {
-                    Overlay::None => self.handle_key_event(key),
-                    _             => self.overlay_key_event(key),
-                }
+                self.handle_key_event(key)
             }
         }
     }

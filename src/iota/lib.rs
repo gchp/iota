@@ -6,8 +6,6 @@
 extern crate rustbox;
 extern crate gapbuffer;
 
-use overlay::OverlayType;
-
 pub use editor::Editor;
 pub use input::Input;
 pub use frontends::RustboxFrontend;
@@ -28,7 +26,6 @@ mod overlay;
 
 #[derive(Copy)]
 pub enum Response {
-    SetOverlay(OverlayType),
     Continue,
     Quit,
 }

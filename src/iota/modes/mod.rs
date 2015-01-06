@@ -7,7 +7,7 @@ pub use super::keymap::KeyMapState;
 pub use super::buffer::Direction;
 pub use super::Response;
 pub use super::utils;
-pub use super::overlay::OverlayType;
+pub use super::overlay::{Overlay, OverlayType, OverlayEvent};
 
 pub use self::standard::StandardMode;
 pub use self::normal::NormalMode;

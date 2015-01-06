@@ -2,6 +2,7 @@ use buffer::{Buffer, Direction, Mark};
 use input::Input;
 use uibuf::{UIBuffer, CharColor};
 use frontends::Frontend;
+use overlay::{Overlay, OverlayType};
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -10,11 +11,13 @@ use frontends::Frontend;
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
 pub struct View<'v> {
-    pub buffer: Buffer,     //Text buffer
-    top_line: Mark,         //First character of the top line to be displayed.
-    left_col: uint,         //Index into the top line to set the left column to.
-    cursor: Mark,           //Cursor displayed by this buffer.
-    pub uibuf: UIBuffer,        //UIBuffer
+    pub buffer: Buffer,     // Text buffer
+    pub uibuf: UIBuffer,    // UIBuffer
+    pub overlay: Overlay,
+
+    top_line: Mark,         // First character of the top line to be displayed.
+    left_col: uint,         // Index into the top line to set the left column to.
+    cursor: Mark,           // Cursor displayed by this buffer.
 }
 
 impl<'v> View<'v> {
@@ -48,6 +51,7 @@ impl<'v> View<'v> {
             left_col: 0,
             cursor: cursor,
             uibuf: uibuf,
+            overlay: Overlay::None,
         }
     }
 
@@ -78,6 +82,15 @@ impl<'v> View<'v> {
             draw_line(&mut self.uibuf, line, index, self.left_col);
             if index == self.get_height() { break; }
         }
+
+        match self.overlay {
+            Overlay::None => self.draw_cursor(frontend),
+            _             => {
+                self.overlay.draw(frontend, &mut self.uibuf);
+                self.overlay.draw_cursor(frontend);
+            }
+        }
+
         self.uibuf.draw_everything(frontend);
     }
 
@@ -106,6 +119,18 @@ impl<'v> View<'v> {
         if let Some(top_line) = self.buffer.get_mark_coords(self.top_line) {
             if let Some((x, y)) = self.buffer.get_mark_coords(self.cursor) {
                 frontend.draw_cursor(x as int, y as int - top_line.1 as int);
+            }
+        }
+    }
+
+    pub fn set_overlay(&mut self, overlay_type: OverlayType) {
+        match overlay_type {
+            OverlayType::Prompt => {
+                self.overlay = Overlay::Prompt {
+                    cursor_x: 1,
+                    prefix: ":",
+                    data: String::new(),
+                };
             }
         }
     }

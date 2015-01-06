@@ -8,7 +8,7 @@ use super::EventStatus;
 use super::Direction;
 use super::Response;
 use super::utils;
-use super::OverlayType;
+use super::{Overlay, OverlayType, OverlayEvent};
 
 
 pub struct NormalMode {
@@ -66,7 +66,7 @@ impl NormalMode {
             Command::Undo            => view.undo(),
 
             // Prompt
-            Command::SetOverlay(o)   => return Response::SetOverlay(o),
+            Command::SetOverlay(o)   => view.set_overlay(o),
             _                        => {}
         }
         Response::Continue
@@ -79,6 +79,22 @@ impl Mode for NormalMode {
             Some(k) => k,
             None => return EventStatus::NotHandled
         };
+
+        // if there is an overlay on the view, send the key there
+        // and don't allow the mode to handle it.
+        match view.overlay {
+            Overlay::None => {},
+            _             => {
+                let event = view.overlay.handle_key_event(key);
+                if let OverlayEvent::Finished(response) = event {
+                    view.overlay = Overlay::None;
+                    if let Some(data) = response {
+                        return EventStatus::Handled(self.interpret_input(data))
+                    }
+                }
+                return EventStatus::NotHandled
+            }
+        }
 
         // send key to the keymap
         match self.keymap.check_key(key) {
