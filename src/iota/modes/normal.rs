@@ -8,6 +8,7 @@ use super::EventStatus;
 use super::Direction;
 use super::Response;
 use super::utils;
+use super::OverlayType;
 
 
 pub struct NormalMode {
@@ -42,8 +43,8 @@ impl NormalMode {
         keymap.bind_key(Key::Char('u'), Command::Undo);
         keymap.bind_key(Key::Ctrl('r'), Command::Redo);
 
-        // TODO: remove this - temporary workaround until overlays are done
-        keymap.bind_key(Key::Ctrl('q'), Command::ExitEditor);
+        // open a prompt to the user
+        keymap.bind_key(Key::Char(':'), Command::SetOverlay(OverlayType::Prompt));
 
         keymap
     }
@@ -64,6 +65,8 @@ impl NormalMode {
             Command::Redo            => view.redo(),
             Command::Undo            => view.undo(),
 
+            // Prompt
+            Command::SetOverlay(o)   => return Response::SetOverlay(o),
             _                        => {}
         }
         Response::Continue
@@ -91,4 +94,10 @@ impl Mode for NormalMode {
 
     }
 
+    fn interpret_input(&mut self, input: String) -> Response {
+        match &*input {
+            "q" | "quit" => Response::Quit,
+            _ => Response::Continue
+        }
+    }
 }
