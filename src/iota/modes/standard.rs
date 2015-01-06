@@ -121,7 +121,7 @@ impl Mode for StandardMode {
 
     }
 
-    fn interpret_input(&mut self, _input: String) -> Response {
+    fn interpret_input(&mut self, _input: String, _view: &mut View) -> Response {
         Response::Continue
     }
 }

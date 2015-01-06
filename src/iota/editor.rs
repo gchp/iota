@@ -25,6 +25,19 @@ pub enum Command {
 
     Undo,
     Redo,
+
+    Unknown,
+}
+
+impl Command {
+    #[inline]
+    pub fn from_str(string: &str) -> Command {
+        match string {
+            "q" | "quit" => Command::ExitEditor,
+
+            _            => Command::Unknown,
+        }
+    }
 }
 
 pub enum EventStatus {
