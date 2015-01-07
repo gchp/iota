@@ -89,7 +89,7 @@ impl Mode for NormalMode {
                 if let OverlayEvent::Finished(response) = event {
                     view.overlay = Overlay::None;
                     if let Some(data) = response {
-                        return EventStatus::Handled(self.interpret_input(data, view))
+                        return EventStatus::Handled(self.interpret_command_input(data, view))
                     }
                 }
                 return EventStatus::NotHandled
@@ -110,7 +110,7 @@ impl Mode for NormalMode {
 
     }
 
-    fn interpret_input(&mut self, input: String, view: &mut View) -> Response {
+    fn interpret_command_input(&mut self, input: String, view: &mut View) -> Response {
         let command = Command::from_str(&*input);
         self.handle_command(command, view)
     }

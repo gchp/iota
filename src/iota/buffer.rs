@@ -1,12 +1,15 @@
 //FIXME: Check unicode support
-
-use log::{Log, Change, LogEntry};
-
-use gapbuffer::GapBuffer;
-
+// stdlib dependencies
 use std::cmp;
 use std::collections::HashMap;
 use std::io::{File, Reader, BufferedReader};
+
+// external dependencies
+use gapbuffer::GapBuffer;
+
+// local dependencies
+use log::{Log, Change, LogEntry};
+
 
 #[derive(Copy, PartialEq, Eq, Hash, Show)]
 pub enum Mark {
@@ -21,16 +24,21 @@ pub enum Direction {
 }
 
 pub struct Buffer {
-    text: GapBuffer<u8>,                    //Actual text data being edited.
-    marks: HashMap<Mark, (uint, uint)>,     //Table of marked indices in the text.
-                                            // KEY: mark id => VALUE : (absolute index, line index)
-    pub log: Log,                           //History of undoable transactions.
-    pub file_path: Option<Path>,            //TODO: replace with a general metadata table
+    /// Current buffers text
+    text: GapBuffer<u8>,
+
+    /// Table of marked indices in the text
+    /// KEY: mark id => VALUE : (absolute index, line index)
+    marks: HashMap<Mark, (uint, uint)>,
+
+    /// Transaction history (used for undo/redo)
+    pub log: Log,
+
+    /// Location on disk where the current buffer should be written
+    pub file_path: Option<Path>,
 }
 
 impl Buffer {
-
-    //----- CONSTRUCTORS ---------------------------------------------------------------------------
 
     /// Constructor for empty buffer.
     pub fn new() -> Buffer {
@@ -60,14 +68,12 @@ impl Buffer {
         } else { Buffer::new() }
     }
 
-    //----- ACCESSORS ------------------------------------------------------------------------------
-
-    ///Length of the text stored in this buffer.
+    /// Length of the text stored in this buffer.
     pub fn len(&self) -> uint {
         self.text.len() + 1
     }
 
-    ///The x,y coordinates of a mark within the file. None if not a valid mark.
+    /// The x,y coordinates of a mark within the file. None if not a valid mark.
     pub fn get_mark_coords(&self, mark: Mark) -> Option<(uint, uint)> {
         if let Some(idx) = self.get_mark_idx(mark) {
             if let Some(line) = get_line(idx, &self.text) {
@@ -77,7 +83,7 @@ impl Buffer {
         } else { None }
     }
 
-    ///The absolute index of a mark within the file. None if not a valid mark.
+    /// The absolute index of a mark within the file. None if not a valid mark.
     pub fn get_mark_idx(&self, mark: Mark) -> Option<uint> {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
             if idx < self.len() {
@@ -86,7 +92,7 @@ impl Buffer {
         } else { None }
     }
 
-    ///Creates an iterator on the text by lines.
+    /// Creates an iterator on the text by lines.
     pub fn lines(&self) -> Lines {
         Lines {
             buffer: self.text[],
@@ -95,7 +101,7 @@ impl Buffer {
         }
     }
 
-    ///Creates an iterator on the text by lines that begins at the specified mark.
+    /// Creates an iterator on the text by lines that begins at the specified mark.
     pub fn lines_from(&self, mark: Mark) -> Option<Lines> {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
             if idx < self.len() {
@@ -108,7 +114,7 @@ impl Buffer {
         } else { None }
     }
 
-    ///Returns the status text for this buffer.
+    /// Returns the status text for this buffer.
     pub fn status_text(&self) -> String {
         match self.file_path {
             Some(ref path)  =>  format!("{} ", path.display()),
@@ -116,9 +122,7 @@ impl Buffer {
         }
     }
 
-    //----- MUTATORS -------------------------------------------------------------------------------
-
-    ///Sets the mark to a given absolute index. Adds a new mark or overwrites an existing mark.
+    /// Sets the mark to a given absolute index. Adds a new mark or overwrites an existing mark.
     pub fn set_mark(&mut self, mark: Mark, idx: uint) {
         if let Some(line) = get_line(idx, &self.text) {
             if let Some(tuple) = self.marks.get_mut(&mark) {
@@ -129,7 +133,7 @@ impl Buffer {
         }
     }
 
-    //Shift a mark relative to its position according to the direction given.
+    /// Shift a mark relative to its position according to the direction given.
     pub fn shift_mark(&mut self, mark: Mark, direction: Direction) {
         let last = self.len() - 1;
         let text = &self.text;
@@ -173,7 +177,7 @@ impl Buffer {
         }
     }
 
-    ///Remove the char at the mark.
+    /// Remove the char at the mark.
     pub fn remove_char(&mut self, mark: Mark) -> Option<u8> {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
             if let Some(ch) = self.text.remove(idx) {
@@ -184,7 +188,7 @@ impl Buffer {
         } else { None }
     }
 
-    ///Insert a char at the mark.
+    /// Insert a char at the mark.
     pub fn insert_char(&mut self, mark: Mark, ch: u8) {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
             self.text.insert(idx, ch);
@@ -193,7 +197,7 @@ impl Buffer {
         }
     }
 
-    ///Redo most recently undone action.
+    /// Redo most recently undone action.
     pub fn redo(&mut self) -> Option<&LogEntry> {
         if let Some(transaction) = self.log.redo() {
             commit(transaction, &mut self.text);
@@ -201,7 +205,7 @@ impl Buffer {
         } else { None }
     }
 
-    ///Undo most recently performed action.
+    /// Undo most recently performed action.
     pub fn undo(&mut self) -> Option<&LogEntry> {
         if let Some(transaction) = self.log.undo() {
             commit(transaction, &mut self.text);
@@ -211,9 +215,9 @@ impl Buffer {
 
 }
 
-//Returns the index of the first character of the line the mark is in.
-//Newline prior to mark (EXCLUSIVE) + 1.
-//None iff mark is outside of the len of text.
+/// Returns the index of the first character of the line the mark is in.
+/// Newline prior to mark (EXCLUSIVE) + 1.
+/// None if mark is outside of the len of text.
 fn get_line(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
     if mark <= text.len() {
         range(0, mark + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
@@ -222,9 +226,9 @@ fn get_line(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
     } else { None }
 }
 
-//Returns the index of the newline character at the end of the line mark is in.
-//Newline after mark (INCLUSIVE).
-//None iff mark is outside the len of text.
+/// Returns the index of the newline character at the end of the line mark is in.
+/// Newline after mark (INCLUSIVE).
+/// None iff mark is outside the len of text.
 fn get_line_end(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
     if mark <= text.len() {
         range(mark, text.len() + 1).filter(|idx| *idx == text.len() ||text[*idx] == b'\n')
@@ -233,7 +237,7 @@ fn get_line_end(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
     } else { None }
 }
 
-//Performs a transaction on the passed in buffer.
+/// Performs a transaction on the passed in buffer.
 fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
     for change in transaction.changes.iter() {
         match change {
@@ -246,8 +250,6 @@ fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
         }
     }
 }
-
-//----- ITERATE BY LINES ---------------------------------------------------------------------------
 
 pub struct Lines<'a> {
     buffer: &'a [u8],
@@ -280,8 +282,6 @@ impl<'a> Iterator for Lines<'a> {
     }
 
 }
-
-//----- TESTS --------------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod test {
