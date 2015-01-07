@@ -24,28 +24,28 @@ impl NormalMode {
         let mut keymap = KeyMap::new();
 
         // movement
-        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up(1)));
-        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down(1)));
-        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left(1)));
-        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right(1)));
-        keymap.bind_key(Key::Char('h'), Command::MoveCursor(Direction::Left(1)));
-        keymap.bind_key(Key::Char('j'), Command::MoveCursor(Direction::Down(1)));
-        keymap.bind_key(Key::Char('k'), Command::MoveCursor(Direction::Up(1)));
-        keymap.bind_key(Key::Char('l'), Command::MoveCursor(Direction::Right(1)));
-        keymap.bind_key(Key::Char('W'), Command::MoveCursor(Direction::RightWord(1, WordEdgeMatch::Whitespace)));
-        keymap.bind_key(Key::Char('B'), Command::MoveCursor(Direction::LeftWord(1, WordEdgeMatch::Whitespace)));
-        keymap.bind_key(Key::Char('w'), Command::MoveCursor(Direction::RightWord(1, WordEdgeMatch::Alphabet)));
-        keymap.bind_key(Key::Char('b'), Command::MoveCursor(Direction::LeftWord(1, WordEdgeMatch::Alphabet)));
+        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up, 1));
+        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down, 1));
+        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left, 1));
+        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right, 1));
+        keymap.bind_key(Key::Char('h'), Command::MoveCursor(Direction::Left, 1));
+        keymap.bind_key(Key::Char('j'), Command::MoveCursor(Direction::Down, 1));
+        keymap.bind_key(Key::Char('k'), Command::MoveCursor(Direction::Up, 1));
+        keymap.bind_key(Key::Char('l'), Command::MoveCursor(Direction::Right, 1));
+        keymap.bind_key(Key::Char('W'), Command::MoveCursor(Direction::RightWord(WordEdgeMatch::Whitespace), 1));
+        keymap.bind_key(Key::Char('B'), Command::MoveCursor(Direction::LeftWord(WordEdgeMatch::Whitespace), 1));
+        keymap.bind_key(Key::Char('w'), Command::MoveCursor(Direction::RightWord(WordEdgeMatch::Alphabet), 1));
+        keymap.bind_key(Key::Char('b'), Command::MoveCursor(Direction::LeftWord(WordEdgeMatch::Alphabet), 1));
         keymap.bind_key(Key::Char('0'), Command::LineStart);
         keymap.bind_key(Key::Char('$'), Command::LineEnd);
 
         // editing
-        keymap.bind_keys(&[Key::Char('d'), Key::Char('W')], Command::Delete(Direction::RightWord(1, WordEdgeMatch::Whitespace)));
-        keymap.bind_keys(&[Key::Char('d'), Key::Char('B')], Command::Delete(Direction::LeftWord(1, WordEdgeMatch::Whitespace)));
-        keymap.bind_keys(&[Key::Char('d'), Key::Char('w')], Command::Delete(Direction::RightWord(1, WordEdgeMatch::Alphabet)));
-        keymap.bind_keys(&[Key::Char('d'), Key::Char('b')], Command::Delete(Direction::LeftWord(1, WordEdgeMatch::Alphabet)));
-        keymap.bind_key(Key::Char('x'), Command::Delete(Direction::Right(1)));
-        keymap.bind_key(Key::Char('X'), Command::Delete(Direction::Left(1)));
+        keymap.bind_keys(&[Key::Char('d'), Key::Char('W')], Command::Delete(Direction::RightWord(WordEdgeMatch::Whitespace), 1));
+        keymap.bind_keys(&[Key::Char('d'), Key::Char('B')], Command::Delete(Direction::LeftWord(WordEdgeMatch::Whitespace), 1));
+        keymap.bind_keys(&[Key::Char('d'), Key::Char('w')], Command::Delete(Direction::RightWord(WordEdgeMatch::Alphabet), 1));
+        keymap.bind_keys(&[Key::Char('d'), Key::Char('b')], Command::Delete(Direction::LeftWord(WordEdgeMatch::Alphabet), 1));
+        keymap.bind_key(Key::Char('x'), Command::Delete(Direction::Right, 1));
+        keymap.bind_key(Key::Char('X'), Command::Delete(Direction::Left, 1));
         keymap.bind_key(Key::Char('u'), Command::Undo);
         keymap.bind_key(Key::Ctrl('r'), Command::Redo);
 
@@ -83,9 +83,9 @@ mod tests {
 
     #[test]
     fn test_movement_keybindings() {
-        expect_key_command(Key::Char('h'), Command::MoveCursor(Direction::Left(1)));
-        expect_key_command(Key::Char('j'), Command::MoveCursor(Direction::Down(1)));
-        expect_key_command(Key::Char('k'), Command::MoveCursor(Direction::Up(1)));
-        expect_key_command(Key::Char('l'), Command::MoveCursor(Direction::Right(1)));
+        expect_key_command(Key::Char('h'), Command::MoveCursor(Direction::Left, 1));
+        expect_key_command(Key::Char('j'), Command::MoveCursor(Direction::Down, 1));
+        expect_key_command(Key::Char('k'), Command::MoveCursor(Direction::Up, 1));
+        expect_key_command(Key::Char('l'), Command::MoveCursor(Direction::Right, 1));
     }
 }

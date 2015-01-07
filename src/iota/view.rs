@@ -135,18 +135,18 @@ impl<'v> View<'v> {
         }
     }
 
-    pub fn move_cursor(&mut self, direction: Direction) {
-        self.buffer.shift_mark(self.cursor, direction);
+    pub fn move_cursor(&mut self, direction: Direction, amount: uint) {
+        self.buffer.shift_mark(self.cursor, direction, amount);
         self.move_screen();
     }
 
     pub fn move_cursor_to_line_end(&mut self) {
-        self.buffer.shift_mark(self.cursor, Direction::LineEnd);
+        self.buffer.shift_mark(self.cursor, Direction::LineEnd, 0);
         self.move_screen();
     }
 
     pub fn move_cursor_to_line_start(&mut self) {
-        self.buffer.shift_mark(self.cursor, Direction::LineStart);
+        self.buffer.shift_mark(self.cursor, Direction::LineStart, 0);
         self.move_screen();
     }
 
@@ -168,24 +168,22 @@ impl<'v> View<'v> {
             if cursor_offset >= (height - 5) {
                 // moving down
                 let times = cursor_offset - (height - 5) + 1;
-                self.buffer.shift_mark(self.top_line, Direction::Down(times as uint));
+                self.buffer.shift_mark(self.top_line, Direction::Down, times as uint);
             } else if cursor_offset < 5 {
                 // moving up
-                self.buffer.shift_mark(self.top_line, Direction::Up(1));
+                self.buffer.shift_mark(self.top_line, Direction::Up, 1);
             }
         }
     }
 
-    //----- TEXT EDIT METHODS ----------------------------------------------------------------------
-
-    pub fn delete_chars(&mut self, direction: Direction) {
-        let chars = self.buffer.remove_chars(self.cursor, direction);
+    pub fn delete_chars(&mut self, direction: Direction, num_chars: uint) {
+        let chars = self.buffer.remove_chars(self.cursor, direction, num_chars);
         match (chars, direction) {
-            (Some(chars), Direction::Left(..)) => {
-                self.move_cursor(Direction::Left(chars.len()));
+            (Some(chars), Direction::Left) => {
+                self.move_cursor(Direction::Left, chars.len());
             }
             (Some(chars), Direction::LeftWord(..)) => {
-                self.move_cursor(Direction::Left(chars.len()));
+                self.move_cursor(Direction::Left, chars.len());
             }
             _ => {}
         }
@@ -200,7 +198,7 @@ impl<'v> View<'v> {
 
     pub fn insert_char(&mut self, ch: char) {
         self.buffer.insert_char(self.cursor, ch as u8);
-        self.move_cursor(Direction::Right(1))
+        self.move_cursor(Direction::Right, 1)
     }
 
     pub fn undo(&mut self) {
@@ -261,7 +259,7 @@ mod tests {
     #[test]
     fn test_move_cursor_down() {
         let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Down(1));
+        view.move_cursor(Direction::Down, 1);
         assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().1, 1);
         assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"second"[]);
     }
@@ -269,8 +267,8 @@ mod tests {
     #[test]
     fn test_move_cursor_up() {
         let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Down(1));
-        view.move_cursor(Direction::Up(1));
+        view.move_cursor(Direction::Down, 1);
+        view.move_cursor(Direction::Up, 1);
         assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().1, 0);
         assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"test\n"[]);
     }
@@ -278,7 +276,7 @@ mod tests {
     #[test]
     fn test_insert_line() {
         let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Right(1));
+        view.move_cursor(Direction::Right, 1);
         view.insert_char('\n');
 
         assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap(), (0, 1))
@@ -295,7 +293,7 @@ mod tests {
     #[test]
     fn test_delete_char_to_right() {
         let mut view = setup_view("test\nsecond");
-        view.delete_chars(Direction::Right(1));
+        view.delete_chars(Direction::Right, 1);
 
         assert_eq!(view.buffer.lines().next().unwrap(), b"est\n"[]);
     }
@@ -303,8 +301,8 @@ mod tests {
     #[test]
     fn test_delete_char_to_left() {
         let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Right(1));
-        view.delete_chars(Direction::Left(1));
+        view.move_cursor(Direction::Right, 1);
+        view.delete_chars(Direction::Left, 1);
 
         assert_eq!(view.buffer.lines().next().unwrap(), b"est\n"[]);
     }
@@ -313,8 +311,8 @@ mod tests {
     #[test]
     fn test_delete_char_at_start_of_line() {
         let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Down(1));
-        view.delete_chars(Direction::Left(1));
+        view.move_cursor(Direction::Down, 1);
+        view.delete_chars(Direction::Left, 1);
 
         assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond"[]);
     }
@@ -322,8 +320,8 @@ mod tests {
     #[test]
     fn test_delete_char_at_end_of_line() {
         let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Right(4));
-        view.delete_chars(Direction::Right(1));
+        view.move_cursor(Direction::Right, 4);
+        view.delete_chars(Direction::Right, 1);
 
         assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond"[]);
     }
@@ -331,7 +329,7 @@ mod tests {
     #[test]
     fn deleting_backward_at_start_of_first_line_does_nothing() {
         let mut view = setup_view("test\nsecond");
-        view.delete_chars(Direction::Left(1));
+        view.delete_chars(Direction::Left, 1);
 
         let lines: Vec<&[u8]> = view.buffer.lines().collect();
 

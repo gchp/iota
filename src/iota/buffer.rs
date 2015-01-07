@@ -25,9 +25,18 @@ pub enum WordEdgeMatch {
 
 #[derive(Copy, PartialEq, Eq, Show)]
 pub enum Direction {
-    Up(uint), Down(uint), Left(uint), Right(uint),
-    LeftWord(uint, WordEdgeMatch), RightWord(uint, WordEdgeMatch),
-    LineStart, LineEnd,
+    Up,
+    Down,
+    Left,
+    Right,
+
+    // TODO: extract to TextObject::Word - or similar
+    LeftWord(WordEdgeMatch),
+    RightWord(WordEdgeMatch),
+
+    // TODO: extract to TextObject::Line - or similar
+    LineStart,
+    LineEnd,
 }
 
 pub struct Buffer {
@@ -141,7 +150,7 @@ impl Buffer {
     }
 
     /// Shift a mark relative to its position according to the direction given.
-    pub fn shift_mark(&mut self, mark: Mark, direction: Direction) {
+    pub fn shift_mark(&mut self, mark: Mark, direction: Direction, amount: uint) {
         let last = self.len() - 1;
         let text = &self.text;
         if let Some(tuple) = self.marks.get_mut(&mark) {
@@ -152,15 +161,18 @@ impl Buffer {
                     //  value 0:    the absolute index of the mark in the file
                     //  value 1:    the index of the mark in its line (unchanged by direct verticle
                     //              traversals)
-                    Direction::Left(n)      =>  {
+                    Direction::Left =>  {
+                        let n = amount;
                         if idx >= n { (idx - n, idx - n - get_line(idx - n, text).unwrap()) }
                         else { (0, 0) }
                     }
-                    Direction::Right(n)     =>  {
+                    Direction::Right =>  {
+                        let n = amount;
                         if idx + n < last { (idx + n, idx + n - get_line(idx + n, text).unwrap()) }
                         else { (last, last - get_line(last, text).unwrap()) }
                     }
-                    Direction::Up(n)        =>  {
+                    Direction::Up =>  {
+                        let n = amount;
                         let nlines = range(0, idx).rev().filter(|i| text[*i] == b'\n')
                                                         .take(n + 1)
                                                         .collect::<Vec<uint>>();
@@ -168,7 +180,8 @@ impl Buffer {
                         else if n > nlines.len() { (0, 0) }
                         else { (cmp::min(line_idx + nlines[n] + 1, nlines[n-1]), line_idx) }
                     }
-                    Direction::Down(n)      =>  {
+                    Direction::Down =>  {
+                        let n = amount;
                         let nlines = range(idx, text.len()).filter(|i| text[*i] == b'\n')
                                                            .take(n + 1)
                                                            .collect::<Vec<uint>>();
@@ -177,13 +190,15 @@ impl Buffer {
                             (cmp::min(line_idx + nlines[n-1] + 1, last), line_idx)
                         } else { (cmp::min(line_idx + nlines[n-1] + 1, nlines[n]), line_idx) }
                     }
-                    Direction::RightWord(n_words, edger)     =>  {
+                    Direction::RightWord(edger) =>  {
+                        let n_words = amount;
                         if let Some(new_idx) = get_words(idx, n_words, edger, text) {
                             if new_idx < last { (new_idx, new_idx - get_line(new_idx, text).unwrap()) }
                             else { (last, last - get_line(last, text).unwrap()) }
                         } else { (last, last - get_line(last, text).unwrap()) }
                     }
-                    Direction::LeftWord(n_words, edger)     =>  {
+                    Direction::LeftWord(edger)     =>  {
+                        let n_words = amount;
                         if let Some(new_idx) = get_words_rev(idx, n_words, edger, text) {
                             if new_idx > 0 { (new_idx, new_idx - get_line(new_idx, text).unwrap()) }
                             else { (0, 0) }
@@ -197,17 +212,19 @@ impl Buffer {
     }
 
     /// Remove the chars at the mark.
-    pub fn remove_chars(&mut self, mark: Mark, direction: Direction) -> Option<Vec<u8>> {
+    pub fn remove_chars(&mut self, mark: Mark, direction: Direction, num_chars: uint) -> Option<Vec<u8>> {
         let text = &mut self.text;
         if let Some(&(idx, _)) = self.marks.get(&mark) {
             let range = match direction {
-                Direction::Left(n) => range(cmp::max(0, idx - n), idx),
-                Direction::Right(n) => range(idx, cmp::min(idx + n, text.len())),
-                Direction::RightWord(n_words, edger) => {
-                    range(idx, get_words(idx, n_words, edger, text).unwrap_or(text.len()))
+                Direction::Left => range(cmp::max(0, idx - num_chars), idx),
+                Direction::Right => range(idx, cmp::min(idx + num_chars, text.len())),
+                Direction::RightWord(edger) => {
+                    let num_words = num_chars;
+                    range(idx, get_words(idx, num_words, edger, text).unwrap_or(text.len()))
                 }
-                Direction::LeftWord(n_words, edger) => {
-                    range(get_words_rev(idx, n_words, edger, text).unwrap_or(0), idx)
+                Direction::LeftWord(edger) => {
+                    let num_words = num_chars;
+                    range(get_words_rev(idx, num_words, edger, text).unwrap_or(0), idx)
                 }
                 _ => unimplemented!()
             };
@@ -376,7 +393,7 @@ mod test {
     #[test]
     fn test_remove() {
         let mut buffer = setup_buffer("ABCD");
-        buffer.remove_chars(Mark::Cursor(0), Direction::Right(1));
+        buffer.remove_chars(Mark::Cursor(0), Direction::Right, 1);
 
         assert_eq!(buffer.len(), 4);
         assert_eq!(buffer.lines().next().unwrap(), [b'B', b'C', b'D']);
@@ -394,7 +411,7 @@ mod test {
     fn test_shift_down() {
         let mut buffer = setup_buffer("Test\nA\nTest");
         buffer.set_mark(Mark::Cursor(0), 2);
-        buffer.shift_mark(Mark::Cursor(0), Direction::Down(2));
+        buffer.shift_mark(Mark::Cursor(0), Direction::Down, 2);
 
         assert_eq!(buffer.get_mark_coords(Mark::Cursor(0)).unwrap(), (2, 2));
     }
@@ -402,7 +419,7 @@ mod test {
     #[test]
     fn test_shift_right() {
         let mut buffer = setup_buffer("Test");
-        buffer.shift_mark(Mark::Cursor(0), Direction::Right(1));
+        buffer.shift_mark(Mark::Cursor(0), Direction::Right, 1);
 
         assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 1);
     }
@@ -411,7 +428,7 @@ mod test {
     fn test_shift_up() {
         let mut buffer = setup_buffer("Test\nA\nTest");
         buffer.set_mark(Mark::Cursor(0), 10);
-        buffer.shift_mark(Mark::Cursor(0), Direction::Up(1));
+        buffer.shift_mark(Mark::Cursor(0), Direction::Up, 1);
 
         assert_eq!(buffer.get_mark_coords(Mark::Cursor(0)).unwrap(), (1, 1));
     }
@@ -420,7 +437,7 @@ mod test {
     fn test_shift_left() {
         let mut buffer = setup_buffer("Test");
         buffer.set_mark(Mark::Cursor(0), 2);
-        buffer.shift_mark(Mark::Cursor(0), Direction::Left(1));
+        buffer.shift_mark(Mark::Cursor(0), Direction::Left, 1);
 
         assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 1);
     }
@@ -429,7 +446,7 @@ mod test {
     fn test_shift_linestart() {
         let mut buffer = setup_buffer("Test");
         buffer.set_mark(Mark::Cursor(0), 2);
-        buffer.shift_mark(Mark::Cursor(0), Direction::LineStart);
+        buffer.shift_mark(Mark::Cursor(0), Direction::LineStart, 0);
 
         assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 0);
     }
@@ -437,7 +454,7 @@ mod test {
     #[test]
     fn test_shift_lineend() {
         let mut buffer = setup_buffer("Test");
-        buffer.shift_mark(Mark::Cursor(0), Direction::LineEnd);
+        buffer.shift_mark(Mark::Cursor(0), Direction::LineEnd, 0);
 
         assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 4);
     }
@@ -466,7 +483,7 @@ mod test {
     fn move_from_final_position() {
         let mut buffer = setup_buffer("Test");
         buffer.set_mark(Mark::Cursor(0), 4);
-        buffer.shift_mark(Mark::Cursor(0), Direction::Left(1));
+        buffer.shift_mark(Mark::Cursor(0), Direction::Left, 1);
 
         assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 3);
     }

@@ -14,11 +14,11 @@ pub enum Command {
     SaveBuffer,
     ExitEditor,
 
-    MoveCursor(Direction),
+    MoveCursor(Direction, uint),
     LineEnd,
     LineStart,
 
-    Delete(Direction),
+    Delete(Direction, uint),
     InsertTab,
     InsertChar(char),
 
@@ -107,12 +107,12 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Command::SaveBuffer      => utils::save_buffer(&self.view.buffer),
 
             // Navigation
-            Command::MoveCursor(dir) => self.view.move_cursor(dir),
+            Command::MoveCursor(dir, n) => self.view.move_cursor(dir, n),
             Command::LineEnd         => self.view.move_cursor_to_line_end(),
             Command::LineStart       => self.view.move_cursor_to_line_start(),
 
             // Editing
-            Command::Delete(dir)     => self.view.delete_chars(dir),
+            Command::Delete(dir, n)     => self.view.delete_chars(dir, n),
             Command::InsertTab       => self.view.insert_tab(),
             Command::InsertChar(c)   => self.view.insert_char(c),
             Command::Redo            => self.view.redo(),
