@@ -66,12 +66,7 @@ impl StandardMode {
 }
 
 impl Mode for StandardMode {
-    fn handle_key_event(&mut self, key: Option<Key>) -> Command {
-        let key = match key {
-            Some(k) => k,
-            None => return Command::Unknown
-        };
-
+    fn handle_key_event(&mut self, key: Key) -> Command {
         if let KeyMapState::Match(command) = self.keymap.check_key(key) {
             return command
         }

@@ -5,7 +5,7 @@ use super::Command;
 use super::KeyMapState;
 use super::Direction;
 use super::WordEdgeMatch;
-use super::{Overlay, OverlayType, OverlayEvent};
+use super::OverlayType;
 
 
 pub struct NormalMode {
@@ -58,12 +58,7 @@ impl NormalMode {
 }
 
 impl Mode for NormalMode {
-    fn handle_key_event(&mut self, key: Option<Key>) -> Command {
-        let key = match key {
-            Some(k) => k,
-            None => return Command::Unknown
-        };
-
+    fn handle_key_event(&mut self, key: Key) -> Command {
         if let KeyMapState::Match(command) = self.keymap.check_key(key) {
             return command
         }

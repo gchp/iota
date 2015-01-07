@@ -9,7 +9,7 @@ pub enum OverlayEvent {
     Ok,
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Show, PartialEq, Eq)]
 pub enum OverlayType {
     Prompt,
 }
@@ -30,13 +30,6 @@ pub enum Overlay {
 }
 
 impl Overlay {
-    pub fn is_none(&self) -> bool {
-        match *self {
-            Overlay::None => true,
-            _             => false,
-        }
-    }
-
     pub fn draw<F: Frontend>(&self, frontend: &mut F, uibuf: &mut UIBuffer) {
         match self {
             &Overlay::Prompt {prefix, ref data, ..} => {
@@ -73,36 +66,34 @@ impl Overlay {
         }
     }
 
-    pub fn handle_key_event(&mut self, key: Option<Key>) -> OverlayEvent {
-        if let Some(key) = key {
-            match self {
-                &Overlay::Prompt {ref mut cursor_x, ref mut data, ..} => {
-                    match key {
-                        Key::Esc => return OverlayEvent::Finished(None),
-                        Key::Backspace => {
-                            if let Some(c) = data.pop() {
-                                if let Some(width) = c.width(false) {
-                                    *cursor_x -= width;
-                                }
-                            }
-                        }
-                        Key::Enter => {
-                            // FIXME: dont clone
-                            let data = data.clone();
-                            return OverlayEvent::Finished(Some(data))
-                        }
-                        Key::Char(c) => {
+    pub fn handle_key_event(&mut self, key: Key) -> OverlayEvent {
+        match self {
+            &Overlay::Prompt {ref mut cursor_x, ref mut data, ..} => {
+                match key {
+                    Key::Esc => return OverlayEvent::Finished(None),
+                    Key::Backspace => {
+                        if let Some(c) = data.pop() {
                             if let Some(width) = c.width(false) {
-                                data.push(c);
-                                *cursor_x += width;
+                                *cursor_x -= width;
                             }
                         }
-                        _ => {}
                     }
+                    Key::Enter => {
+                        // FIXME: dont clone
+                        let data = data.clone();
+                        return OverlayEvent::Finished(Some(data))
+                    }
+                    Key::Char(c) => {
+                        if let Some(width) = c.width(false) {
+                            data.push(c);
+                            *cursor_x += width;
+                        }
+                    }
+                    _ => {}
                 }
-
-                _ => {}
             }
+
+            _ => {}
         }
         OverlayEvent::Ok
     }

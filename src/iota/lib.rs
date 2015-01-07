@@ -1,7 +1,6 @@
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 #![feature(slicing_syntax)]
-#![feature(associated_types)]
 
 extern crate rustbox;
 extern crate gapbuffer;

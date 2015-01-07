@@ -9,7 +9,7 @@ use overlay::{Overlay, OverlayType, OverlayEvent};
 use utils;
 
 
-#[derive(Copy, Show)]
+#[derive(Copy, Show, PartialEq, Eq)]
 pub enum Command {
     SaveBuffer,
     ExitEditor,
@@ -35,10 +35,10 @@ impl Command {
     #[inline]
     pub fn from_str(string: &str) -> Command {
         match string {
-            "q" | "quit" => Command::ExitEditor,
+            "q" | "quit"  => Command::ExitEditor,
             "w" | "write" => Command::SaveBuffer,
 
-            _            => Command::Unknown,
+            _             => Command::Unknown,
         }
     }
 }
@@ -65,12 +65,18 @@ impl<'e, T: Frontend> Editor<'e, T> {
     }
 
     fn handle_key_event(&mut self, key: Option<Key>) {
+        let key = match key {
+            Some(k) => k,
+            None => return
+        };
+
         let command = match self.view.overlay {
             Overlay::None => self.mode.handle_key_event(key),
             _             => {
                 let event = self.view.overlay.handle_key_event(key);
                 if let OverlayEvent::Finished(response) = event {
                     self.view.overlay = Overlay::None;
+                    self.view.clear(&mut self.frontend);
                     if let Some(data) = response {
                         Command::from_str(&*data)
                     } else {

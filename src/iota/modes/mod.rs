@@ -13,6 +13,11 @@ mod standard;
 mod normal;
 
 
+/// The concept of Iota's modes are taken from Vi.
+/// 
+/// A mode is a mechanism for interpreting key events and converting them into
+/// commands which the Editor will interpret.
 pub trait Mode {
-    fn handle_key_event(&mut self, key: Option<Key>) -> Command;
+    /// Given a Key, return a Command for the Editor to interpret
+    fn handle_key_event(&mut self, key: Key) -> Command;
 }
