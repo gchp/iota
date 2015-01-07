@@ -1,6 +1,6 @@
 //FIXME: Check unicode support
 // stdlib dependencies
-use std::{ cmp, char };
+use std::cmp;
 use std::collections::HashMap;
 use std::io::{File, Reader, BufferedReader};
 
@@ -258,7 +258,8 @@ impl WordEdgeMatch {
     /// If c1 -> c2 is the start of a word.
     /// If end of word matching is wanted then pass the chars in reversed.
     fn is_word_edge(&self, c1: &u8, c2: &u8) -> bool {
-        match (self, char::from_u32(*c1 as u32).unwrap(), char::from_u32(*c2 as u32).unwrap()) {
+        // FIXME: unicode support - issue #69
+        match (self, *c1 as char, *c2 as char) {
             (_, '\n', '\n') => true, // Blank lines are always counted as a word
             (&WordEdgeMatch::Whitespace, c1, c2) => c1.is_whitespace() && !c2.is_whitespace(),
             (&WordEdgeMatch::Alphabet, c1, c2) if c1.is_whitespace() => !c2.is_whitespace(),
