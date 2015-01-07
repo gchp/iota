@@ -40,7 +40,7 @@ impl NormalMode {
         keymap.bind_key(Key::Char('B'), Command::MoveCursor(Direction::LeftWord(1, WordEdgeMatch::Whitespace)));
         keymap.bind_key(Key::Char('w'), Command::MoveCursor(Direction::RightWord(1, WordEdgeMatch::Alphabet)));
         keymap.bind_key(Key::Char('b'), Command::MoveCursor(Direction::LeftWord(1, WordEdgeMatch::Alphabet)));
-        keymap.bind_key(Key::Char('^'), Command::LineStart);
+        keymap.bind_key(Key::Char('0'), Command::LineStart);
         keymap.bind_key(Key::Char('$'), Command::LineEnd);
 
         // editing
