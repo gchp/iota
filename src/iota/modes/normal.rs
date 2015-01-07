@@ -66,3 +66,26 @@ impl Mode for NormalMode {
         Command::Unknown
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use editor::Command;
+    use buffer::Direction;
+    use keyboard::Key;
+    use modes::Mode;
+    use super::*;
+
+    fn expect_key_command(k: Key, c: Command) {
+        let mut mode: Box<Mode> = box NormalMode::new();
+        let command = mode.handle_key_event(k);
+        assert_eq!(command, c)
+    }
+
+    #[test]
+    fn test_movement_keybindings() {
+        expect_key_command(Key::Char('h'), Command::MoveCursor(Direction::Left(1)));
+        expect_key_command(Key::Char('j'), Command::MoveCursor(Direction::Down(1)));
+        expect_key_command(Key::Char('k'), Command::MoveCursor(Direction::Up(1)));
+        expect_key_command(Key::Char('l'), Command::MoveCursor(Direction::Right(1)));
+    }
+}
