@@ -87,7 +87,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
     pub fn start(&mut self) {
         while self.running {
-            self.view.clear(&mut self.frontend);
             self.draw();
             self.frontend.present();
             let event = self.frontend.poll_event();
