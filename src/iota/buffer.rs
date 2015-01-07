@@ -1,6 +1,6 @@
 //FIXME: Check unicode support
 // stdlib dependencies
-use std::cmp;
+use std::{ cmp, char };
 use std::collections::HashMap;
 use std::io::{File, Reader, BufferedReader};
 
@@ -18,8 +18,15 @@ pub enum Mark {
 }
 
 #[derive(Copy, PartialEq, Eq, Show)]
+pub enum WordEdgeMatch {
+    Alphabet,
+    Whitespace,
+}
+
+#[derive(Copy, PartialEq, Eq, Show)]
 pub enum Direction {
     Up(uint), Down(uint), Left(uint), Right(uint),
+    LeftWord(uint, WordEdgeMatch), RightWord(uint, WordEdgeMatch),
     LineStart, LineEnd,
 }
 
@@ -170,6 +177,18 @@ impl Buffer {
                             (cmp::min(line_idx + nlines[n-1] + 1, last), line_idx)
                         } else { (cmp::min(line_idx + nlines[n-1] + 1, nlines[n]), line_idx) }
                     }
+                    Direction::RightWord(n_words, edger)     =>  {
+                        if let Some(new_idx) = get_words(idx, n_words, edger, text) {
+                            if new_idx < last { (new_idx, new_idx - get_line(new_idx, text).unwrap()) }
+                            else { (last, last - get_line(last, text).unwrap()) }
+                        } else { (last, last - get_line(last, text).unwrap()) }
+                    }
+                    Direction::LeftWord(n_words, edger)     =>  {
+                        if let Some(new_idx) = get_words_rev(idx, n_words, edger, text) {
+                            if new_idx > 0 { (new_idx, new_idx - get_line(new_idx, text).unwrap()) }
+                            else { (0, 0) }
+                        } else { (0, 0) }
+                    }
                     Direction::LineStart    =>  { (line, 0) }
                     Direction::LineEnd      =>  { (line_end, line_end - line) }
                 }
@@ -177,14 +196,30 @@ impl Buffer {
         }
     }
 
-    /// Remove the char at the mark.
-    pub fn remove_char(&mut self, mark: Mark) -> Option<u8> {
+    /// Remove the chars at the mark.
+    pub fn remove_chars(&mut self, mark: Mark, direction: Direction) -> Option<Vec<u8>> {
+        let text = &mut self.text;
         if let Some(&(idx, _)) = self.marks.get(&mark) {
-            if let Some(ch) = self.text.remove(idx) {
-                let mut transaction = self.log.start(idx);
-                transaction.log(Change::Remove(idx, ch), idx);
-                Some(ch)
-            } else { None }
+            let range = match direction {
+                Direction::Left(n) => range(cmp::max(0, idx - n), idx),
+                Direction::Right(n) => range(idx, cmp::min(idx + n, text.len())),
+                Direction::RightWord(n_words, edger) => {
+                    range(idx, get_words(idx, n_words, edger, text).unwrap_or(text.len()))
+                }
+                Direction::LeftWord(n_words, edger) => {
+                    range(get_words_rev(idx, n_words, edger, text).unwrap_or(0), idx)
+                }
+                _ => unimplemented!()
+            };
+            let mut transaction = self.log.start(idx);
+            let mut vec = range
+                .rev()
+                .filter_map(|idx| text.remove(idx).map(|ch| (idx, ch)))
+                .inspect(|&(idx, ch)| transaction.log(Change::Remove(idx, ch), idx))
+                .map(|(_, ch)| ch)
+                .collect::<Vec<u8>>();
+            vec.reverse();
+            Some(vec)
         } else { None }
     }
 
@@ -213,6 +248,40 @@ impl Buffer {
         } else { None }
     }
 
+}
+
+fn is_alphanumeric_or_(c: char) -> bool {
+    c.is_alphanumeric() || c == '_'
+}
+
+impl WordEdgeMatch {
+    /// If c1 -> c2 is the start of a word.
+    /// If end of word matching is wanted then pass the chars in reversed.
+    fn is_word_edge(&self, c1: &u8, c2: &u8) -> bool {
+        match (self, char::from_u32(*c1 as u32).unwrap(), char::from_u32(*c2 as u32).unwrap()) {
+            (_, '\n', '\n') => true, // Blank lines are always counted as a word
+            (&WordEdgeMatch::Whitespace, c1, c2) => c1.is_whitespace() && !c2.is_whitespace(),
+            (&WordEdgeMatch::Alphabet, c1, c2) if c1.is_whitespace() => !c2.is_whitespace(),
+            (&WordEdgeMatch::Alphabet, c1, c2) if is_alphanumeric_or_(c1) => !is_alphanumeric_or_(c2) && !c2.is_whitespace(),
+            (&WordEdgeMatch::Alphabet, c1, c2) if !is_alphanumeric_or_(c1) => is_alphanumeric_or_(c2) && !c2.is_whitespace(),
+            (&WordEdgeMatch::Alphabet, _, _) => false,
+        }
+    }
+}
+
+fn get_words(mark: uint, n_words: uint, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<uint> {
+    range(mark + 1, text.len() - 1)
+        .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
+        .take(n_words)
+        .next()
+}
+
+fn get_words_rev(mark: uint, n_words: uint, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<uint> {
+    range(1, mark)
+        .rev()
+        .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
+        .take(n_words)
+        .next()
 }
 
 /// Returns the index of the first character of the line the mark is in.
@@ -306,7 +375,7 @@ mod test {
     #[test]
     fn test_remove() {
         let mut buffer = setup_buffer("ABCD");
-        buffer.remove_char(Mark::Cursor(0));
+        buffer.remove_chars(Mark::Cursor(0), Direction::Right(1));
 
         assert_eq!(buffer.len(), 4);
         assert_eq!(buffer.lines().next().unwrap(), [b'B', b'C', b'D']);

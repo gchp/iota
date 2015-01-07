@@ -5,6 +5,7 @@ pub use super::editor::Command;
 pub use super::view::View;
 pub use super::keymap::KeyMapState;
 pub use super::buffer::Direction;
+pub use super::buffer::WordEdgeMatch;
 pub use super::Response;
 pub use super::utils;
 pub use super::overlay::{Overlay, OverlayType, OverlayEvent};
