@@ -2,7 +2,6 @@ use super::Mode;
 use super::KeyMap;
 use super::Key;
 use super::Command;
-use super::View;
 use super::KeyMapState;
 use super::Direction;
 
@@ -67,7 +66,7 @@ impl StandardMode {
 }
 
 impl Mode for StandardMode {
-    fn handle_key_event(&mut self, key: Option<Key>, _view: &mut View) -> Command {
+    fn handle_key_event(&mut self, key: Option<Key>) -> Command {
         let key = match key {
             Some(k) => k,
             None => return Command::Unknown

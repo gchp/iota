@@ -2,7 +2,6 @@ use super::Mode;
 use super::KeyMap;
 use super::Key;
 use super::Command;
-use super::View;
 use super::KeyMapState;
 use super::Direction;
 use super::WordEdgeMatch;
@@ -59,25 +58,11 @@ impl NormalMode {
 }
 
 impl Mode for NormalMode {
-    fn handle_key_event(&mut self, key: Option<Key>, view: &mut View) -> Command {
+    fn handle_key_event(&mut self, key: Option<Key>) -> Command {
         let key = match key {
             Some(k) => k,
             None => return Command::Unknown
         };
-
-        match view.overlay {
-            Overlay::None => {}
-            _             => {
-                let event = view.overlay.handle_key_event(key);
-                if let OverlayEvent::Finished(response) = event {
-                    view.overlay = Overlay::None;
-                    if let Some(data) = response {
-                        return Command::from_str(&*data)
-                    }
-                }
-                return Command::None
-            }
-        }
 
         if let KeyMapState::Match(command) = self.keymap.check_key(key) {
             return command

@@ -5,7 +5,7 @@ use keyboard::Key;
 use view::View;
 use frontends::{Frontend, EditorEvent};
 use modes::Mode;
-use overlay::{OverlayType};
+use overlay::{Overlay, OverlayType, OverlayEvent};
 use utils;
 
 
@@ -65,7 +65,23 @@ impl<'e, T: Frontend> Editor<'e, T> {
     }
 
     fn handle_key_event(&mut self, key: Option<Key>) {
-        let command = self.mode.handle_key_event(key, &mut self.view);
+        let command = match self.view.overlay {
+            Overlay::None => self.mode.handle_key_event(key),
+            _             => {
+                let event = self.view.overlay.handle_key_event(key);
+                if let OverlayEvent::Finished(response) = event {
+                    self.view.overlay = Overlay::None;
+                    if let Some(data) = response {
+                        Command::from_str(&*data)
+                    } else {
+                        Command::None
+                    }
+                } else {
+                    Command::None
+                }
+            }
+        };
+
         let response = self.handle_command(command);
 
         if let Response::Quit = response {
