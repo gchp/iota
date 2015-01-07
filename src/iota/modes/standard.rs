@@ -4,10 +4,7 @@ use super::Key;
 use super::Command;
 use super::View;
 use super::KeyMapState;
-use super::EventStatus;
 use super::Direction;
-use super::Response;
-use super::utils;
 
 
 /// Standard mode is Iota's default mode.
@@ -67,61 +64,23 @@ impl StandardMode {
         keymap
     }
 
-    fn handle_command(&mut self, c: Command, view: &mut View) -> Response {
-        match c {
-            // Editor Commands
-            Command::ExitEditor      => return Response::Quit,
-            Command::SaveBuffer      => utils::save_buffer(&view.buffer),
-
-            // Navigation
-            Command::MoveCursor(dir) => view.move_cursor(dir),
-            Command::LineEnd         => view.move_cursor_to_line_end(),
-            Command::LineStart       => view.move_cursor_to_line_start(),
-
-            // Editing
-            Command::Delete(dir)     => view.delete_chars(dir),
-            Command::InsertTab       => view.insert_tab(),
-            Command::InsertChar(c)   => view.insert_char(c),
-            Command::Redo            => view.redo(),
-            Command::Undo            => view.undo(),
-
-            _ => {},
-        }
-        Response::Continue
-    }
 }
 
 impl Mode for StandardMode {
-    fn handle_key_event(&mut self, key: Option<Key>, view: &mut View) -> EventStatus {
+    fn handle_key_event(&mut self, key: Option<Key>, _view: &mut View) -> Command {
         let key = match key {
             Some(k) => k,
-            None => return EventStatus::NotHandled
+            None => return Command::Unknown
         };
 
-        // send key to the keymap
-        match self.keymap.check_key(key) {
-            KeyMapState::Match(command) => {
-                return EventStatus::Handled(self.handle_command(command, view));
-            },
-            KeyMapState::Continue => {
-                // keep going and wait for more keypresses
-                return EventStatus::Handled(Response::Continue)
-            },
-            KeyMapState::None => {}  // do nothing and handle the key normally
+        if let KeyMapState::Match(command) = self.keymap.check_key(key) {
+            return command
         }
 
-        // if the key is a character that is not part of a keybinding, insert into the buffer
-        // otherwise, ignore it.
         if let Key::Char(c) = key {
-            view.insert_char(c);
-            EventStatus::Handled(Response::Continue)
+            Command::InsertChar(c)
         } else {
-            EventStatus::NotHandled
+            Command::None
         }
-
-    }
-
-    fn interpret_command_input(&mut self, _input: String, _view: &mut View) -> Response {
-        Response::Continue
     }
 }

@@ -6,6 +6,7 @@ use view::View;
 use frontends::{Frontend, EditorEvent};
 use modes::Mode;
 use overlay::{OverlayType};
+use utils;
 
 
 #[derive(Copy, Show)]
@@ -27,6 +28,7 @@ pub enum Command {
     Redo,
 
     Unknown,
+    None,
 }
 
 impl Command {
@@ -34,17 +36,12 @@ impl Command {
     pub fn from_str(string: &str) -> Command {
         match string {
             "q" | "quit" => Command::ExitEditor,
+            "w" | "write" => Command::SaveBuffer,
 
             _            => Command::Unknown,
         }
     }
 }
-
-pub enum EventStatus {
-    Handled(Response),
-    NotHandled,
-}
-
 
 pub struct Editor<'e, T: Frontend> {
     view: View<'e>,
@@ -67,22 +64,43 @@ impl<'e, T: Frontend> Editor<'e, T> {
         }
     }
 
-    pub fn handle_key_event(&mut self, key: Option<Key>) {
-        let Editor {ref mut view, .. } = *self;
-
-        let response = match self.mode.handle_key_event(key, view) {
-            EventStatus::Handled(response) => { response }
-            EventStatus::NotHandled        => { Response::Continue }
-        };
+    fn handle_key_event(&mut self, key: Option<Key>) {
+        let command = self.mode.handle_key_event(key, &mut self.view);
+        let response = self.handle_command(command);
 
         if let Response::Quit = response {
             self.running = false
         }
     }
 
-    pub fn draw(&mut self) {
+    fn draw(&mut self) {
         self.view.draw(&mut self.frontend);
         self.view.draw_status(&mut self.frontend);
+    }
+
+    fn handle_command(&mut self, c: Command) -> Response {
+        match c {
+            // Editor Commands
+            Command::ExitEditor      => return Response::Quit,
+            Command::SaveBuffer      => utils::save_buffer(&self.view.buffer),
+
+            // Navigation
+            Command::MoveCursor(dir) => self.view.move_cursor(dir),
+            Command::LineEnd         => self.view.move_cursor_to_line_end(),
+            Command::LineStart       => self.view.move_cursor_to_line_start(),
+
+            // Editing
+            Command::Delete(dir)     => self.view.delete_chars(dir),
+            Command::InsertTab       => self.view.insert_tab(),
+            Command::InsertChar(c)   => self.view.insert_char(c),
+            Command::Redo            => self.view.redo(),
+            Command::Undo            => self.view.undo(),
+
+            Command::SetOverlay(o)   => self.view.set_overlay(o),
+
+            _ => {},
+        }
+        Response::Continue
     }
 
     pub fn start(&mut self) {

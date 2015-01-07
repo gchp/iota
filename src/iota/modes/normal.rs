@@ -4,11 +4,8 @@ use super::Key;
 use super::Command;
 use super::View;
 use super::KeyMapState;
-use super::EventStatus;
 use super::Direction;
 use super::WordEdgeMatch;
-use super::Response;
-use super::utils;
 use super::{Overlay, OverlayType, OverlayEvent};
 
 
@@ -59,69 +56,33 @@ impl NormalMode {
         keymap
     }
 
-    fn handle_command(&mut self, c: Command, view: &mut View) -> Response {
-        match c {
-            // Editor Commands
-            Command::ExitEditor      => return Response::Quit,
-            Command::SaveBuffer      => utils::save_buffer(&view.buffer),
-
-            // Navigation
-            Command::MoveCursor(dir) => view.move_cursor(dir),
-            Command::LineEnd         => view.move_cursor_to_line_end(),
-            Command::LineStart       => view.move_cursor_to_line_start(),
-
-            // Editing
-            Command::Delete(dir)     => view.delete_chars(dir),
-            Command::Redo            => view.redo(),
-            Command::Undo            => view.undo(),
-
-            // Prompt
-            Command::SetOverlay(o)   => view.set_overlay(o),
-            _                        => {}
-        }
-        Response::Continue
-    }
 }
 
 impl Mode for NormalMode {
-    fn handle_key_event(&mut self, key: Option<Key>, view: &mut View) -> EventStatus {
+    fn handle_key_event(&mut self, key: Option<Key>, view: &mut View) -> Command {
         let key = match key {
             Some(k) => k,
-            None => return EventStatus::NotHandled
+            None => return Command::Unknown
         };
 
-        // if there is an overlay on the view, send the key there
-        // and don't allow the mode to handle it.
         match view.overlay {
-            Overlay::None => {},
+            Overlay::None => {}
             _             => {
                 let event = view.overlay.handle_key_event(key);
                 if let OverlayEvent::Finished(response) = event {
                     view.overlay = Overlay::None;
                     if let Some(data) = response {
-                        return EventStatus::Handled(self.interpret_command_input(data, view))
+                        return Command::from_str(&*data)
                     }
                 }
-                return EventStatus::NotHandled
+                return Command::None
             }
         }
 
-        // send key to the keymap
-        match self.keymap.check_key(key) {
-            KeyMapState::Match(command) => {
-                EventStatus::Handled(self.handle_command(command, view))
-            },
-            KeyMapState::Continue => {
-                // keep going and wait for more keypresses
-                EventStatus::Handled(Response::Continue)
-            },
-            KeyMapState::None => { EventStatus::NotHandled }
+        if let KeyMapState::Match(command) = self.keymap.check_key(key) {
+            return command
         }
 
-    }
-
-    fn interpret_command_input(&mut self, input: String, view: &mut View) -> Response {
-        let command = Command::from_str(&*input);
-        self.handle_command(command, view)
+        Command::Unknown
     }
 }
