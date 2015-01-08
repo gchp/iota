@@ -107,6 +107,11 @@ impl<'e, T: Frontend> Editor<'e, T> {
         self.handle_command(command);
     }
 
+    /// Translate the response from an Overlay to a Command
+    ///
+    /// In most cases, we will just want to convert the response directly to
+    /// a Command, however in some cases we will want to perform other actions
+    /// first, such as in the case of Overlay::SavePrompt.
     fn handle_overlay_response(&mut self, response: Option<String>) -> Command {
         match response {
             Some(data) => {
