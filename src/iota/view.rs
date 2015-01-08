@@ -1,4 +1,6 @@
 use std::cmp;
+use std::borrow::Cow;
+use std::io::{fs, File, FileMode, FileAccess, TempDir};
 
 use buffer::{Buffer, Direction, Mark};
 use input::Input;
@@ -156,6 +158,7 @@ impl<'v> View<'v> {
                     data: String::new(),
                 };
             }
+            _ => {}
         }
     }
 
@@ -251,6 +254,58 @@ impl<'v> View<'v> {
                     else { return; };
         self.buffer.set_mark(self.cursor, point);
         self.maybe_move_screen();
+    }
+
+    fn save_buffer(&mut self) {
+        let path = match self.buffer.file_path {
+            Some(ref p) => Cow::Borrowed(p),
+            None => {
+                // NOTE: this should never happen, as the file path
+                // should have been set inside the try_save_buffer method.
+                //
+                // If this runs, it probably means save_buffer has been called
+                // directly, rather than try_save_buffer.
+                Cow::Owned(Path::new("untitled"))
+            },
+        };
+        let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {
+            Ok(d) => d,
+            Err(e) => panic!("file error: {}", e)
+        };
+
+        let tmppath = tmpdir.path().join(Path::new("tmpfile"));
+        let mut file = match File::open_mode(&tmppath, FileMode::Open, FileAccess::Write) {
+            Ok(f) => f,
+            Err(e) => panic!("file error: {}", e)
+        };
+
+        //TODO (lee): Is iteration still necessary in this format?
+        for line in self.buffer.lines() {
+            let result = file.write(line);
+
+            if result.is_err() {
+                // TODO(greg): figure out what to do here.
+                panic!("Something went wrong while writing the file");
+            }
+        }
+
+        if let Err(e) = fs::rename(&tmppath, &*path) {
+            panic!("file error: {}", e);
+        }
+    }
+
+    pub fn try_save_buffer(&mut self) {
+        match self.buffer.file_path {
+            Some(_) => self.save_buffer(),
+            None => {
+                let prefix = "Enter file name: ";
+                self.overlay = Overlay::SavePrompt {
+                    cursor_x: prefix.len(),
+                    prefix: prefix,
+                    data: String::new(),
+                };
+            },
+        };
     }
 
 }

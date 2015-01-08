@@ -5,7 +5,6 @@ use view::View;
 use frontends::{Frontend, EditorEvent};
 use modes::Mode;
 use overlay::{Overlay, OverlayType, OverlayEvent};
-use utils;
 
 
 #[derive(Copy, Show, PartialEq, Eq)]
@@ -84,25 +83,45 @@ impl<'e, T: Frontend> Editor<'e, T> {
             None => return
         };
 
+        let mut remove_overlay = false;
         let command = match self.view.overlay {
             Overlay::None => self.mode.handle_key_event(key),
             _             => {
                 let event = self.view.overlay.handle_key_event(key);
-                if let OverlayEvent::Finished(response) = event {
-                    self.view.overlay = Overlay::None;
-                    self.view.clear(&mut self.frontend);
-                    if let Some(data) = response {
-                        Command::from_str(&*data)
-                    } else {
-                        Command::None
+                match event {
+                    OverlayEvent::Finished(response) => {
+                        remove_overlay = true;
+                        self.handle_overlay_response(response)
                     }
-                } else {
-                    Command::None
+
+                    _ => { Command:: None }
                 }
             }
         };
 
+        if remove_overlay {
+            self.view.overlay = Overlay::None;
+            self.view.clear(&mut self.frontend);
+        }
+
         self.handle_command(command);
+    }
+
+    fn handle_overlay_response(&mut self, response: Option<String>) -> Command {
+        match response {
+            Some(data) => {
+                match self.view.overlay {
+                    Overlay::Prompt { .. } => Command::from_str(&*data),
+                    Overlay::SavePrompt { .. } => {
+                        let path = Path::new(&*data);
+                        self.view.buffer.file_path = Some(path);
+                        Command::SaveBuffer
+                    }
+                    _ => Command::None,
+                }
+            }
+            None => Command::None
+        }
     }
 
     /// Handle resize events
@@ -127,7 +146,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
         match command {
             // Editor Commands
-            Command::SaveBuffer         => utils::save_buffer(&self.view.buffer),
+            Command::SaveBuffer         => self.view.try_save_buffer(),
             Command::SetOverlay(o)      => self.view.set_overlay(o),
 
             // Navigation

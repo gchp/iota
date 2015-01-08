@@ -12,6 +12,7 @@ pub enum OverlayEvent {
 #[derive(Copy, Show, PartialEq, Eq)]
 pub enum OverlayType {
     Prompt,
+    SavePrompt,
 }
 
 
@@ -26,13 +27,20 @@ pub enum Overlay {
         prefix: &'static str,
     },
 
+    SavePrompt {
+        cursor_x: uint,
+        data: String,
+        prefix: &'static str,
+    },
+
     None,
 }
 
 impl Overlay {
     pub fn draw<F: Frontend>(&self, frontend: &mut F, uibuf: &mut UIBuffer) {
         match self {
-            &Overlay::Prompt {prefix, ref data, ..} => {
+            &Overlay::Prompt     {prefix, ref data, ..} |
+            &Overlay::SavePrompt {prefix, ref data, ..} => {
                 let height = frontend.get_window_height() - 1;
                 let offset = prefix.len();
 
@@ -55,7 +63,8 @@ impl Overlay {
 
     pub fn draw_cursor<F: Frontend>(&mut self, frontend: &mut F) {
         match self {
-            &Overlay::Prompt {cursor_x, ..} => {
+            &Overlay::Prompt     {cursor_x, ..} |
+            &Overlay::SavePrompt {cursor_x, ..} => {
                 // Prompt is always on the bottom, so we can use the
                 // height given by the frontend here
                 let height = frontend.get_window_height() - 1;
@@ -68,7 +77,8 @@ impl Overlay {
 
     pub fn handle_key_event(&mut self, key: Key) -> OverlayEvent {
         match self {
-            &Overlay::Prompt {ref mut cursor_x, ref mut data, ..} => {
+            &Overlay::Prompt     {ref mut cursor_x, ref mut data, ..} |
+            &Overlay::SavePrompt {ref mut cursor_x, ref mut data, ..} => {
                 match key {
                     Key::Esc => return OverlayEvent::Finished(None),
                     Key::Backspace => {
