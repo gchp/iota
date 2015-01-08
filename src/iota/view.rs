@@ -232,9 +232,9 @@ impl<'v> View<'v> {
 
     /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {
+        self.buffer.insert_char(self.cursor, ch as u8);
         // NOTE: the last param to char_width here may not be correct
-        if let Some(ch_width) = utils::char_width(ch, false, 4, 0) {
-            self.buffer.insert_char(self.cursor, ch as u8);
+        if let Some(ch_width) = utils::char_width(ch, false, 4, 1) {
             self.move_cursor(Direction::Right, ch_width)
         }
     }

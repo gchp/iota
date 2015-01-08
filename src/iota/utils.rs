@@ -11,6 +11,8 @@ pub fn data_from_str(s: &'static str) -> String {
 pub fn char_width(c: char, is_cjk: bool, tab_width: uint, position: uint) -> Option<uint> {
     if c == '\t' {
         Some(tab_width - position%tab_width)
+    } else if c == '\n' {
+        Some(1)
     } else {
         c.width(is_cjk)
     }
