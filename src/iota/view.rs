@@ -6,6 +6,8 @@ use overlay::{Overlay, OverlayType};
 
 use std::cmp;
 
+use std::cmp;
+
 /// A View is an abstract Window (into a Buffer).
 ///
 /// It draws a portion of a Buffer to a UIBuffer which in turn is drawn to the
