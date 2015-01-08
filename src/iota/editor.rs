@@ -105,6 +105,13 @@ impl<'e, T: Frontend> Editor<'e, T> {
         self.handle_command(command);
     }
 
+    /// Handle resize events
+    ///
+    /// width and height represent the new height of the window.
+    fn handle_resize_event(&mut self, width: uint, height: uint) {
+        self.view.resize(width, height);
+    }
+
     /// Draw the current view to the frontend
     fn draw(&mut self) {
         self.view.draw(&mut self.frontend);
@@ -146,8 +153,11 @@ impl<'e, T: Frontend> Editor<'e, T> {
             self.frontend.present();
             let event = self.frontend.poll_event();
 
-            if let EditorEvent::KeyEvent(key) = event {
-                self.handle_key_event(key)
+            match event {
+                EditorEvent::KeyEvent(key)         => self.handle_key_event(key),
+                EditorEvent::Resize(width, height) => self.handle_resize_event(width, height),
+
+                _ => {}
             }
         }
     }

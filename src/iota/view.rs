@@ -24,8 +24,6 @@ pub struct View<'v> {
 
 impl<'v> View<'v> {
 
-    //----- CONSTRUCTORS ---------------------------------------------------------------------------
-
     pub fn new(source: Input, width: uint, height: uint) -> View<'v> {
         let mut buffer = match source {
             Input::Filename(path) => {
@@ -39,12 +37,10 @@ impl<'v> View<'v> {
             },
         };
 
-        // NOTE(greg): this may not play well with resizing
-        let uibuf = UIBuffer::new(width, height);
-
         let cursor = Mark::Cursor(0);
-        buffer.set_mark(cursor, 0);
         let top_line = Mark::DisplayMark(0);
+
+        buffer.set_mark(cursor, 0);
         buffer.set_mark(top_line, 0);
 
         View {
@@ -52,14 +48,13 @@ impl<'v> View<'v> {
             top_line: top_line,
             left_col: 0,
             cursor: cursor,
-            uibuf: uibuf,
+            uibuf: UIBuffer::new(width, height),
             overlay: Overlay::None,
             threshold: 5,
         }
     }
 
     pub fn get_height(&self) -> uint {
-        // NOTE(greg): when the status bar needs to move up, this value should be changed
         self.uibuf.get_height() -1
     }
 
@@ -67,7 +62,14 @@ impl<'v> View<'v> {
         self.uibuf.get_width()
     }
 
-    //----- DRAWING METHODS ------------------------------------------------------------------------
+    /// Resize the view
+    ///
+    /// This involves simply changing the size of the associated UIBuffer
+    pub fn resize(&mut self, width: uint, height: uint) {
+        let uibuf = UIBuffer::new(width, height);
+        self.uibuf = uibuf;
+    }
+
     /// Clear the buffer
     ///
     /// Fills every cell in the UIBuffer with the space (' ') char.

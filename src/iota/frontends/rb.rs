@@ -34,6 +34,9 @@ impl<'f> Frontend for RustboxFrontend<'f> {
                 };
                 EditorEvent::KeyEvent(k)
             }
+            Event::ResizeEvent(width, height) => {
+                EditorEvent::Resize(width as uint, height as uint)
+            }
             _ => EditorEvent::UnSupported
         }
     }

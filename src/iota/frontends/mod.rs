@@ -9,6 +9,7 @@ pub use self::rb::RustboxFrontend;
 /// elsewhere in the program.
 pub enum EditorEvent {
     KeyEvent(Option<Key>),
+    Resize(uint, uint),
     UnSupported
 }
 
