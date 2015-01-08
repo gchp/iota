@@ -167,6 +167,10 @@ impl Builder {
                 // and a particular number, return the nth of that kind
                 return Some(TextObject { anchor: self.anchor.unwrap_or(Anchor::default()),
                                          reference: Reference::Index(kind, n as u32) })
+            } else {
+                // just the kind, nothing else, find next instance from cursor
+                return Some(TextObject { anchor: self.anchor.unwrap_or(Anchor::default()),
+                                         reference: Reference::Offset(Mark::Cursor(0), kind, 1) })
             }
         }
         None
@@ -190,7 +194,7 @@ impl Builder {
               | yes (operation)   | no     | no     | yes          | -    |   | apply operation to reference with default anchor                  |
               | yes (operation)   | no     | yes    | -            | -    |   | apply operation to object                                         |
               | yes (operation)   | yes    | no     | no           | no   |   | incomplete                                                        |
-              | yes (operation)   | yes    | no     | no           | yes  |   | apply operation to kind at cursor n times                         |
+              | yes (operation)   | yes    | no     | no           | yes  |   | apply operation to nth instance of kind                           |
         */
         
         // editor instructions may not need a text object, go ahead and return immediately
