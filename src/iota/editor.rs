@@ -112,26 +112,28 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
     /// Handle the given command, performing the associated action
     fn handle_command(&mut self, command: Command) {
+        // check for the ExitEditor command first
         if let Command::ExitEditor = command {
             self.running = false;
+            return;
         }
+
         match command {
             // Editor Commands
-            Command::SaveBuffer      => utils::save_buffer(&self.view.buffer),
+            Command::SaveBuffer         => utils::save_buffer(&self.view.buffer),
+            Command::SetOverlay(o)      => self.view.set_overlay(o),
 
             // Navigation
             Command::MoveCursor(dir, n) => self.view.move_cursor(dir, n),
-            Command::LineEnd         => self.view.move_cursor_to_line_end(),
-            Command::LineStart       => self.view.move_cursor_to_line_start(),
+            Command::LineEnd            => self.view.move_cursor_to_line_end(),
+            Command::LineStart          => self.view.move_cursor_to_line_start(),
 
             // Editing
             Command::Delete(dir, n)     => self.view.delete_chars(dir, n),
-            Command::InsertTab       => self.view.insert_tab(),
-            Command::InsertChar(c)   => self.view.insert_char(c),
-            Command::Redo            => self.view.redo(),
-            Command::Undo            => self.view.undo(),
-
-            Command::SetOverlay(o)   => self.view.set_overlay(o),
+            Command::InsertTab          => self.view.insert_tab(),
+            Command::InsertChar(c)      => self.view.insert_char(c),
+            Command::Redo               => self.view.redo(),
+            Command::Undo               => self.view.undo(),
 
             _ => {},
         }
