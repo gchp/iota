@@ -18,6 +18,7 @@ pub struct View<'v> {
     left_col: uint,         //Index into the top line to set the left column to.
     cursor: Mark,           //Cursor displayed by this buffer.
     uibuf: UIBuffer,        //UIBuffer
+    pub overlay: Overlay,
     threshold: uint,
 }
 
@@ -52,6 +53,7 @@ impl<'v> View<'v> {
             left_col: 0,
             cursor: cursor,
             uibuf: uibuf,
+            overlay: Overlay::None,
             threshold: 5,
         }
     }
@@ -83,8 +85,15 @@ impl<'v> View<'v> {
             draw_line(&mut self.uibuf, line, index, self.left_col);
             if index == self.get_height() { break; }
         }
+
+        match self.overlay {
+            Overlay::None => self.draw_cursor(frontend),
+            _ => {
+                self.overlay.draw(frontend, &mut self.uibuf);
+                self.overlay.draw_cursor(frontend);
+            }
+        }
         self.draw_status(frontend);
-        self.draw_cursor(frontend);
         self.uibuf.draw_everything(frontend);
     }
 
