@@ -1,5 +1,3 @@
-use buffer::Buffer;
-
 #[cfg(test)]
 pub fn data_from_str(s: &'static str) -> String {
     String::from_str(s)
