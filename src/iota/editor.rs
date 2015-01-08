@@ -97,7 +97,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
     fn draw(&mut self) {
         self.view.draw(&mut self.frontend);
-        self.view.draw_status(&mut self.frontend);
     }
 
     fn handle_command(&mut self, c: Command) -> Response {

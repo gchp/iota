@@ -4,6 +4,8 @@ use uibuf::{UIBuffer, CharColor};
 use frontends::Frontend;
 use overlay::{Overlay, OverlayType};
 
+use std::cmp;
+
 /// A View is an abstract Window (into a Buffer).
 ///
 /// It draws a portion of a Buffer to a UIBuffer which in turn is drawn to the
@@ -11,13 +13,13 @@ use overlay::{Overlay, OverlayType};
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
 pub struct View<'v> {
-    pub buffer: Buffer,     // Text buffer
-    pub uibuf: UIBuffer,    // UIBuffer
+    pub buffer: Buffer,     //Text buffer
+    top_line: Mark,         //First character of the top line to be displayed.
+    left_col: uint,         //Index into the top line to set the left column to.
+    cursor: Mark,           //Cursor displayed by this buffer.
+    uibuf: UIBuffer,        //UIBuffer
     pub overlay: Overlay,
-
-    top_line: Mark,         // First character of the top line to be displayed.
-    left_col: uint,         // Index into the top line to set the left column to.
-    cursor: Mark,           // Cursor displayed by this buffer.
+    threshold: uint,
 }
 
 impl<'v> View<'v> {
@@ -52,6 +54,7 @@ impl<'v> View<'v> {
             cursor: cursor,
             uibuf: uibuf,
             overlay: Overlay::None,
+            threshold: 5,
         }
     }
 
@@ -85,16 +88,16 @@ impl<'v> View<'v> {
 
         match self.overlay {
             Overlay::None => self.draw_cursor(frontend),
-            _             => {
+            _ => {
                 self.overlay.draw(frontend, &mut self.uibuf);
                 self.overlay.draw_cursor(frontend);
             }
         }
-
+        self.draw_status(frontend);
         self.uibuf.draw_everything(frontend);
     }
 
-    pub fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
+    fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
         let buffer_status = self.buffer.status_text();
         let mut cursor_status = self.buffer.get_mark_coords(self.cursor).unwrap_or((0,0));
         cursor_status = (cursor_status.0 + 1, cursor_status.1 + 1);
@@ -115,10 +118,10 @@ impl<'v> View<'v> {
         self.uibuf.draw_range(frontend, height, height+1);
     }
 
-    pub fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
+    fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
         if let Some(top_line) = self.buffer.get_mark_coords(self.top_line) {
             if let Some((x, y)) = self.buffer.get_mark_coords(self.cursor) {
-                frontend.draw_cursor(x as int, y as int - top_line.1 as int);
+                frontend.draw_cursor((x - self.left_col) as int, y as int - top_line.1 as int);
             }
         }
     }
@@ -152,26 +155,36 @@ impl<'v> View<'v> {
 
     //Update the top_line mark if necessary to keep the cursor on the screen.
     fn move_screen(&mut self) {
-        if let (Some(cursor), Some(top_line)) = (self.buffer.get_mark_coords(self.cursor),
-                                                 self.buffer.get_mark_coords(self.top_line)) {
-            // FIXME
-            // match cursor.0 as int - self.left_col as int {
-            //     x if x < 0 => { self.left_col -= x as uint; }
-            //     x if x > self.get_width() as int => { self.left_col += x as uint - self.get_width()}
-            //     _ => { }
-            // }
+        if let (Some(cursor), Some((_, top_line))) = (self.buffer.get_mark_coords(self.cursor),
+                                                      self.buffer.get_mark_coords(self.top_line)) {
 
-            let cursor_linenum = cursor.1 as int;
-            let cursor_offset = cursor_linenum - top_line.1 as int;
-            let height = self.get_height() as int;
+            let width  = (self.get_width()  - self.threshold) as int;
+            let height = (self.get_height() - self.threshold) as int;
 
-            if cursor_offset >= (height - 5) {
-                // moving down
-                let times = cursor_offset - (height - 5) + 1;
-                self.buffer.shift_mark(self.top_line, Direction::Down, times as uint);
-            } else if cursor_offset < 5 {
-                // moving up
-                self.buffer.shift_mark(self.top_line, Direction::Up, 1);
+            //left-right shifting
+            self.left_col = match cursor.0 as int - self.left_col as int {
+                x_offset if x_offset < self.threshold as int => {
+                    cmp::max(0, self.left_col as int - (self.threshold as int - x_offset)) as uint
+                }
+                x_offset if x_offset >= width => {
+                    self.left_col + (x_offset - width + 1) as uint
+                }
+                _ => { self.left_col }
+            };
+
+            //up-down shifting
+            match cursor.1 as int - top_line as int {
+                y_offset if y_offset < self.threshold as int && top_line > 0 => {
+                    self.buffer.shift_mark(self.top_line,
+                                           Direction::Up,
+                                           (self.threshold as int - y_offset) as uint);
+                }
+                y_offset if y_offset >= height => {
+                    self.buffer.shift_mark(self.top_line,
+                                           Direction::Down,
+                                           (y_offset - height + 1) as uint);
+                }
+                _ => { }
             }
         }
     }
@@ -205,12 +218,14 @@ impl<'v> View<'v> {
         let point = if let Some(transaction) = self.buffer.undo() { transaction.end_point }
                     else { return; };
         self.buffer.set_mark(self.cursor, point);
+        self.move_screen();
     }
 
     pub fn redo(&mut self) {
         let point = if let Some(transaction) = self.buffer.redo() { transaction.end_point }
                     else { return; };
         self.buffer.set_mark(self.cursor, point);
+        self.move_screen();
     }
 
 }
