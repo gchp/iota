@@ -1,4 +1,3 @@
-use super::Response;
 use input::Input;
 use buffer::Direction;
 use keyboard::Key;
@@ -103,11 +102,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
             }
         };
 
-        let response = self.handle_command(command);
-
-        if let Response::Quit = response {
-            self.running = false
-        }
+        self.handle_command(command);
     }
 
     /// Draw the current view to the frontend
@@ -116,10 +111,12 @@ impl<'e, T: Frontend> Editor<'e, T> {
     }
 
     /// Handle the given command, performing the associated action
-    fn handle_command(&mut self, c: Command) -> Response {
-        match c {
+    fn handle_command(&mut self, command: Command) {
+        if let Command::ExitEditor = command {
+            self.running = false;
+        }
+        match command {
             // Editor Commands
-            Command::ExitEditor      => return Response::Quit,
             Command::SaveBuffer      => utils::save_buffer(&self.view.buffer),
 
             // Navigation
@@ -138,7 +135,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
             _ => {},
         }
-        Response::Continue
     }
 
     /// Start Iota!
