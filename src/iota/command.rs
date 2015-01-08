@@ -263,12 +263,6 @@ fn default_keymap() -> KeyMap<Partial> {
     keymap.bind_key(Key::Char('W'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Word(WordEdgeMatch::Whitespace),  1)));
     keymap.bind_key(Key::Char('B'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Word(WordEdgeMatch::Whitespace), -1)));
 
-    // kinds
-    keymap.bind_keys(&[Key::Char('`'), Key::Char('c')], Partial::Kind(Kind::Char));
-    keymap.bind_keys(&[Key::Char('`'), Key::Char('w')], Partial::Kind(Kind::Word(WordEdgeMatch::Alphabet)));
-    keymap.bind_keys(&[Key::Char('`'), Key::Char('W')], Partial::Kind(Kind::Word(WordEdgeMatch::Whitespace)));
-    keymap.bind_keys(&[Key::Char('`'), Key::Char('l')], Partial::Kind(Kind::Line));
-
     // next/previous line
     keymap.bind_key(Key::Char('j'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Line,  1)));
     keymap.bind_key(Key::Char('k'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Line, -1)));
@@ -279,7 +273,19 @@ fn default_keymap() -> KeyMap<Partial> {
     keymap.bind_key(Key::Char('$'), Partial::Object(TextObject { anchor: Anchor::After, 
                                                                  reference: Reference::Mark(Mark::Cursor(0), Kind::Line) }));
 
+    // kinds
+    keymap.bind_keys(&[Key::Char('`'), Key::Char('c')], Partial::Kind(Kind::Char));
+    keymap.bind_keys(&[Key::Char('`'), Key::Char('w')], Partial::Kind(Kind::Word(WordEdgeMatch::Alphabet)));
+    keymap.bind_keys(&[Key::Char('`'), Key::Char('W')], Partial::Kind(Kind::Word(WordEdgeMatch::Whitespace)));
+    keymap.bind_keys(&[Key::Char('`'), Key::Char('l')], Partial::Kind(Kind::Line));
+
+    // anchors
+    keymap.bind_key(Key::Char(','), Partial::Anchor(Anchor::Before));
+    keymap.bind_key(Key::Char('.'), Partial::Anchor(Anchor::After));
+
+    // actions
     keymap.bind_key(Key::Char('d'), Partial::Action(Action::Operation(Operation::Delete)));
+    keymap.bind_key(Key::Char('g'), Partial::Action(Action::Instruction(Instruction::SetMark(Mark::Cursor(0)))));
 
     keymap.bind_key(Key::Char(':'), Partial::Action(Action::Instruction(Instruction::SetOverlay(OverlayType::Prompt))));
 
