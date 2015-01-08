@@ -1,10 +1,11 @@
+use std::cmp;
+
 use buffer::{Buffer, Direction, Mark};
 use input::Input;
 use uibuf::{UIBuffer, CharColor};
 use frontends::Frontend;
 use overlay::{Overlay, OverlayType};
-
-use std::cmp;
+use utils;
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -13,12 +14,23 @@ use std::cmp;
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
 pub struct View<'v> {
-    pub buffer: Buffer,     //Text buffer
-    top_line: Mark,         //First character of the top line to be displayed.
-    left_col: uint,         //Index into the top line to set the left column to.
-    cursor: Mark,           //Cursor displayed by this buffer.
-    uibuf: UIBuffer,        //UIBuffer
+    pub buffer: Buffer,
     pub overlay: Overlay,
+
+    /// First character of the top line to be displayed
+    top_line: Mark,
+
+    /// Index into the top_line - used for horizontal scrolling
+    left_col: uint,
+
+    /// The current View's cursor - a reference into the Buffer
+    cursor: Mark,
+
+    /// The UIBuffer to which the View is drawn
+    uibuf: UIBuffer,
+
+    /// Number of lines from the top/bottom of the View after which vertical
+    /// scrolling begins.
     threshold: uint,
 }
 
@@ -54,10 +66,17 @@ impl<'v> View<'v> {
         }
     }
 
+    /// Get the height of the View.
+    ///
+    /// This is the height of the UIBuffer minus the status bar height.
     pub fn get_height(&self) -> uint {
-        self.uibuf.get_height() -1
+        let status_bar_height = 1;
+        let uibuf_height = self.uibuf.get_height();
+
+        uibuf_height - status_bar_height
     }
 
+    /// Get the width of the View.
     pub fn get_width(&self) -> uint {
         self.uibuf.get_width()
     }
@@ -142,21 +161,21 @@ impl<'v> View<'v> {
 
     pub fn move_cursor(&mut self, direction: Direction, amount: uint) {
         self.buffer.shift_mark(self.cursor, direction, amount);
-        self.move_screen();
+        self.maybe_move_screen();
     }
 
     pub fn move_cursor_to_line_end(&mut self) {
         self.buffer.shift_mark(self.cursor, Direction::LineEnd, 0);
-        self.move_screen();
+        self.maybe_move_screen();
     }
 
     pub fn move_cursor_to_line_start(&mut self) {
         self.buffer.shift_mark(self.cursor, Direction::LineStart, 0);
-        self.move_screen();
+        self.maybe_move_screen();
     }
 
-    //Update the top_line mark if necessary to keep the cursor on the screen.
-    fn move_screen(&mut self) {
+    /// Update the top_line mark if necessary to keep the cursor on the screen.
+    fn maybe_move_screen(&mut self) {
         if let (Some(cursor), Some((_, top_line))) = (self.buffer.get_mark_coords(self.cursor),
                                                       self.buffer.get_mark_coords(self.top_line)) {
 
@@ -211,23 +230,27 @@ impl<'v> View<'v> {
         }
     }
 
+    /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {
-        self.buffer.insert_char(self.cursor, ch as u8);
-        self.move_cursor(Direction::Right, 1)
+        // NOTE: the last param to char_width here may not be correct
+        if let Some(ch_width) = utils::char_width(ch, false, 4, 0) {
+            self.buffer.insert_char(self.cursor, ch as u8);
+            self.move_cursor(Direction::Right, ch_width)
+        }
     }
 
     pub fn undo(&mut self) {
         let point = if let Some(transaction) = self.buffer.undo() { transaction.end_point }
                     else { return; };
         self.buffer.set_mark(self.cursor, point);
-        self.move_screen();
+        self.maybe_move_screen();
     }
 
     pub fn redo(&mut self) {
         let point = if let Some(transaction) = self.buffer.redo() { transaction.end_point }
                     else { return; };
         self.buffer.set_mark(self.cursor, point);
-        self.move_screen();
+        self.maybe_move_screen();
     }
 
 }
@@ -237,14 +260,15 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: uint, left: uint) {
     let mut wide_chars = 0;
     for line_idx in range(left, left + width) {
         if line_idx < line.len() {
-            match line[line_idx] {
-                b'\t'   => {
+            let special_char = line[line_idx] as char;
+            match special_char {
+                '\t'   => {
                     let w = 4 - line_idx % 4;
                     for _ in range(0, w) {
                         buf.update_cell_content(line_idx + wide_chars - left, idx, ' ');
                     }
                 }
-                b'\n'   => buf.update_cell_content(line_idx + wide_chars - left, idx, ' '),
+                '\n'   => buf.update_cell_content(line_idx + wide_chars - left, idx, ' '),
                 _       => buf.update_cell_content(line_idx + wide_chars - left, idx,
                                                    line[line_idx] as char),
             }
