@@ -20,12 +20,14 @@ pub struct StandardMode {
 
 impl StandardMode {
 
+    /// Create a new instance of StandardMode
     pub fn new() -> StandardMode {
         StandardMode {
             keymap: StandardMode::key_defaults(),
         }
     }
 
+    /// Creates a KeyMap with default StandardMode key bindings
     fn key_defaults() -> KeyMap {
         let mut keymap = KeyMap::new();
 
@@ -66,6 +68,8 @@ impl StandardMode {
 }
 
 impl Mode for StandardMode {
+    /// Given a key, pass it through the StandardMode KeyMap and return the associated Command, if any.
+    /// If no match is found, treat it as an InsertChar command.
     fn handle_key_event(&mut self, key: Key) -> Command {
         if let KeyMapState::Match(command) = self.keymap.check_key(key) {
             return command

@@ -8,18 +8,21 @@ use super::WordEdgeMatch;
 use super::OverlayType;
 
 
+/// NormalMode mimics Vi's Normal mode.
 pub struct NormalMode {
     keymap: KeyMap,
 }
 
 impl NormalMode {
 
+    /// Create a new instance of NormalMode
     pub fn new() -> NormalMode {
         NormalMode {
             keymap: NormalMode::key_defaults(),
         }
     }
 
+    /// Creates a KeyMap with default NormalMode key bindings
     fn key_defaults() -> KeyMap {
         let mut keymap = KeyMap::new();
 
@@ -58,6 +61,7 @@ impl NormalMode {
 }
 
 impl Mode for NormalMode {
+    /// Given a key, pass it through the NormalMode KeyMap and return the associated Command, if any.
     fn handle_key_event(&mut self, key: Key) -> Command {
         if let KeyMapState::Match(command) = self.keymap.check_key(key) {
             return command

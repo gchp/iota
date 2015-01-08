@@ -43,6 +43,9 @@ impl Command {
     }
 }
 
+/// The main Editor structure
+///
+/// This is the top-most structure in Iota.
 pub struct Editor<'e, T: Frontend> {
     view: View<'e>,
     running: bool,
@@ -51,6 +54,7 @@ pub struct Editor<'e, T: Frontend> {
 }
 
 impl<'e, T: Frontend> Editor<'e, T> {
+    /// Create a new Editor instance
     pub fn new(source: Input, mode: Box<Mode + 'e>, frontend: T) -> Editor<'e, T> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
@@ -64,6 +68,17 @@ impl<'e, T: Frontend> Editor<'e, T> {
         }
     }
 
+    /// Handle key events
+    ///
+    /// Key events can be handled in an Overlay, OR in the current Mode.
+    ///
+    /// If there is an active Overlay, the key event is sent there, which gives
+    /// back an OverlayEvent. We then parse this OverlayEvent and determine if
+    /// the Overlay is finished and can be cleared. The response from the
+    /// Overlay is then converted to a Command and sent off to be handled.
+    ///
+    /// If there is no active Overlay, the key event is sent to the current
+    /// Mode, which returns a Command which we dispatch to handle_command.
     fn handle_key_event(&mut self, key: Option<Key>) {
         let key = match key {
             Some(k) => k,
@@ -95,10 +110,12 @@ impl<'e, T: Frontend> Editor<'e, T> {
         }
     }
 
+    /// Draw the current view to the frontend
     fn draw(&mut self) {
         self.view.draw(&mut self.frontend);
     }
 
+    /// Handle the given command, performing the associated action
     fn handle_command(&mut self, c: Command) -> Response {
         match c {
             // Editor Commands
@@ -124,6 +141,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
         Response::Continue
     }
 
+    /// Start Iota!
     pub fn start(&mut self) {
         while self.running {
             self.draw();

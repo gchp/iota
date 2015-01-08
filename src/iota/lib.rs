@@ -1,6 +1,14 @@
+//! Iota
+//!
+//! A highly customisable text editor built with modern hardware in mind.
+//!
+//! This module contains all you need to create an `iota` executable.
+
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 #![feature(slicing_syntax)]
+
+#![warn(missing_docs)]
 
 extern crate rustbox;
 extern crate gapbuffer;
@@ -22,6 +30,7 @@ mod log;
 mod frontends;
 mod modes;
 mod overlay;
+
 
 #[derive(Copy)]
 pub enum Response {

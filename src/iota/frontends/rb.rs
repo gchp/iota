@@ -9,11 +9,13 @@ use super::Key;
 use super::EditorEvent;
 
 
+/// Terminal-based front end using Rustbox
 pub struct RustboxFrontend<'f> {
     rb: &'f RustBox,
 }
 
 impl<'f> RustboxFrontend<'f> {
+    /// Create a new instance of the RustboxFrontend
     pub fn new(rb: &'f RustBox) -> RustboxFrontend<'f> {
         RustboxFrontend {
             rb: rb,
@@ -22,6 +24,7 @@ impl<'f> RustboxFrontend<'f> {
 }
 
 impl<'f> Frontend for RustboxFrontend<'f> {
+    /// Poll Rustbox for events & translate them into an EditorEvent
     fn poll_event(&self) -> EditorEvent {
         match self.rb.poll_event().unwrap() {
             Event::KeyEvent(_, key, ch) => {
@@ -35,10 +38,12 @@ impl<'f> Frontend for RustboxFrontend<'f> {
         }
     }
 
+    /// Draw the cursor to the terminal
     fn draw_cursor(&mut self, offset: int, linenum: int) {
         self.rb.set_cursor(offset, linenum)
     }
 
+    /// Draw a given char & styles to the terminal
     fn draw_char(&mut self, offset: uint, linenum: uint, ch: char, fg: CharColor, bg: CharColor, style: CharStyle) {
         let bg = get_color(bg);
         let fg = get_color(fg);
@@ -47,19 +52,23 @@ impl<'f> Frontend for RustboxFrontend<'f> {
         self.rb.print_char(offset, linenum, style, fg, bg, ch);
     }
 
+    /// Present the newly drawn data (cursor / content) to the user
     fn present(&self) {
         self.rb.present()
     }
 
+    /// Get the terminal height
     fn get_window_height(&self) -> uint {
         self.rb.height()
     }
 
+    /// Get the terminal width
     fn get_window_width(&self) -> uint {
         self.rb.width()
     }
 }
 
+/// Translate a CharColor to rustbox::Color
 fn get_color(c: CharColor) -> Color {
     match c {
         CharColor::Default => Color::Default,
@@ -68,6 +77,7 @@ fn get_color(c: CharColor) -> Color {
     }
 }
 
+/// Translate a CharStyle to rustbox::Style
 fn get_style(s: CharStyle) -> Style {
     match s {
         CharStyle::Normal => Style::empty(),
