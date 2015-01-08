@@ -9,6 +9,7 @@ use gapbuffer::GapBuffer;
 
 // local dependencies
 use log::{Log, Change, LogEntry};
+use utils::is_alpha_or_;
 
 
 #[derive(Copy, PartialEq, Eq, Hash, Show)]
@@ -267,10 +268,6 @@ impl Buffer {
 
 }
 
-fn is_alphanumeric_or_(c: char) -> bool {
-    c.is_alphanumeric() || c == '_'
-}
-
 impl WordEdgeMatch {
     /// If c1 -> c2 is the start of a word.
     /// If end of word matching is wanted then pass the chars in reversed.
@@ -280,8 +277,8 @@ impl WordEdgeMatch {
             (_, '\n', '\n') => true, // Blank lines are always counted as a word
             (&WordEdgeMatch::Whitespace, c1, c2) => c1.is_whitespace() && !c2.is_whitespace(),
             (&WordEdgeMatch::Alphabet, c1, c2) if c1.is_whitespace() => !c2.is_whitespace(),
-            (&WordEdgeMatch::Alphabet, c1, c2) if is_alphanumeric_or_(c1) => !is_alphanumeric_or_(c2) && !c2.is_whitespace(),
-            (&WordEdgeMatch::Alphabet, c1, c2) if !is_alphanumeric_or_(c1) => is_alphanumeric_or_(c2) && !c2.is_whitespace(),
+            (&WordEdgeMatch::Alphabet, c1, c2) if is_alpha_or_(c1) => !is_alpha_or_(c2) && !c2.is_whitespace(),
+            (&WordEdgeMatch::Alphabet, c1, c2) if !is_alpha_or_(c1) => is_alpha_or_(c2) && !c2.is_whitespace(),
             (&WordEdgeMatch::Alphabet, _, _) => false,
         }
     }

@@ -1,6 +1,5 @@
-/// Primitive command log, currently used for undo / redo.
-/// This is a deliberately unoptimized representation, for simplicity.  It is by no means final.
-
+//! Primitive command log, currently used for undo / redo.
+//! This is a deliberately unoptimized representation, for simplicity.  It is by no means final.
 
 use std::mem;
 
