@@ -5,8 +5,8 @@ authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
 [dependencies]
 docopt = "0.6.26"
-rustbox = "0.2.4"
-rustc-serialize = "0.2.4"
+rustbox = "0.2.5"
+rustc-serialize = "0.2.7"
 
 [dependencies.gapbuffer]
 git = "https://github.com/dlaronson/gapbuffer"

@@ -4,8 +4,8 @@ version = "0.1.0"
 dependencies = [
  "docopt 0.6.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "gapbuffer 0.0.3 (git+https://github.com/dlaronson/gapbuffer)",
- "rustbox 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustbox 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -13,23 +13,23 @@ name = "docopt"
 version = "0.6.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "regex 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "gapbuffer"
 version = "0.0.3"
-source = "git+https://github.com/dlaronson/gapbuffer#7f66b5c6b90498b5454cf27794f1acd265921897"
+source = "git+https://github.com/dlaronson/gapbuffer#680f94a1c372562e4b49c4f0f82fafee4aea7766"
 
 [[package]]
 name = "regex"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustbox"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "termbox-sys 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -37,7 +37,7 @@ dependencies = [
 
 [[package]]
 name = "rustc-serialize"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
