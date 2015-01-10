@@ -1,3 +1,5 @@
+#![allow(unstable)]
+
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate rustbox;
 extern crate docopt;
@@ -52,9 +54,9 @@ fn main() {
 
     // initialise the editor mode
     let mode: Box<Mode> = if args.flag_vi {
-        box NormalMode::new()
+        Box::new(NormalMode::new())
     } else {
-         box StandardMode::new()
+         Box::new(StandardMode::new())
     };
 
     // start the editor

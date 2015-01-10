@@ -23,7 +23,7 @@ pub struct View<'v> {
     top_line: Mark,
 
     /// Index into the top_line - used for horizontal scrolling
-    left_col: uint,
+    left_col: usize,
 
     /// The current View's cursor - a reference into the Buffer
     cursor: Mark,
@@ -33,12 +33,12 @@ pub struct View<'v> {
 
     /// Number of lines from the top/bottom of the View after which vertical
     /// scrolling begins.
-    threshold: uint,
+    threshold: usize,
 }
 
 impl<'v> View<'v> {
 
-    pub fn new(source: Input, width: uint, height: uint) -> View<'v> {
+    pub fn new(source: Input, width: usize, height: usize) -> View<'v> {
         let mut buffer = match source {
             Input::Filename(path) => {
                 match path {
@@ -71,7 +71,7 @@ impl<'v> View<'v> {
     /// Get the height of the View.
     ///
     /// This is the height of the UIBuffer minus the status bar height.
-    pub fn get_height(&self) -> uint {
+    pub fn get_height(&self) -> usize {
         let status_bar_height = 1;
         let uibuf_height = self.uibuf.get_height();
 
@@ -79,14 +79,14 @@ impl<'v> View<'v> {
     }
 
     /// Get the width of the View.
-    pub fn get_width(&self) -> uint {
+    pub fn get_width(&self) -> usize {
         self.uibuf.get_width()
     }
 
     /// Resize the view
     ///
     /// This involves simply changing the size of the associated UIBuffer
-    pub fn resize(&mut self, width: uint, height: uint) {
+    pub fn resize(&mut self, width: usize, height: usize) {
         let uibuf = UIBuffer::new(width, height);
         self.uibuf = uibuf;
     }
@@ -124,7 +124,7 @@ impl<'v> View<'v> {
         let buffer_status = self.buffer.status_text();
         let mut cursor_status = self.buffer.get_mark_coords(self.cursor).unwrap_or((0,0));
         cursor_status = (cursor_status.0 + 1, cursor_status.1 + 1);
-        let status_text = format!("{} {}", buffer_status, cursor_status).into_bytes();
+        let status_text = format!("{:?} {:?}", buffer_status, cursor_status).into_bytes();
         let status_text_len = status_text.len();
         let width = self.get_width();
         let height = self.get_height() - 1;
@@ -144,7 +144,7 @@ impl<'v> View<'v> {
     fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
         if let Some(top_line) = self.buffer.get_mark_coords(self.top_line) {
             if let Some((x, y)) = self.buffer.get_mark_coords(self.cursor) {
-                frontend.draw_cursor((x - self.left_col) as int, y as int - top_line.1 as int);
+                frontend.draw_cursor((x - self.left_col) as isize, y as isize - top_line.1 as isize);
             }
         }
     }
@@ -162,7 +162,7 @@ impl<'v> View<'v> {
         }
     }
 
-    pub fn move_cursor(&mut self, direction: Direction, amount: uint) {
+    pub fn move_cursor(&mut self, direction: Direction, amount: usize) {
         self.buffer.shift_mark(self.cursor, direction, amount);
         self.maybe_move_screen();
     }
@@ -182,38 +182,38 @@ impl<'v> View<'v> {
         if let (Some(cursor), Some((_, top_line))) = (self.buffer.get_mark_coords(self.cursor),
                                                       self.buffer.get_mark_coords(self.top_line)) {
 
-            let width  = (self.get_width()  - self.threshold) as int;
-            let height = (self.get_height() - self.threshold) as int;
+            let width  = (self.get_width()  - self.threshold) as isize;
+            let height = (self.get_height() - self.threshold) as isize;
 
             //left-right shifting
-            self.left_col = match cursor.0 as int - self.left_col as int {
-                x_offset if x_offset < self.threshold as int => {
-                    cmp::max(0, self.left_col as int - (self.threshold as int - x_offset)) as uint
+            self.left_col = match cursor.0 as isize - self.left_col as isize {
+                x_offset if x_offset < self.threshold as isize => {
+                    cmp::max(0, self.left_col as isize - (self.threshold as isize - x_offset)) as usize
                 }
                 x_offset if x_offset >= width => {
-                    self.left_col + (x_offset - width + 1) as uint
+                    self.left_col + (x_offset - width + 1) as usize
                 }
                 _ => { self.left_col }
             };
 
             //up-down shifting
-            match cursor.1 as int - top_line as int {
-                y_offset if y_offset < self.threshold as int && top_line > 0 => {
+            match cursor.1 as isize - top_line as isize {
+                y_offset if y_offset < self.threshold as isize && top_line > 0 => {
                     self.buffer.shift_mark(self.top_line,
                                            Direction::Up,
-                                           (self.threshold as int - y_offset) as uint);
+                                           (self.threshold as isize - y_offset) as usize);
                 }
                 y_offset if y_offset >= height => {
                     self.buffer.shift_mark(self.top_line,
                                            Direction::Down,
-                                           (y_offset - height + 1) as uint);
+                                           (y_offset - height + 1) as usize);
                 }
                 _ => { }
             }
         }
     }
 
-    pub fn delete_chars(&mut self, direction: Direction, num_chars: uint) {
+    pub fn delete_chars(&mut self, direction: Direction, num_chars: usize) {
         let chars = self.buffer.remove_chars(self.cursor, direction, num_chars);
         match (chars, direction) {
             (Some(chars), Direction::Left) => {
@@ -228,7 +228,7 @@ impl<'v> View<'v> {
 
     pub fn insert_tab(&mut self) {
         // A tab is just 4 spaces
-        for _ in range(0i, 4) {
+        for _ in range(0, 4) {
             self.insert_char(' ');
         }
     }
@@ -310,7 +310,7 @@ impl<'v> View<'v> {
 
 }
 
-pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: uint, left: uint) {
+pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
     let width = buf.get_width() - 1;
     let mut wide_chars = 0;
     for line_idx in range(left, left + width) {

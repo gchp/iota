@@ -6,17 +6,17 @@ use std::mem;
 /// Represents a modification of data.
 pub enum Change {
     ///Character insertion.
-    Insert(uint, u8),
+    Insert(usize, u8),
     ///Character removal.
-    Remove(uint, u8),
+    Remove(usize, u8),
 }
 
 impl Change {
     /// Reverses a change, consuming it in the process
     pub fn reverse(self) -> Change {
         match self {
-            Change::Insert(uint, u8) => Change::Remove(uint, u8),
-            Change::Remove(uint, u8) => Change::Insert(uint, u8),
+            Change::Insert(usize, u8) => Change::Remove(usize, u8),
+            Change::Remove(usize, u8) => Change::Insert(usize, u8),
         }
     }
 }
@@ -27,9 +27,9 @@ pub struct LogEntry {
     /// The initial point position associated with this log entry.
     ///
     /// The OLD point position.
-    init_point: uint,
+    init_point: usize,
     /// The NEW point position.
-    pub end_point: uint,
+    pub end_point: usize,
     /// The changes associated with this log entry, in order of occurence (an undo will replay
     /// their inverses, backwards).
     pub changes: Vec<Change>,
@@ -64,7 +64,7 @@ impl<'a> Transaction<'a> {
     ///
     /// The logging should occur after the change has been executed.  This may eventually allow
     /// rollback in case of failure.
-    pub fn log(&mut self, change: Change, idx: uint) {
+    pub fn log(&mut self, change: Change, idx: usize) {
         self.entry.changes.push(change);
         self.entry.end_point = idx;
     }
@@ -108,7 +108,7 @@ impl Log {
     /// Start a new transaction.
     ///
     /// This returns a RAII guard that can be used to record edits during the transaction.
-    pub fn start<'a, 'b>(&'a mut self, idx: uint) -> Transaction<'a> {
+    pub fn start<'a, 'b>(&'a mut self, idx: usize) -> Transaction<'a> {
         Transaction {
             entries: self,
             entry: LogEntry {

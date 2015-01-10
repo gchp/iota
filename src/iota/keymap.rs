@@ -41,7 +41,7 @@ impl Trie {
                 self.bind_key(key, command);
             }
             Trie::Node(ref mut map) => {
-                map.insert(key, box Trie::Leaf(command));
+                map.insert(key, Box::new(Trie::Leaf(command)));
             }
         }
     }
@@ -61,7 +61,7 @@ impl Trie {
                     if map.contains_key(&key) {
                         map.get_mut(&key).unwrap().bind_keys(keys, command);
                     } else {
-                        let mut node = box Trie::new();
+                        let mut node = Box::new(Trie::new());
                         node.bind_keys(keys, command);
                         map.insert(key, node);
                     }

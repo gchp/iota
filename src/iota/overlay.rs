@@ -22,13 +22,13 @@ pub enum OverlayType {
 /// from the user.
 pub enum Overlay {
     Prompt {
-        cursor_x: uint,
+        cursor_x: usize,
         data: String,
         prefix: &'static str,
     },
 
     SavePrompt {
-        cursor_x: uint,
+        cursor_x: usize,
         data: String,
         prefix: &'static str,
     },
@@ -63,12 +63,12 @@ impl Overlay {
 
     pub fn draw_cursor<F: Frontend>(&mut self, frontend: &mut F) {
         match self {
-            &Overlay::Prompt     {cursor_x, ..} |
-            &Overlay::SavePrompt {cursor_x, ..} => {
+            &mut Overlay::Prompt     {cursor_x, ..} |
+            &mut Overlay::SavePrompt {cursor_x, ..} => {
                 // Prompt is always on the bottom, so we can use the
                 // height given by the frontend here
                 let height = frontend.get_window_height() - 1;
-                frontend.draw_cursor(cursor_x as int, height as int)
+                frontend.draw_cursor(cursor_x as isize, height as isize)
             },
 
             _ => {}
@@ -77,8 +77,8 @@ impl Overlay {
 
     pub fn handle_key_event(&mut self, key: Key) -> OverlayEvent {
         match self {
-            &Overlay::Prompt     {ref mut cursor_x, ref mut data, ..} |
-            &Overlay::SavePrompt {ref mut cursor_x, ref mut data, ..} => {
+            &mut Overlay::Prompt     {ref mut cursor_x, ref mut data, ..} |
+            &mut Overlay::SavePrompt {ref mut cursor_x, ref mut data, ..} => {
                 match key {
                     Key::Esc => return OverlayEvent::Finished(None),
                     Key::Backspace => {

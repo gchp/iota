@@ -9,7 +9,7 @@ pub use self::rb::RustboxFrontend;
 /// elsewhere in the program.
 pub enum EditorEvent {
     KeyEvent(Option<Key>),
-    Resize(uint, uint),
+    Resize(usize, usize),
     UnSupported
 }
 
@@ -28,13 +28,13 @@ pub trait Frontend {
     /// Present the newly drawn data (cursor / content) to the user
     fn present(&self);
     /// Get the frontends window height or equivalent
-    fn get_window_height(&self) -> uint;
+    fn get_window_height(&self) -> usize;
     /// Get the frontends window width or equivalent
-    fn get_window_width(&self) -> uint;
+    fn get_window_width(&self) -> usize;
     /// Draw the cursor to the frontend
-    fn draw_cursor(&mut self, offset: int, linenum: int);
+    fn draw_cursor(&mut self, offset: isize, linenum: isize);
     /// Draw the given char & styles to the frontend
-    fn draw_char(&mut self, offset: uint, linenum: uint, ch: char, fg: CharColor, bg: CharColor, style: CharStyle);
+    fn draw_char(&mut self, offset: usize, linenum: usize, ch: char, fg: CharColor, bg: CharColor, style: CharStyle);
 }
 
 mod rb;

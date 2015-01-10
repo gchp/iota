@@ -12,11 +12,11 @@ pub enum Command {
     SaveBuffer,
     ExitEditor,
 
-    MoveCursor(Direction, uint),
+    MoveCursor(Direction, usize),
     LineEnd,
     LineStart,
 
-    Delete(Direction, uint),
+    Delete(Direction, usize),
     InsertTab,
     InsertChar(char),
 
@@ -132,7 +132,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
     /// Handle resize events
     ///
     /// width and height represent the new height of the window.
-    fn handle_resize_event(&mut self, width: uint, height: uint) {
+    fn handle_resize_event(&mut self, width: usize, height: usize) {
         self.view.resize(width, height);
     }
 

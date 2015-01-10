@@ -3,7 +3,7 @@ pub fn data_from_str(s: &'static str) -> String {
     String::from_str(s)
 }
 
-pub fn char_width(c: char, is_cjk: bool, tab_width: uint, position: uint) -> Option<uint> {
+pub fn char_width(c: char, is_cjk: bool, tab_width: usize, position: usize) -> Option<usize> {
     if c == '\t' {
         Some(tab_width - position%tab_width)
     } else if c == '\n' {
@@ -13,7 +13,7 @@ pub fn char_width(c: char, is_cjk: bool, tab_width: uint, position: uint) -> Opt
     }
 }
 
-pub fn str_width(s: &str, is_cjk: bool, tab_width: uint) -> uint {
+pub fn str_width(s: &str, is_cjk: bool, tab_width: usize) -> usize {
     s.chars().fold(0, |acc, c|
         acc + char_width(c, is_cjk, tab_width, acc).unwrap_or(0)
     )

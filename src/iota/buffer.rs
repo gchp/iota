@@ -14,8 +14,8 @@ use utils::is_alpha_or_;
 
 #[derive(Copy, PartialEq, Eq, Hash, Show)]
 pub enum Mark {
-    Cursor(uint),           //For keeping track of cursors.
-    DisplayMark(uint),      //For using in determining some display of characters.
+    Cursor(usize),           //For keeping track of cursors.
+    DisplayMark(usize),      //For using in determining some display of characters.
 }
 
 #[derive(Copy, PartialEq, Eq, Show)]
@@ -46,7 +46,7 @@ pub struct Buffer {
 
     /// Table of marked indices in the text
     /// KEY: mark id => VALUE : (absolute index, line index)
-    marks: HashMap<Mark, (uint, uint)>,
+    marks: HashMap<Mark, (usize, usize)>,
 
     /// Transaction history (used for undo/redo)
     pub log: Log,
@@ -86,12 +86,12 @@ impl Buffer {
     }
 
     /// Length of the text stored in this buffer.
-    pub fn len(&self) -> uint {
+    pub fn len(&self) -> usize {
         self.text.len() + 1
     }
 
     /// The x,y coordinates of a mark within the file. None if not a valid mark.
-    pub fn get_mark_coords(&self, mark: Mark) -> Option<(uint, uint)> {
+    pub fn get_mark_coords(&self, mark: Mark) -> Option<(usize, usize)> {
         if let Some(idx) = self.get_mark_idx(mark) {
             if let Some(line) = get_line(idx, &self.text) {
                 Some((idx - line, range(0, idx).filter(|i| -> bool { self.text[*i] == b'\n' })
@@ -101,7 +101,7 @@ impl Buffer {
     }
 
     /// The absolute index of a mark within the file. None if not a valid mark.
-    pub fn get_mark_idx(&self, mark: Mark) -> Option<uint> {
+    pub fn get_mark_idx(&self, mark: Mark) -> Option<usize> {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
             if idx < self.len() {
                 Some(idx)
@@ -112,7 +112,7 @@ impl Buffer {
     /// Creates an iterator on the text by lines.
     pub fn lines(&self) -> Lines {
         Lines {
-            buffer: self.text[],
+            buffer: self.text.as_slice(),
             tail: 0,
             head: self.len()
         }
@@ -123,7 +123,7 @@ impl Buffer {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
             if idx < self.len() {
                 Some(Lines {
-                    buffer: self.text[idx..],
+                    buffer: self.text.slice_from(idx),
                     tail: 0,
                     head: self.len() - idx,
                 })
@@ -140,7 +140,7 @@ impl Buffer {
     }
 
     /// Sets the mark to a given absolute index. Adds a new mark or overwrites an existing mark.
-    pub fn set_mark(&mut self, mark: Mark, idx: uint) {
+    pub fn set_mark(&mut self, mark: Mark, idx: usize) {
         if let Some(line) = get_line(idx, &self.text) {
             if let Some(tuple) = self.marks.get_mut(&mark) {
                 *tuple = (idx, idx - line);
@@ -151,7 +151,7 @@ impl Buffer {
     }
 
     /// Shift a mark relative to its position according to the direction given.
-    pub fn shift_mark(&mut self, mark: Mark, direction: Direction, amount: uint) {
+    pub fn shift_mark(&mut self, mark: Mark, direction: Direction, amount: usize) {
         let last = self.len() - 1;
         let text = &self.text;
         if let Some(tuple) = self.marks.get_mut(&mark) {
@@ -176,7 +176,7 @@ impl Buffer {
                         let n = amount;
                         let nlines = range(0, idx).rev().filter(|i| text[*i] == b'\n')
                                                         .take(n + 1)
-                                                        .collect::<Vec<uint>>();
+                                                        .collect::<Vec<usize>>();
                         if n == nlines.len() { (cmp::min(line_idx, nlines[0]), line_idx) }
                         else if n > nlines.len() { (0, 0) }
                         else { (cmp::min(line_idx + nlines[n] + 1, nlines[n-1]), line_idx) }
@@ -185,7 +185,7 @@ impl Buffer {
                         let n = amount;
                         let nlines = range(idx, text.len()).filter(|i| text[*i] == b'\n')
                                                            .take(n + 1)
-                                                           .collect::<Vec<uint>>();
+                                                           .collect::<Vec<usize>>();
                         if n > nlines.len() { (last, last - get_line(last, text).unwrap())
                         } else if n == nlines.len() {
                             (cmp::min(line_idx + nlines[n-1] + 1, last), line_idx)
@@ -213,7 +213,7 @@ impl Buffer {
     }
 
     /// Remove the chars at the mark.
-    pub fn remove_chars(&mut self, mark: Mark, direction: Direction, num_chars: uint) -> Option<Vec<u8>> {
+    pub fn remove_chars(&mut self, mark: Mark, direction: Direction, num_chars: usize) -> Option<Vec<u8>> {
         let text = &mut self.text;
         if let Some(&(idx, _)) = self.marks.get(&mark) {
             let range = match direction {
@@ -284,14 +284,14 @@ impl WordEdgeMatch {
     }
 }
 
-fn get_words(mark: uint, n_words: uint, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<uint> {
+fn get_words(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
     range(mark + 1, text.len() - 1)
         .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
         .take(n_words)
         .next()
 }
 
-fn get_words_rev(mark: uint, n_words: uint, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<uint> {
+fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
     range(1, mark)
         .rev()
         .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
@@ -302,7 +302,7 @@ fn get_words_rev(mark: uint, n_words: uint, edger: WordEdgeMatch, text: &GapBuff
 /// Returns the index of the first character of the line the mark is in.
 /// Newline prior to mark (EXCLUSIVE) + 1.
 /// None if mark is outside of the len of text.
-fn get_line(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
+fn get_line(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
     if mark <= text.len() {
         range(0, mark + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
                                 .take(1)
@@ -313,7 +313,7 @@ fn get_line(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
 /// Returns the index of the newline character at the end of the line mark is in.
 /// Newline after mark (INCLUSIVE).
 /// None iff mark is outside the len of text.
-fn get_line_end(mark: uint, text: &GapBuffer<u8>) -> Option<uint> {
+fn get_line_end(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
     if mark <= text.len() {
         range(mark, text.len() + 1).filter(|idx| *idx == text.len() ||text[*idx] == b'\n')
                                    .take(1)
@@ -337,8 +337,8 @@ fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
 
 pub struct Lines<'a> {
     buffer: &'a [u8],
-    tail: uint,
-    head: uint,
+    tail: usize,
+    head: usize,
 }
 
 impl<'a> Iterator for Lines<'a> {
@@ -354,13 +354,13 @@ impl<'a> Iterator for Lines<'a> {
                                                   .take(1)
                                                   .next()
                                                   .unwrap() + 1;
-            if self.tail == self.head { Some(self.buffer[old_tail..self.tail-1]) }
-            else { Some(self.buffer[old_tail..self.tail]) }
+            if self.tail == self.head { Some(self.buffer.slice(old_tail, self.tail-1)) }
+            else { Some(self.buffer.slice(old_tail, self.tail)) }
 
         } else { None }
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         //TODO: this is technically correct but a better estimate could be implemented
         (1, Some(self.head))
     }

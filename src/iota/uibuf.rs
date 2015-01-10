@@ -1,8 +1,8 @@
 use frontends::Frontend;
 
 pub struct UIBuffer {
-    width: uint,
-    height: uint,
+    width: usize,
+    height: usize,
     rows: Vec<Vec<Cell>>
 }
 
@@ -23,7 +23,7 @@ pub enum CharColor {
 }
 
 impl UIBuffer {
-    pub fn new(width: uint, height: uint) -> UIBuffer {
+    pub fn new(width: usize, height: usize) -> UIBuffer {
         let rows = Cell::create_grid(width, height, ' ');
 
         UIBuffer {
@@ -33,7 +33,7 @@ impl UIBuffer {
         }
     }
 
-    pub fn draw_range<T: Frontend>(&mut self, frontend: &mut T, start: uint, stop: uint) {
+    pub fn draw_range<T: Frontend>(&mut self, frontend: &mut T, start: usize, stop: usize) {
         let rows = self.rows.slice_mut(start, stop);
         for row in rows.iter_mut() {
             for cell in row.iter_mut().filter(|cell| cell.dirty) {
@@ -48,11 +48,11 @@ impl UIBuffer {
         self.draw_range(frontend, 0, height);
     }
 
-    pub fn get_width(&self) -> uint {
+    pub fn get_width(&self) -> usize {
         self.width
     }
 
-    pub fn get_height(&self) -> uint {
+    pub fn get_height(&self) -> usize {
         self.height
     }
 
@@ -66,16 +66,16 @@ impl UIBuffer {
     }
 
     /// Update the `ch` attribute of an individual cell
-    pub fn update_cell_content(&mut self, cell_num: uint, row_num: uint, ch: char) {
+    pub fn update_cell_content(&mut self, cell_num: usize, row_num: usize, ch: char) {
         self.rows[row_num][cell_num].set_char(ch);
     }
 
     /// Update the `ch`, `fg`, and `bg` attributes of an indivudual cell
-    pub fn update_cell(&mut self, cell_num: uint, row_num: uint, ch: char, fg: CharColor, bg: CharColor) {
+    pub fn update_cell(&mut self, cell_num: usize, row_num: usize, ch: char, fg: CharColor, bg: CharColor) {
         self.get_cell_mut(cell_num, row_num).set(ch, fg, bg);
     }
 
-    pub fn get_cell_mut(&mut self, cell_num: uint, row_num: uint) -> &mut Cell {
+    pub fn get_cell_mut(&mut self, cell_num: usize, row_num: usize) -> &mut Cell {
         &mut self.rows[row_num][cell_num]
     }
 }
@@ -85,8 +85,8 @@ pub struct Cell {
     pub bg: CharColor,
     pub fg: CharColor,
     pub ch: char,
-    pub x: uint,
-    pub y: uint,
+    pub x: usize,
+    pub y: usize,
     pub dirty: bool
 }
 
@@ -119,7 +119,7 @@ impl Cell {
         self.bg = bg;
     }
 
-    pub fn create_grid(width: uint, height: uint, ch: char) -> Vec<Vec<Cell>> {
+    pub fn create_grid(width: usize, height: usize, ch: char) -> Vec<Vec<Cell>> {
         let mut rows = Vec::new();
         for voffset in range(0, height) {
             let mut cells = Vec::new();

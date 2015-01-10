@@ -35,19 +35,19 @@ impl<'f> Frontend for RustboxFrontend<'f> {
                 EditorEvent::KeyEvent(k)
             }
             Event::ResizeEvent(width, height) => {
-                EditorEvent::Resize(width as uint, height as uint)
+                EditorEvent::Resize(width as usize, height as usize)
             }
             _ => EditorEvent::UnSupported
         }
     }
 
     /// Draw the cursor to the terminal
-    fn draw_cursor(&mut self, offset: int, linenum: int) {
+    fn draw_cursor(&mut self, offset: isize, linenum: isize) {
         self.rb.set_cursor(offset, linenum)
     }
 
     /// Draw a given char & styles to the terminal
-    fn draw_char(&mut self, offset: uint, linenum: uint, ch: char, fg: CharColor, bg: CharColor, style: CharStyle) {
+    fn draw_char(&mut self, offset: usize, linenum: usize, ch: char, fg: CharColor, bg: CharColor, style: CharStyle) {
         let bg = get_color(bg);
         let fg = get_color(fg);
         let style = get_style(style);
@@ -61,12 +61,12 @@ impl<'f> Frontend for RustboxFrontend<'f> {
     }
 
     /// Get the terminal height
-    fn get_window_height(&self) -> uint {
+    fn get_window_height(&self) -> usize {
         self.rb.height()
     }
 
     /// Get the terminal width
-    fn get_window_width(&self) -> uint {
+    fn get_window_width(&self) -> usize {
         self.rb.width()
     }
 }

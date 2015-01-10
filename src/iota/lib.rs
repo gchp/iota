@@ -9,6 +9,7 @@
 #![feature(slicing_syntax)]
 
 #![warn(missing_docs)]
+#![allow(unstable)]
 
 extern crate rustbox;
 extern crate gapbuffer;

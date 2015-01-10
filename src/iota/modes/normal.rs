@@ -80,7 +80,7 @@ mod tests {
     use super::*;
 
     fn expect_key_command(k: Key, c: Command) {
-        let mut mode: Box<Mode> = box NormalMode::new();
+        let mut mode: Box<Mode> = Box::new(NormalMode::new());
         let command = mode.handle_key_event(k);
         assert_eq!(command, c)
     }
