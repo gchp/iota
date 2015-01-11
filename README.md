@@ -62,7 +62,13 @@ You can move the cursor around with the arrow keys.
 To save, press `Ctrl-s`.
 To exit, press `Ctrl-q`.
 
-Iota currently supports Emacs-style keybindings for simple movement.
+Iota currently supports both Vi and Emacs style keybindings for simple movement.
+
+You can enable Vi style keybindings by using the `--vi` flag when starting Iota.
+The vi-style modes are in the early stages, and not all functionality is there
+just yet.
+
+Alternatively, you can use the following emacs-style keys:
 
 - `Ctrl-p` move up
 - `Ctrl-n` move down
@@ -76,5 +82,3 @@ Iota currently supports Emacs-style keybindings for simple movement.
 - `Ctrl-x Ctrl-s` save
 - `Ctrl-z` undo
 - `Ctrl-y` redo
-
-There are also plans to optionally enable Vi-like keybindings & modes.
