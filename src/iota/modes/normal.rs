@@ -10,7 +10,7 @@ use super::OverlayType;
 
 /// NormalMode mimics Vi's Normal mode.
 pub struct NormalMode {
-    keymap: KeyMap,
+    keymap: KeyMap<Command>,
 }
 
 impl NormalMode {
@@ -23,7 +23,7 @@ impl NormalMode {
     }
 
     /// Creates a KeyMap with default NormalMode key bindings
-    fn key_defaults() -> KeyMap {
+    fn key_defaults() -> KeyMap<Command> {
         let mut keymap = KeyMap::new();
 
         // movement
