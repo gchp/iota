@@ -38,6 +38,8 @@ pub enum Direction {
     // TODO: extract to TextObject::Line - or similar
     LineStart,
     LineEnd,
+    FirstLine,
+    LastLine,
 }
 
 pub struct Buffer {
@@ -207,6 +209,8 @@ impl Buffer {
                     }
                     Direction::LineStart    =>  { (line, 0) }
                     Direction::LineEnd      =>  { (line_end, line_end - line) }
+                    Direction::FirstLine    =>  { (0, 0) }
+                    Direction::LastLine     =>  { (last, 0) }
                 }
             }
         }
