@@ -124,7 +124,7 @@ impl<'v> View<'v> {
         let buffer_status = self.buffer.status_text();
         let mut cursor_status = self.buffer.get_mark_coords(self.cursor).unwrap_or((0,0));
         cursor_status = (cursor_status.0 + 1, cursor_status.1 + 1);
-        let status_text = format!("{:?} {:?}", buffer_status, cursor_status).into_bytes();
+        let status_text = format!("{} ({}, {})", buffer_status, cursor_status.0 + 1, cursor_status.1 + 1).into_bytes();
         let status_text_len = status_text.len();
         let width = self.get_width();
         let height = self.get_height() - 1;
