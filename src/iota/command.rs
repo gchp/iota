@@ -1,7 +1,9 @@
+use std::default::Default;
+
 use keyboard::Key;
 use keymap::{ KeyMap, KeyMapState };
 use buffer::{ Direction, Mark, WordEdgeMatch };
-use textobject::{ TextObject, Reference, Kind, Anchor };
+use textobject::{ TextObject, Offset, Kind, Anchor };
 use overlay::OverlayType;
 
 /// Instructions for the Editor.
@@ -39,7 +41,7 @@ pub enum Operation {
 pub enum Partial {
     Kind(Kind),
     Anchor(Anchor),
-    Reference(Reference),
+    Offset(Offset),
     Object(TextObject),
     Action(Action),
 }
@@ -67,7 +69,7 @@ pub struct Builder {
     mark: Option<Mark>,
     kind: Option<Kind>,
     anchor: Option<Anchor>,
-    reference: Option<Reference>,
+    offset: Option<Offset>,
     object: Option<TextObject>,
 
     reading_number: bool,
@@ -90,7 +92,7 @@ impl Builder {
             mark: None,
             kind: None,
             anchor: None,
-            reference: None,
+            offset: None,
             object: None,
             reading_number: false,
             keymap: default_keymap()
@@ -105,7 +107,7 @@ impl Builder {
         self.kind = None;
         self.anchor = None;
         self.object = None;
-        self.reference = None;
+        self.offset = None;
         self.reading_number = false;
     }
 
@@ -138,42 +140,26 @@ impl Builder {
     }
 
     fn complete_object(&mut self) -> Option<TextObject> {
-        if let Some(to) = self.object {
-            // we have a whole object ready
-            return Some(to)
-        } else if let Some(reference) = self.reference {
-            // we have a particular object in mind, use number as index/offset
-            let reference = if let Some(n) = self.number {
-                // set the reference index to n, or multiply offset by n
-                // also, reset the 'outer' number, since index/offset is separate from repeat counter
-                self.number = None;
-                match reference {
-                    Reference::Index(k, _) => Reference::Index(k, n as u32),
-                    Reference::Offset(m, k, i) => Reference::Offset(m, k, i * n),
-                    Reference::Mark(m, k) => Reference::Mark(m, k)
-                }
-            } else { reference };
-            self.reference = Some(reference);
-
-            return Some(TextObject { anchor: self.anchor.unwrap_or(Anchor::default()),
-                                     reference: reference })
+        let mut result: Option<TextObject> = if let Some(object) = self.object {
+            // we have a complete object ready to go
+            Some(object)
         } else if let Some(kind) = self.kind {
-            // we have a particular kind...
-            if let Some(mark) = self.mark {
-                // and a specific mark, return the object of that kind, at that mark
-                return Some(TextObject { anchor: self.anchor.unwrap_or(Anchor::default()),
-                                         reference: Reference::Mark(mark, kind) })
-            } else if let Some(n) = self.number {
-                // and a particular number, return the nth of that kind
-                return Some(TextObject { anchor: self.anchor.unwrap_or(Anchor::default()),
-                                         reference: Reference::Index(kind, n as u32) })
-            } else {
-                // just the kind, nothing else, find next instance from cursor
-                return Some(TextObject { anchor: self.anchor.unwrap_or(Anchor::default()),
-                                         reference: Reference::Offset(Mark::Cursor(0), kind, 1) })
+            // we have at least a kind
+            Some(TextObject {
+                kind: kind,
+                offset: self.offset.unwrap_or(Offset::Absolute(0)),
+            })
+        } else {
+            None
+        };
+
+        if let Some(ref mut object) = result {
+            if let Some(number) = self.number {
+                object.offset = object.offset.with_num(number as usize);
             }
         }
-        None
+
+        result
     }
 
     fn complete_command(&mut self) -> Option<Command> {
@@ -202,10 +188,7 @@ impl Builder {
             return Some(Command {
                 number: self.repeat.unwrap_or(0) as i32,
                 action: Action::Instruction(i),
-                object: self.complete_object().unwrap_or(TextObject {
-                    anchor: Anchor::default(),
-                    reference: Reference::default()
-                })
+                object: self.complete_object().unwrap_or_default()
             });
         }
 
@@ -241,15 +224,55 @@ impl Builder {
         match partial {
             Partial::Kind(k)      => self.kind = Some(k),
             Partial::Anchor(a)    => self.anchor = Some(a),
-            Partial::Reference(r) => self.reference = Some(r),
+            Partial::Offset(o)    => self.offset = Some(o),
             Partial::Object(o)    => self.object = Some(o),
             Partial::Action(a)    => { 
                 self.action = Some(a);
                 if !self.reading_number && self.number.is_some() && self.repeat.is_none() {
+                    // the first number followed by an action is treated as a repetition
                     self.repeat = Some(self.number.unwrap() as usize);
                     self.number = None;
                 }
             }
+        }
+        
+        // propagate upwards from anchor to object
+        // if both an object(a) and an anchor(b) have been applied, the resulting
+        // object should be exactly the same as (a), only using (b) as the anchor
+        if let Some(anchor) = self.anchor {
+            if let Some(kind) = self.kind {
+                self.kind = Some(kind.with_anchor(anchor));
+            }
+            if let Some(object) = self.object {
+                self.object = Some(TextObject {
+                    kind: object.kind.with_anchor(anchor),
+                    offset: object.offset,
+                });
+            }
+        }        
+        if let Some(kind) = self.kind {
+            if let Some(ref mut object) = self.object {
+                object.kind = kind;
+            }
+        }
+        if let Some(offset) = self.offset {
+            if let Some(ref mut object) = self.object {
+                object.offset = offset;
+            }
+        }
+
+        // propagate downwards from object to unset partials
+        if let Some(object) = self.object {
+            if self.offset.is_none() { self.offset = Some(object.offset); }
+            if self.kind.is_none() { self.kind = Some(object.kind); }
+            if self.anchor.is_none() { self.anchor = Some(object.kind.get_anchor()); }
+        }
+
+        if self.offset.is_some() && self.kind.is_some() && self.object.is_none() {
+            self.object = Some(TextObject {
+                kind: self.kind.unwrap(),
+                offset: self.offset.unwrap(),
+            });
         }
     }
 }
@@ -258,30 +281,39 @@ fn default_keymap() -> KeyMap<Partial> {
     let mut keymap = KeyMap::new();
 
     // next/previous char
-    keymap.bind_key(Key::Char('l'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Char,  1)));
-    keymap.bind_key(Key::Char('h'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Char, -1)));
-
-    // next/previous word
-    keymap.bind_key(Key::Char('w'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Word(WordEdgeMatch::Alphabet),  1)));
-    keymap.bind_key(Key::Char('b'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Word(WordEdgeMatch::Alphabet), -1)));
-    keymap.bind_key(Key::Char('W'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Word(WordEdgeMatch::Whitespace),  1)));
-    keymap.bind_key(Key::Char('B'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Word(WordEdgeMatch::Whitespace), -1)));
+    keymap.bind_key(Key::Char('l'), Partial::Object(TextObject {
+        kind: Kind::Char,
+        offset: Offset::Forward(1, Mark::Cursor(0))
+    }));
+    keymap.bind_key(Key::Char('h'), Partial::Object(TextObject {
+        kind: Kind::Char,
+        offset: Offset::Backward(1, Mark::Cursor(0))
+    }));
 
     // next/previous line
-    keymap.bind_key(Key::Char('j'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Line,  1)));
-    keymap.bind_key(Key::Char('k'), Partial::Reference(Reference::Offset(Mark::Cursor(0), Kind::Line, -1)));
+    keymap.bind_key(Key::Char('j'), Partial::Object(TextObject {
+        kind: Kind::Line(Anchor::Same),
+        offset: Offset::Forward(1, Mark::Cursor(0))
+    }));
+    keymap.bind_key(Key::Char('k'), Partial::Object(TextObject {
+        kind: Kind::Line(Anchor::Same),
+        offset: Offset::Backward(1, Mark::Cursor(0))
+    }));
 
-    // start/end of line
-    keymap.bind_key(Key::Char('0'), Partial::Object(TextObject { anchor: Anchor::Before, 
-                                                                 reference: Reference::Mark(Mark::Cursor(0), Kind::Line) }));
-    keymap.bind_key(Key::Char('$'), Partial::Object(TextObject { anchor: Anchor::After, 
-                                                                 reference: Reference::Mark(Mark::Cursor(0), Kind::Line) }));
+    // next/previous word
+    keymap.bind_key(Key::Char('w'), Partial::Object(TextObject {
+        kind: Kind::Word(Anchor::Before),
+        offset: Offset::Forward(1, Mark::Cursor(0))
+    }));
+    keymap.bind_key(Key::Char('b'), Partial::Object(TextObject {
+        kind: Kind::Word(Anchor::Before),
+        offset: Offset::Backward(1, Mark::Cursor(0))
+    }));
 
     // kinds
     keymap.bind_keys(&[Key::Char('`'), Key::Char('c')], Partial::Kind(Kind::Char));
-    keymap.bind_keys(&[Key::Char('`'), Key::Char('w')], Partial::Kind(Kind::Word(WordEdgeMatch::Alphabet)));
-    keymap.bind_keys(&[Key::Char('`'), Key::Char('W')], Partial::Kind(Kind::Word(WordEdgeMatch::Whitespace)));
-    keymap.bind_keys(&[Key::Char('`'), Key::Char('l')], Partial::Kind(Kind::Line));
+    keymap.bind_keys(&[Key::Char('`'), Key::Char('w')], Partial::Kind(Kind::Word(Anchor::Before)));
+    keymap.bind_keys(&[Key::Char('`'), Key::Char('l')], Partial::Kind(Kind::Line(Anchor::Before)));
 
     // anchors
     keymap.bind_key(Key::Char(','), Partial::Anchor(Anchor::Before));
@@ -289,8 +321,6 @@ fn default_keymap() -> KeyMap<Partial> {
 
     // actions
     keymap.bind_key(Key::Char('d'), Partial::Action(Action::Operation(Operation::Delete)));
-    keymap.bind_key(Key::Char('g'), Partial::Action(Action::Instruction(Instruction::SetMark(Mark::Cursor(0)))));
-
     keymap.bind_key(Key::Char(':'), Partial::Action(Action::Instruction(Instruction::SetOverlay(OverlayType::Prompt))));
 
     keymap
