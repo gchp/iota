@@ -20,7 +20,7 @@ dependencies = [
 [[package]]
 name = "gapbuffer"
 version = "0.0.3"
-source = "git+https://github.com/dlaronson/gapbuffer#9b3bd2a249303b57a1caea200a6a4b537b51c410"
+source = "git+https://github.com/dlaronson/gapbuffer#75708d3f33a3af9a5809745cb2118bd8cc5f0c69"
 
 [[package]]
 name = "regex"
