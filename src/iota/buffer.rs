@@ -307,22 +307,20 @@ fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBu
 /// Newline prior to mark (EXCLUSIVE) + 1.
 /// None if mark is outside of the len of text.
 fn get_line(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
-    if mark <= text.len() {
-        range(0, mark + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
-                                .take(1)
-                                .next()
-    } else { None }
+    let val = cmp::min(mark, text.len());
+    range(0, val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
+                           .take(1)
+                           .next()
 }
 
 /// Returns the index of the newline character at the end of the line mark is in.
 /// Newline after mark (INCLUSIVE).
 /// None iff mark is outside the len of text.
 fn get_line_end(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
-    if mark <= text.len() {
-        range(mark, text.len() + 1).filter(|idx| *idx == text.len() ||text[*idx] == b'\n')
-                                   .take(1)
-                                   .next()
-    } else { None }
+    let val = cmp::min(mark, text.len());
+    range(val, text.len()+1).filter(|idx| *idx == text.len() || text[*idx] == b'\n')
+                            .take(1)
+                            .next()
 }
 
 /// Performs a transaction on the passed in buffer.
