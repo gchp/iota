@@ -357,7 +357,7 @@ mod tests {
         let mut view = setup_view("test\nsecond");
         view.move_cursor(Direction::Down, 1);
         assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().1, 1);
-        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"second"[]);
+        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"second");
     }
 
     #[test]
@@ -366,7 +366,7 @@ mod tests {
         view.move_cursor(Direction::Down, 1);
         view.move_cursor(Direction::Up, 1);
         assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().1, 0);
-        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"test\n"[]);
+        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"test\n");
     }
 
     #[test]
@@ -383,7 +383,7 @@ mod tests {
         let mut view = setup_view("test\nsecond");
         view.insert_char('t');
 
-        assert_eq!(view.buffer.lines().next().unwrap(), b"ttest\n"[]);
+        assert_eq!(view.buffer.lines().next().unwrap(), b"ttest\n");
     }
 
     #[test]
@@ -391,7 +391,7 @@ mod tests {
         let mut view = setup_view("test\nsecond");
         view.delete_chars(Direction::Right, 1);
 
-        assert_eq!(view.buffer.lines().next().unwrap(), b"est\n"[]);
+        assert_eq!(view.buffer.lines().next().unwrap(), b"est\n");
     }
 
     #[test]
@@ -400,7 +400,7 @@ mod tests {
         view.move_cursor(Direction::Right, 1);
         view.delete_chars(Direction::Left, 1);
 
-        assert_eq!(view.buffer.lines().next().unwrap(), b"est\n"[]);
+        assert_eq!(view.buffer.lines().next().unwrap(), b"est\n");
     }
 
 
@@ -410,7 +410,7 @@ mod tests {
         view.move_cursor(Direction::Down, 1);
         view.delete_chars(Direction::Left, 1);
 
-        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond"[]);
+        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond");
     }
 
     #[test]
@@ -419,7 +419,7 @@ mod tests {
         view.move_cursor(Direction::Right, 4);
         view.delete_chars(Direction::Right, 1);
 
-        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond"[]);
+        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond");
     }
 
     #[test]
