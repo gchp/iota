@@ -7,10 +7,13 @@ use super::Direction;
 use super::WordEdgeMatch;
 use super::OverlayType;
 
+use command;
+
 
 /// NormalMode mimics Vi's Normal mode.
 pub struct NormalMode {
     keymap: KeyMap<Command>,
+    builder: command::Builder,
 }
 
 impl NormalMode {
@@ -19,6 +22,7 @@ impl NormalMode {
     pub fn new() -> NormalMode {
         NormalMode {
             keymap: NormalMode::key_defaults(),
+            builder: command::Builder::new(),
         }
     }
 
