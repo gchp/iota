@@ -61,7 +61,7 @@ pub struct Command {
 
 pub struct Builder {
     number: Option<i32>,
-    repeat: Option<uint>,
+    repeat: Option<usize>,
 
     action: Option<Action>,
     mark: Option<Mark>,
@@ -229,7 +229,7 @@ impl Builder {
         None
     }
 
-    fn append_digit(&mut self, n: uint) {
+    fn append_digit(&mut self, n: usize) {
         if let Some(current) = self.number {
             self.number = Some((current*10) + n as i32);
         } else {
@@ -246,7 +246,7 @@ impl Builder {
             Partial::Action(a)    => { 
                 self.action = Some(a);
                 if !self.reading_number && self.number.is_some() && self.repeat.is_none() {
-                    self.repeat = Some(self.number.unwrap() as uint);
+                    self.repeat = Some(self.number.unwrap() as usize);
                     self.number = None;
                 }
             }
