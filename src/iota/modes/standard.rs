@@ -15,7 +15,7 @@ use super::Direction;
 /// Standard mode allows Iota to be used in a non-modal way, similar to mainstream
 /// editors like emacs or sublime.
 pub struct StandardMode {
-    keymap: KeyMap,
+    keymap: KeyMap<Command>,
 }
 
 impl StandardMode {
@@ -28,7 +28,7 @@ impl StandardMode {
     }
 
     /// Creates a KeyMap with default StandardMode key bindings
-    fn key_defaults() -> KeyMap {
+    fn key_defaults() -> KeyMap<Command> {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
