@@ -3,7 +3,7 @@ name = "iota"
 version = "0.1.0"
 dependencies = [
  "docopt 0.6.30 (registry+https://github.com/rust-lang/crates.io-index)",
- "gapbuffer 0.0.3 (git+https://github.com/dlaronson/gapbuffer)",
+ "gapbuffer 0.0.4 (git+https://github.com/dlaronson/gapbuffer)",
  "rustbox 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -19,8 +19,8 @@ dependencies = [
 
 [[package]]
 name = "gapbuffer"
-version = "0.0.3"
-source = "git+https://github.com/dlaronson/gapbuffer#75708d3f33a3af9a5809745cb2118bd8cc5f0c69"
+version = "0.0.4"
+source = "git+https://github.com/dlaronson/gapbuffer#c9b5cde39e03ebd8f6ab2a8df12f90e7a595c8ec"
 
 [[package]]
 name = "regex"

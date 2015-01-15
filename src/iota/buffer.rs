@@ -114,7 +114,7 @@ impl Buffer {
     /// Creates an iterator on the text by lines.
     pub fn lines(&self) -> Lines {
         Lines {
-            buffer: self.text.as_slice(),
+            buffer: &self.text,
             tail: 0,
             head: self.len()
         }
@@ -125,9 +125,9 @@ impl Buffer {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
             if idx < self.len() {
                 Some(Lines {
-                    buffer: self.text.slice_from(idx),
-                    tail: 0,
-                    head: self.len() - idx,
+                    buffer: &self.text,
+                    tail: idx,
+                    head: self.len(),
                 })
             } else { None }
         } else { None }
@@ -340,17 +340,16 @@ fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
 }
 
 pub struct Lines<'a> {
-    buffer: &'a [u8],
+    buffer: &'a GapBuffer<u8>,
     tail: usize,
     head: usize,
 }
 
 impl<'a> Iterator for Lines<'a> {
-    type Item = &'a [u8];
+    type Item = Vec<u8>;
 
-    fn next(&mut self) -> Option<&'a [u8]> {
+    fn next(&mut self) -> Option<Vec<u8>> {
         if self.tail != self.head {
-
             let old_tail = self.tail;
             //update tail to either the first char after the next \n or to self.head
             self.tail = range(old_tail, self.head).filter(|i| { *i + 1 == self.head 
@@ -358,9 +357,8 @@ impl<'a> Iterator for Lines<'a> {
                                                   .take(1)
                                                   .next()
                                                   .unwrap() + 1;
-            if self.tail == self.head { Some(self.buffer.slice(old_tail, self.tail-1)) }
-            else { Some(self.buffer.slice(old_tail, self.tail)) }
-
+            Some(range(old_tail, if self.tail == self.head { self.tail - 1 } else { self.tail })
+                .map( |i| self.buffer[i] ).collect())
         } else { None }
     }
 
