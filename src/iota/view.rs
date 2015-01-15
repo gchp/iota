@@ -105,7 +105,7 @@ impl<'v> View<'v> {
                                 .unwrap()
                                 .take(self.get_height())
                                 .enumerate() {
-            draw_line(&mut self.uibuf, line, index, self.left_col);
+            draw_line(&mut self.uibuf, &*line, index, self.left_col);
             if index == self.get_height() { break; }
         }
 
@@ -281,7 +281,7 @@ impl<'v> View<'v> {
 
         //TODO (lee): Is iteration still necessary in this format?
         for line in self.buffer.lines() {
-            let result = file.write(line);
+            let result = file.write(&*line);
 
             if result.is_err() {
                 // TODO(greg): figure out what to do here.
@@ -427,7 +427,7 @@ mod tests {
         let mut view = setup_view("test\nsecond");
         view.delete_chars(Direction::Left, 1);
 
-        let lines: Vec<&[u8]> = view.buffer.lines().collect();
+        let lines: Vec<_> = view.buffer.lines().collect();
 
         assert_eq!(lines.len(), 2);
         assert_eq!(view.buffer.lines().next().unwrap(), b"test\n");
