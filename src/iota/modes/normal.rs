@@ -7,10 +7,13 @@ use super::Direction;
 use super::WordEdgeMatch;
 use super::OverlayType;
 
+use command;
+
 
 /// NormalMode mimics Vi's Normal mode.
 pub struct NormalMode {
     keymap: KeyMap<Command>,
+    builder: command::Builder,
 }
 
 impl NormalMode {
@@ -19,6 +22,7 @@ impl NormalMode {
     pub fn new() -> NormalMode {
         NormalMode {
             keymap: NormalMode::key_defaults(),
+            builder: command::Builder::new(),
         }
     }
 
@@ -66,9 +70,18 @@ impl NormalMode {
 impl Mode for NormalMode {
     /// Given a key, pass it through the NormalMode KeyMap and return the associated Command, if any.
     fn handle_key_event(&mut self, key: Key) -> Command {
-        if let KeyMapState::Match(command) = self.keymap.check_key(key) {
-            return command
+        let result = self.builder.check_key(key);
+        println!("commandbuilder: {:?} > {:?}\n", key, result);
+        if let command::BuilderEvent::Complete(c) = result {
+            if let command::Action::Instruction(command::Instruction::SetOverlay(o)) = c.action {
+                return Command::SetOverlay(OverlayType::Prompt);
+            }
         }
+        return Command::InsertChar('\n');
+
+        // if let KeyMapState::Match(command) = self.keymap.check_key(key) {
+        //     return command
+        // }
 
         Command::Unknown
     }
