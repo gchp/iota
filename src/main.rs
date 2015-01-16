@@ -46,13 +46,11 @@ fn main() {
     // RustBox options
     let options = [
         if stdio::stderr_raw().isatty() { Some(InitOption::BufferStderr) } else { None },
+        Some(InitOption::InputMode(InputMode::Alt)),
     ];
 
     // initialise the frontend
     let rb = RustBox::init(&options).unwrap();
-    // TODO: perhaps move this to options above - will require rustbox change
-    rb.set_input_mode(InputMode::Alt);
-
     let frontend = RustboxFrontend::new(&rb);
 
     // initialise the editor mode
