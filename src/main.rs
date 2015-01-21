@@ -12,7 +12,7 @@ extern crate iota;
     StandardMode, NormalMode,
     RustboxFrontend, Mode
 };
-#[cfg(not(test))] use rustbox::{InitOption, RustBox};
+#[cfg(not(test))] use rustbox::{InitOption, RustBox, InputMode};
 #[cfg(not(test))] static USAGE: &'static str = "
 Usage: iota [<filename>] [options]
        iota --help
@@ -46,6 +46,7 @@ fn main() {
     // RustBox options
     let options = [
         if stdio::stderr_raw().isatty() { Some(InitOption::BufferStderr) } else { None },
+        Some(InitOption::InputMode(InputMode::Alt)),
     ];
 
     // initialise the frontend
