@@ -111,6 +111,28 @@ impl Buffer {
         } else { None }
     }
 
+    /// Creates an iterator on the text by chars.
+    pub fn chars(&self) -> Chars {
+        Chars {
+            buffer: &self.text,
+            idx: 0,
+            forward: true,
+        }
+    }
+
+    /// Creates an iterator on the text by chars that begins at the specified mark.
+    pub fn chars_from(&self, mark: Mark) -> Option<Chars> {
+        if let Some(&(idx, _)) = self.marks.get(&mark) {
+            if idx < self.len() {
+                Some(Chars {
+                    buffer: &self.text,
+                    idx: idx,
+                    forward: true,
+                })
+            } else { None }
+        } else { None }
+    }
+
     /// Creates an iterator on the text by lines.
     pub fn lines(&self) -> Lines {
         Lines {
@@ -365,6 +387,41 @@ impl<'a> Iterator for Lines<'a> {
 
 }
 
+pub struct Chars<'a> {
+    buffer: &'a GapBuffer<u8>,
+    idx: usize,
+    forward: bool,
+}
+
+impl<'a> Chars<'a> {
+    pub fn rev(mut self) -> Chars<'a> {
+        self.forward = !self.forward;
+        self
+    }
+    pub fn forward(mut self) -> Chars<'a> {
+        self.forward = true;
+        self
+    }
+    pub fn backward(mut self) -> Chars<'a> {
+        self.forward = false;
+        self
+    }
+}
+
+impl<'a> Iterator for Chars<'a> {
+    type Item = u8;
+    
+    fn next(&mut self) -> Option<u8> {
+        let n = if self.idx < self.buffer.len() {
+            Some(self.buffer[self.idx])
+        } else {
+            None
+        };
+        self.idx += if self.forward { 1 } else { -1 };
+        n
+    }
+}
+
 #[cfg(test)]
 mod test {
 
@@ -472,6 +529,36 @@ mod test {
 
         assert_eq!(lines.next().unwrap(), [b'\n']);
         assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't']);
+    }
+
+    #[test]
+    fn test_to_chars() {
+        let mut buffer = setup_buffer("Test");
+        buffer.set_mark(Mark::Cursor(0), 0);
+        let mut chars = buffer.chars();
+        assert!(chars.next().unwrap() == 'T' as u8);
+        assert!(chars.next().unwrap() == 'e' as u8);
+        assert!(chars.next().unwrap() == 's' as u8);
+        assert!(chars.next().unwrap() == 't' as u8);
+    }
+
+    #[test]
+    fn test_to_chars_from() {
+        let mut buffer = setup_buffer("Test");
+        buffer.set_mark(Mark::Cursor(0), 2);
+        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap();
+        assert!(chars.next().unwrap() == 's' as u8);
+        assert!(chars.next().unwrap() == 't' as u8);
+    }
+
+    #[test]
+    fn test_to_chars_rev() {
+        let mut buffer = setup_buffer("Test");
+        buffer.set_mark(Mark::Cursor(0), 2);
+        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap().rev();
+        assert!(chars.next().unwrap() == 's' as u8);
+        assert!(chars.next().unwrap() == 'e' as u8);
+        assert!(chars.next().unwrap() == 'T' as u8);
     }
 
     #[test]
