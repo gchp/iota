@@ -449,37 +449,30 @@ impl<'a> Iterator for Chars<'a> {
     fn next(&mut self) -> Option<char> {
         if self.forward {
             // read u8s forwards into char (largely copied from core::str::Chars)
-
             let x = match self.next_u8() {
                 None => return None,
                 Some(next_byte) if next_byte < 128 => return Some(next_byte as char),
                 Some(next_byte) => next_byte
             };
             
-            //print!("\n forward multibyte start: [{:x}", x);
-
             // Multibyte case follows
             // Decode from a byte combination out of: [[[x y] z] w]
             let init = utf8_first_byte!(x, 2);
             let y = self.next_u8().unwrap_or(0);
-            //print!(" {:x}", y);
             let mut ch = utf8_acc_cont_byte!(init, y);
             if x >= 0xE0 {
                 // [[x y z] w] case
                 // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
                 let z = self.next_u8().unwrap_or(0);
-                //print!(" {:x}", z);
                 let y_z = utf8_acc_cont_byte!((y & CONT_MASK) as u32, z);
                 ch = init << 12 | y_z;
                 if x >= 0xF0 {
                     // [x y z w] case
                     // use only the lower 3 bits of `init`
                     let w = self.next_u8().unwrap_or(0);
-                    //print!(" {:x}", w);
                     ch = (init & 7) << 18 | utf8_acc_cont_byte!(y_z, w);
                 }
             }
-            //print!("]: {} ({:x})\n", unsafe { mem::transmute::<u32, char>(ch) }, ch);
 
             // str invariant says `ch` is a valid Unicode Scalar Value
             return unsafe { Some(mem::transmute(ch)) };
@@ -491,29 +484,22 @@ impl<'a> Iterator for Chars<'a> {
                 Some(back_byte) => back_byte,
             };
 
-            //print!("\nbackward multibyte start: [{:x}", w);
-
             // Multibyte case follows
             // Decode from a byte combination out of: [x [y [z w]]]
             let mut ch;
             let z = self.next_u8().unwrap_or(0);
-            //print!(" {:x}", z);
             ch = utf8_first_byte!(z, 2);
             if utf8_is_cont_byte!(z) {
                 let y = self.next_u8().unwrap_or(0);
-                //print!(" {:x}", y);
                 ch = utf8_first_byte!(y, 3);
                 if utf8_is_cont_byte!(y) {
                     let x = self.next_u8().unwrap_or(0);
-                    //print!(" {:x}", x);
                     ch = utf8_first_byte!(x, 4);
                     ch = utf8_acc_cont_byte!(ch, y);
                 }
                 ch = utf8_acc_cont_byte!(ch, z);
             }
             ch = utf8_acc_cont_byte!(ch, w);
-
-            //print!("]: {} ({:x})\n", unsafe { mem::transmute::<u32, char>(ch) }, ch);
 
             // str invariant says `ch` is a valid Unicode Scalar Value
             return unsafe { Some(mem::transmute(ch)) };
