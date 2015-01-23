@@ -34,7 +34,7 @@ impl UIBuffer {
     }
 
     pub fn draw_range<T: Frontend>(&mut self, frontend: &mut T, start: usize, stop: usize) {
-        let rows = self.rows.slice_mut(start, stop);
+        let rows = &mut self.rows[start..stop];
         for row in rows.iter_mut() {
             for cell in row.iter_mut().filter(|cell| cell.dirty) {
                 frontend.draw_char(cell.x, cell.y, cell.ch, cell.fg, cell.bg, CharStyle::Normal);

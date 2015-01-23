@@ -54,7 +54,7 @@ impl<T: Copy> Trie<T> {
                 }
                 Trie::Node(ref mut map) => {
                     let key = keys[0];
-                    let keys = keys.slice_from(1);
+                    let keys = &keys[1..];
 
                     if map.contains_key(&key) {
                         map.get_mut(&key).unwrap().bind_keys(keys, value);
