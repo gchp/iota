@@ -50,7 +50,10 @@ fn main() {
     ];
 
     // initialise the frontend
-    let rb = RustBox::init(&options).unwrap();
+    let rb = match RustBox::init(&options) {
+        Result::Ok(v) => v,
+        Result::Err(e) => panic!("{}", e),
+    };
     let frontend = RustboxFrontend::new(&rb);
 
     // initialise the editor mode
