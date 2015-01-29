@@ -3,7 +3,7 @@
 use std::cmp;
 use std::mem;
 use std::collections::HashMap;
-use std::io::{File, Reader, BufferedReader};
+use std::old_io::{File, Reader, BufferedReader};
 
 // external dependencies
 use gapbuffer::GapBuffer;

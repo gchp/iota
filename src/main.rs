@@ -5,7 +5,7 @@ extern crate rustbox;
 extern crate docopt;
 extern crate iota;
 
-#[cfg(not(test))] use std::io::stdio;
+#[cfg(not(test))] use std::old_io::stdio;
 #[cfg(not(test))] use docopt::Docopt;
 #[cfg(not(test))] use iota::{
     Editor, Input,

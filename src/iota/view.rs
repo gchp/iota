@@ -1,6 +1,6 @@
 use std::cmp;
 use std::borrow::Cow;
-use std::io::{fs, File, FileMode, FileAccess, TempDir};
+use std::old_io::{fs, File, FileMode, FileAccess, TempDir};
 
 use buffer::{Buffer, Direction, Mark};
 use input::Input;
@@ -281,7 +281,7 @@ impl<'v> View<'v> {
 
         //TODO (lee): Is iteration still necessary in this format?
         for line in self.buffer.lines() {
-            let result = file.write(&*line);
+            let result = file.write_all(&*line);
 
             if result.is_err() {
                 // TODO(greg): figure out what to do here.

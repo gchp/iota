@@ -1,4 +1,4 @@
-use std::io::stdio;
+use std::old_io::stdio;
 
 /// A source of Input for the Editor.
 ///
