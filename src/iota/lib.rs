@@ -7,9 +7,14 @@
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 #![feature(slicing_syntax)]
+#![feature(collections)]
+#![feature(unicode)]
+#![feature(core)]
+#![feature(path)]
+#![feature(hash)]
+#![feature(io)]
 
 #![warn(missing_docs)]
-#![allow(unstable)]
 
 extern crate rustbox;
 extern crate gapbuffer;

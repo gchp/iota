@@ -1,4 +1,5 @@
-#![allow(unstable)]
+#![feature(io)]
+#![feature(core)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate rustbox;
