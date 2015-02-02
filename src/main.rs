@@ -24,7 +24,7 @@ Options:
 ";
 
 
-#[derive(RustcDecodable, Show)]
+#[derive(RustcDecodable, Debug)]
 struct Args {
     arg_filename: Option<String>,
     flag_vi: bool,
