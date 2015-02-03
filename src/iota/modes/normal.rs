@@ -69,21 +69,8 @@ impl NormalMode {
 
 impl Mode for NormalMode {
     /// Given a key, pass it through the NormalMode KeyMap and return the associated Command, if any.
-    fn handle_key_event(&mut self, key: Key) -> Command {
-        let result = self.builder.check_key(key);
-        println!("commandbuilder: {:?} > {:?}\n", key, result);
-        if let command::BuilderEvent::Complete(c) = result {
-            if let command::Action::Instruction(command::Instruction::SetOverlay(o)) = c.action {
-                return Command::SetOverlay(OverlayType::Prompt);
-            }
-        }
-        return Command::InsertChar('\n');
-
-        // if let KeyMapState::Match(command) = self.keymap.check_key(key) {
-        //     return command
-        // }
-
-        Command::Unknown
+    fn handle_key_event(&mut self, key: Key) -> command::BuilderEvent {
+        self.builder.check_key(key)
     }
 }
 

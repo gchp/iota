@@ -6,6 +6,11 @@ use frontends::{Frontend, EditorEvent};
 use modes::Mode;
 use overlay::{Overlay, OverlayType, OverlayEvent};
 
+use command::Command as Cmd;
+use command::{Action, BuilderEvent, Operation, Instruction};
+
+use textobject::{TextObject, Kind, Offset};
+
 
 #[derive(Copy, Debug, PartialEq, Eq)]
 pub enum Command {
@@ -94,7 +99,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                         self.handle_overlay_response(response)
                     }
 
-                    _ => { Command:: None }
+                    _ => { BuilderEvent::Incomplete }
                 }
             }
         };
@@ -104,7 +109,9 @@ impl<'e, T: Frontend> Editor<'e, T> {
             self.view.clear(&mut self.frontend);
         }
 
-        self.handle_command(command);
+        if let BuilderEvent::Complete(c) = command {
+            self.handle_command(c);
+        }
     }
 
     /// Translate the response from an Overlay to a Command
@@ -112,20 +119,46 @@ impl<'e, T: Frontend> Editor<'e, T> {
     /// In most cases, we will just want to convert the response directly to
     /// a Command, however in some cases we will want to perform other actions
     /// first, such as in the case of Overlay::SavePrompt.
-    fn handle_overlay_response(&mut self, response: Option<String>) -> Command {
+    fn handle_overlay_response(&mut self, response: Option<String>) -> BuilderEvent {
+        // FIXME: This entire method neext to be updated
         match response {
             Some(data) => {
                 match self.view.overlay {
-                    Overlay::Prompt { .. } => Command::from_str(&*data),
+
+                    // FIXME: this is just a temporary fix
+                    Overlay::Prompt { .. } => {
+                        match Command::from_str(&*data) {
+                            Command::ExitEditor => {
+                                return BuilderEvent::Complete(Cmd {
+                                    action:Action::Instruction(Instruction::ExitEditor),
+                                    number: 0,
+                                    object: TextObject {
+                                        kind: Kind::Char,
+                                        offset: Offset::Absolute(0),
+                                    },
+                                })
+                            }
+                            _ => BuilderEvent::Incomplete
+                        }
+                    }
+
                     Overlay::SavePrompt { .. } => {
                         let path = Path::new(&*data);
                         self.view.buffer.file_path = Some(path);
-                        Command::SaveBuffer
+                        // Command::SaveBuffer
+                        BuilderEvent::Complete(Cmd {
+                            action:Action::Instruction(Instruction::SaveBuffer),
+                            number: 0,
+                            object: TextObject {
+                                kind: Kind::Char,
+                                offset: Offset::Absolute(0),
+                            },
+                        })
                     }
-                    _ => Command::None,
+                    _ => BuilderEvent::Incomplete,
                 }
             }
-            None => Command::None
+            None => BuilderEvent::Incomplete
         }
     }
 
@@ -142,31 +175,69 @@ impl<'e, T: Frontend> Editor<'e, T> {
     }
 
     /// Handle the given command, performing the associated action
-    fn handle_command(&mut self, command: Command) {
-        // check for the ExitEditor command first
-        if let Command::ExitEditor = command {
-            self.running = false;
-            return;
+    fn handle_command(&mut self, command: Cmd) {
+        match command.action {
+            Action::Instruction(i) => self.handle_instruction(i, command),
+            Action::Operation(o) => self.handle_operation(o, command),
         }
 
-        match command {
-            // Editor Commands
-            Command::SaveBuffer         => self.view.try_save_buffer(),
-            Command::SetOverlay(o)      => self.view.set_overlay(o),
+        // match command {
+        //     // Editor Commands
+        //     Command::SaveBuffer         => self.view.try_save_buffer(),
+        //     Command::SetOverlay(o)      => self.view.set_overlay(o),
 
-            // Navigation
-            Command::MoveCursor(dir, n) => self.view.move_cursor(dir, n),
-            Command::LineEnd            => self.view.move_cursor_to_line_end(),
-            Command::LineStart          => self.view.move_cursor_to_line_start(),
+        //     // Navigation
+        //     Command::MoveCursor(dir, n) => self.view.move_cursor(dir, n),
+        //     Command::LineEnd            => self.view.move_cursor_to_line_end(),
+        //     Command::LineStart          => self.view.move_cursor_to_line_start(),
 
-            // Editing
-            Command::Delete(dir, n)     => self.view.delete_chars(dir, n),
-            Command::InsertTab          => self.view.insert_tab(),
-            Command::InsertChar(c)      => self.view.insert_char(c),
-            Command::Redo               => self.view.redo(),
-            Command::Undo               => self.view.undo(),
+        //     // Editing
+        //     Command::Delete(dir, n)     => self.view.delete_chars(dir, n),
+        //     Command::InsertTab          => self.view.insert_tab(),
+        //     Command::InsertChar(c)      => self.view.insert_char(c),
+        //     Command::Redo               => self.view.redo(),
+        //     Command::Undo               => self.view.undo(),
 
-            _ => {},
+        //     _ => {},
+        // }
+    }
+
+
+    fn handle_instruction(&mut self, instruction: Instruction, command: Cmd) {
+        match instruction {
+            Instruction::SaveBuffer => { self.view.try_save_buffer() }
+            Instruction::ExitEditor => { self.running = false; }
+            Instruction::SetMark(mark) => {
+                let (mut dir, n) = match command.object.offset {
+                    Offset::Backward(n, _) => (Direction::Left, n),
+                    Offset::Forward(n, _) => (Direction::Right, n),
+
+                    // FIXME
+                    Offset::Absolute(n) => (Direction::Right, 0)
+                };
+
+                if let Kind::Line(_) = command.object.kind {
+                    if dir == Direction::Left {
+                        dir = Direction::Up
+                    } else {
+                        dir = Direction::Down
+                    }
+                }
+
+                self.view.move_cursor(dir, n)
+            }
+            Instruction::SetOverlay(overlay_type) => {
+                self.view.set_overlay(overlay_type) 
+            }
+        }
+    }
+
+    fn handle_operation(&mut self, operation: Operation, command: Cmd) {
+        match operation {
+            Operation::Insert => {}
+            Operation::Delete => {}
+            Operation::Undo => {}
+            Operation::Redo => {}
         }
     }
 

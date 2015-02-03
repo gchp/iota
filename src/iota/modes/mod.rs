@@ -9,6 +9,8 @@ pub use super::overlay::{Overlay, OverlayType, OverlayEvent};
 pub use self::standard::StandardMode;
 pub use self::normal::NormalMode;
 
+use command;
+
 mod standard;
 mod normal;
 
@@ -19,5 +21,5 @@ mod normal;
 /// commands which the Editor will interpret.
 pub trait Mode {
     /// Given a Key, return a Command for the Editor to interpret
-    fn handle_key_event(&mut self, key: Key) -> Command;
+    fn handle_key_event(&mut self, key: Key) -> command::BuilderEvent;
 }
