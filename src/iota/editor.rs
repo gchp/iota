@@ -235,7 +235,19 @@ impl<'e, T: Frontend> Editor<'e, T> {
     fn handle_operation(&mut self, operation: Operation, command: Cmd) {
         match operation {
             Operation::Insert => {}
-            Operation::Delete => {}
+            Operation::Delete => {
+                // FIXME: update to delete lines
+                let obj = command.object;
+
+                let (dir, n) = match obj.offset {
+                    Offset::Forward(n, _) => (Direction::Right, n),
+                    Offset::Backward(n, _) => (Direction::Left, n),
+
+                    Offset::Absolute(n) => (Direction::Right, 0),
+                };
+
+                self.view.delete_chars(dir, n) 
+            }
             Operation::Undo => {}
             Operation::Redo => {}
         }
