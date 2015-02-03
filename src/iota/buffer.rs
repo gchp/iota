@@ -13,19 +13,19 @@ use log::{Log, Change, LogEntry};
 use utils::is_alpha_or_;
 
 
-#[derive(Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Mark {
     Cursor(usize),           //For keeping track of cursors.
     DisplayMark(usize),      //For using in determining some display of characters.
 }
 
-#[derive(Copy, PartialEq, Eq, Show)]
+#[derive(Copy, PartialEq, Eq, Debug)]
 pub enum WordEdgeMatch {
     Alphabet,
     Whitespace,
 }
 
-#[derive(Copy, PartialEq, Eq, Show)]
+#[derive(Copy, PartialEq, Eq, Debug)]
 pub enum Direction {
     Up,
     Down,
@@ -348,7 +348,7 @@ fn get_line_end(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
 fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
     for change in transaction.changes.iter() {
         match change {
-            &Change::Insert(idx, ch) => { 
+            &Change::Insert(idx, ch) => {
                 text.insert(idx, ch);
             }
             &Change::Remove(idx, _) => {
@@ -371,7 +371,7 @@ impl<'a> Iterator for Lines<'a> {
         if self.tail != self.head {
             let old_tail = self.tail;
             //update tail to either the first char after the next \n or to self.head
-            self.tail = range(old_tail, self.head).filter(|i| { *i + 1 == self.head 
+            self.tail = range(old_tail, self.head).filter(|i| { *i + 1 == self.head
                                                                 || self.buffer[*i] == b'\n' })
                                                   .take(1)
                                                   .next()
@@ -444,7 +444,7 @@ impl<'a> Chars<'a> {
 
 impl<'a> Iterator for Chars<'a> {
     type Item = char;
-    
+
     #[inline]
     fn next(&mut self) -> Option<char> {
         if self.forward {
@@ -454,7 +454,7 @@ impl<'a> Iterator for Chars<'a> {
                 Some(next_byte) if next_byte < 128 => return Some(next_byte as char),
                 Some(next_byte) => next_byte
             };
-            
+
             // Multibyte case follows
             // Decode from a byte combination out of: [[[x y] z] w]
             let init = utf8_first_byte!(x, 2);

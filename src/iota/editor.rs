@@ -7,7 +7,7 @@ use modes::Mode;
 use overlay::{Overlay, OverlayType, OverlayEvent};
 
 
-#[derive(Copy, Show, PartialEq, Eq)]
+#[derive(Copy, Debug, PartialEq, Eq)]
 pub enum Command {
     SaveBuffer,
     ExitEditor,

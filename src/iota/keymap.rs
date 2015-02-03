@@ -69,7 +69,7 @@ impl<T: Copy> Trie<T> {
     }
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum KeyMapState<T> {
     Match(T),     // found a match
     Continue,     // needs another key to disambiguate
