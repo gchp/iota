@@ -2,7 +2,7 @@ use std::default::Default;
 
 use buffer::{ Direction, Mark, WordEdgeMatch };
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 #[allow(dead_code)]
 pub enum Kind {
     Char,
@@ -39,7 +39,7 @@ impl Default for Kind {
     }
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 #[allow(dead_code)]
 pub enum Anchor {
     Before,     // Index just prior to TextObject
@@ -56,7 +56,7 @@ impl Default for Anchor {
     }
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 #[allow(dead_code)]
 pub enum Offset {
     Absolute(usize),
@@ -80,7 +80,7 @@ impl Default for Offset {
     }
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub struct TextObject {
     pub kind: Kind,
     pub offset: Offset

@@ -8,7 +8,7 @@ use overlay::OverlayType;
 
 /// Instructions for the Editor.
 /// These do NOT alter the text, but may change editor/view state
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 #[allow(dead_code)]
 pub enum Instruction {
     SaveBuffer,
@@ -25,7 +25,7 @@ pub enum Instruction {
 /// Note that these differ from log::Change in that they are higher-level
 /// operations dependent on state (cursor/mark locations, etc.), as opposed
 /// to concrete operations on absolute indexes (insert 'a' at index 158, etc.)
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 #[allow(dead_code)]
 pub enum Operation {
     Insert,     // insert text
@@ -36,7 +36,7 @@ pub enum Operation {
 }
 
 /// Fragments that can be combined to specify a command
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 #[allow(dead_code)]
 pub enum Partial {
     Kind(Kind),
@@ -46,7 +46,7 @@ pub enum Partial {
     Action(Action),
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 #[allow(dead_code)]
 pub enum Action {
     Operation(Operation),
@@ -54,7 +54,7 @@ pub enum Action {
 }
 
 /// A complete, actionable command
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub struct Command {
     pub number: i32,        // numeric paramter, line number, repeat count, etc.
     pub action: Action,     // what to do
@@ -76,7 +76,7 @@ pub struct Builder {
     keymap: KeyMap<Partial>,
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum BuilderEvent {
     Invalid,            // cannot find a valid interpretation
     Incomplete,         // needs more information
