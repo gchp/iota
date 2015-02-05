@@ -6,6 +6,9 @@ use super::KeyMapState;
 use super::Direction;
 
 use command;
+use command::Action;
+use textobject::{Kind, TextObject, Offset};
+
 
 /// Standard mode is Iota's default mode.
 ///
@@ -72,16 +75,18 @@ impl Mode for StandardMode {
     /// Given a key, pass it through the StandardMode KeyMap and return the associated Command, if any.
     /// If no match is found, treat it as an InsertChar command.
     fn handle_key_event(&mut self, key: Key) -> command::BuilderEvent {
-        // FIXME
-        command::BuilderEvent::Incomplete
-        // if let KeyMapState::Match(command) = self.keymap.check_key(key) {
-        //     return command
-        // }
 
-        // if let Key::Char(c) = key {
-        //     Command::InsertChar(c)
-        // } else {
-        //     Command::None
-        // }
+        if let Key::Char(c) = key {
+            command::BuilderEvent::Complete(command::Command {
+                number: 1,
+                action: command::Action::Operation(command::Operation::Insert(c)),
+                object: TextObject {
+                    kind: Kind::Char,
+                    offset: Offset::Absolute(0)
+                }
+            })
+        } else {
+            command::BuilderEvent::Incomplete
+        }
     }
 }

@@ -28,11 +28,11 @@ pub enum Instruction {
 #[derive(Copy, Debug)]
 #[allow(dead_code)]
 pub enum Operation {
-    Insert,     // insert text
-    Delete,     // delete some object
+    Insert(char), // insert text
+    Delete,       // delete some object
 
-    Undo,       // rewind buffer transaction log
-    Redo,       // replay buffer transaction log
+    Undo,         // rewind buffer transaction log
+    Redo,         // replay buffer transaction log
 }
 
 /// Fragments that can be combined to specify a command
