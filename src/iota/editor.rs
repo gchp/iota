@@ -248,8 +248,8 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
                 self.view.delete_chars(dir, n) 
             }
-            Operation::Undo => {}
-            Operation::Redo => {}
+            Operation::Undo => { self.view.undo() }
+            Operation::Redo => { self.view.redo() }
         }
     }
 
