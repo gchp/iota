@@ -181,24 +181,11 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Action::Operation(o) => self.handle_operation(o, command),
         }
 
+        // TODO: re-implement these with the command/builder system
         // match command {
-        //     // Editor Commands
-        //     Command::SaveBuffer         => self.view.try_save_buffer(),
-        //     Command::SetOverlay(o)      => self.view.set_overlay(o),
-
-        //     // Navigation
-        //     Command::MoveCursor(dir, n) => self.view.move_cursor(dir, n),
         //     Command::LineEnd            => self.view.move_cursor_to_line_end(),
         //     Command::LineStart          => self.view.move_cursor_to_line_start(),
-
-        //     // Editing
-        //     Command::Delete(dir, n)     => self.view.delete_chars(dir, n),
         //     Command::InsertTab          => self.view.insert_tab(),
-        //     Command::InsertChar(c)      => self.view.insert_char(c),
-        //     Command::Redo               => self.view.redo(),
-        //     Command::Undo               => self.view.undo(),
-
-        //     _ => {},
         // }
     }
 
