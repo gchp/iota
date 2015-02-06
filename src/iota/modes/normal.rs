@@ -55,10 +55,12 @@ impl NormalMode {
 }
 
 impl Mode for NormalMode {
-    /// Given a key, pass it through the NormalMode KeyMap and return the associated Command, if any.
     fn handle_key_event(&mut self, key: Key) -> command::BuilderEvent {
         match self.builder.check_key(key) {
+            // builder gives us a full command, return that
             command::BuilderEvent::Complete(cmd) => command::BuilderEvent::Complete(cmd),
+
+            // no command from the builder, check the internal keymap
             command::BuilderEvent::Incomplete => {
                 if let KeyMapState::Match(c) = self.keymap.check_key(key) {
                     command::BuilderEvent::Complete(c)
@@ -66,6 +68,8 @@ impl Mode for NormalMode {
                     command::BuilderEvent::Incomplete
                 }
             }
+
+            // invalid result from builder, return invalid
             command::BuilderEvent::Invalid => { command::BuilderEvent::Invalid }
         }
     }
