@@ -165,13 +165,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Action::Instruction(i) => self.handle_instruction(i, command),
             Action::Operation(o) => self.handle_operation(o, command),
         }
-
-        // TODO: re-implement these with the command/builder system
-        // match command {
-        //     Command::LineEnd            => self.view.move_cursor_to_line_end(),
-        //     Command::LineStart          => self.view.move_cursor_to_line_start(),
-        //     Command::InsertTab          => self.view.insert_tab(),
-        // }
     }
 
 
