@@ -8,6 +8,9 @@ use uibuf::{UIBuffer, CharColor};
 use frontends::Frontend;
 use overlay::{Overlay, OverlayType};
 use utils;
+use textobject::{Anchor, TextObject, Kind, Offset};
+
+use buffer::WordEdgeMatch;
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -160,6 +163,58 @@ impl<'v> View<'v> {
             }
             _ => {}
         }
+    }
+
+    pub fn move_mark(&mut self, object: TextObject, num: usize) {
+        // TODO: move all this to buffer
+        //       Buffer should take the entire command and do stuff with it.
+        //       eg:
+        //
+        //       for _ in 0..num {
+        //           self.buffer.shift_mark(object)
+        //       }
+        //
+        let mark = match object.offset {
+            Offset::Forward(_, mark) => mark,
+            Offset::Backward(_, mark) => mark,
+            _ => { return } // no mark found
+        };
+
+        let mut dir = match object.offset {
+            Offset::Backward(_, _) => Direction::Left,
+            Offset::Forward(_, _) => Direction::Right,
+
+            // FIXME
+            Offset::Absolute(_) => Direction::Right
+        };
+
+        match object.kind {
+            Kind::Line(anchor) => {
+                if dir == Direction::Left {
+                    dir = Direction::Up
+                } else {
+                    dir = Direction::Down
+                }
+
+                match anchor {
+                    Anchor::End => { return self.move_cursor_to_line_end() }
+                    Anchor::Start => { return self.move_cursor_to_line_start() }
+                    _ => {}
+                }
+            }
+            Kind::Word(_) => {
+                if let Offset::Forward(_, _) = object.offset {
+                    dir = Direction::RightWord(WordEdgeMatch::Alphabet)
+                } else {
+                    dir = Direction::LeftWord(WordEdgeMatch::Alphabet)
+                }
+            }
+
+            _ => {}
+        }
+
+        self.buffer.shift_mark(mark, dir, num);
+        self.maybe_move_screen();
     }
 
     pub fn move_cursor(&mut self, direction: Direction, amount: usize) {

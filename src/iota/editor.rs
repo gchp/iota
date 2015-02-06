@@ -176,47 +176,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Instruction::ExitEditor => { self.running = false; }
             Instruction::SetMark(mark) => {
                 if let Some(object) = command.object {
-                    // TODO: move all this to buffer
-                    //       Buffer should take the entire command and do stuff with it.
-                    //       eg:
-                    //
-                    //           self.view.move_cursor(object, command.number)
-                    //
-                    let mut dir = match object.offset {
-                        Offset::Backward(_, _) => Direction::Left,
-                        Offset::Forward(_, _) => Direction::Right,
-
-                        // FIXME
-                        Offset::Absolute(_) => Direction::Right
-                    };
-
-                    match object.kind {
-                        Kind::Line(anchor) => {
-                            if dir == Direction::Left {
-                                dir = Direction::Up
-                            } else {
-                                dir = Direction::Down
-                            }
-
-                            match anchor {
-                                Anchor::End => { return self.view.move_cursor_to_line_end() }
-                                Anchor::Start => { return self.view.move_cursor_to_line_start() }
-                                _ => {}
-                            }
-                        }
-                        Kind::Word(_) => {
-                            if let Offset::Forward(_, _) = object.offset {
-                                dir = Direction::RightWord(WordEdgeMatch::Alphabet)
-                            } else {
-                                dir = Direction::LeftWord(WordEdgeMatch::Alphabet)
-                            }
-                        }
-
-                        _ => {}
-                    }
-
-
-                    self.view.move_cursor(dir, command.number as usize)
+                    self.view.move_mark(object, command.number as usize)
                 }
             }
             Instruction::SetOverlay(overlay_type) => {
