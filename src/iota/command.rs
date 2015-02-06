@@ -61,6 +61,32 @@ pub struct Command {
     pub object: TextObject, // where to do it
 }
 
+impl Command {
+    /// Shortcut to create an ExitEditor command
+    pub fn exit_editor() -> Command {
+        Command {
+            action: Action::Instruction(Instruction::ExitEditor),
+            number: 0,
+            object: TextObject {
+                kind: Kind::Char,
+                offset: Offset::Absolute(0),
+            },
+        }
+    }
+
+    /// Shortcut to create a SaveBuffer command
+    pub fn save_buffer() -> Command {
+        Command {
+            action: Action::Instruction(Instruction::SaveBuffer),
+            number: 0,
+            object: TextObject {
+                kind: Kind::Char,
+                offset: Offset::Absolute(0),
+            },
+        }
+    }
+}
+
 pub struct Builder {
     number: Option<i32>,
     repeat: Option<usize>,
