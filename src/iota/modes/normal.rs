@@ -33,8 +33,6 @@ impl NormalMode {
         // movement
         // keymap.bind_key(Key::Char('W'), Command::MoveCursor(Direction::RightWord(WordEdgeMatch::Whitespace), 1));
         // keymap.bind_key(Key::Char('B'), Command::MoveCursor(Direction::LeftWord(WordEdgeMatch::Whitespace), 1));
-        // keymap.bind_key(Key::Char('w'), Command::MoveCursor(Direction::RightWord(WordEdgeMatch::Alphabet), 1));
-        // keymap.bind_key(Key::Char('b'), Command::MoveCursor(Direction::LeftWord(WordEdgeMatch::Alphabet), 1));
         // keymap.bind_key(Key::Char('G'), Command::MoveCursor(Direction::LastLine, 0));
         // keymap.bind_keys(&[Key::Char('g'), Key::Char('g')], Command::MoveCursor(Direction::FirstLine, 0));
 

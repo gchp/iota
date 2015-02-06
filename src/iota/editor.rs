@@ -10,6 +10,8 @@ use command::Command as Cmd;
 use command::{Action, BuilderEvent, Operation, Instruction};
 use textobject::{Anchor, TextObject, Kind, Offset};
 
+use buffer::WordEdgeMatch;
+
 
 #[derive(Copy, Debug, PartialEq, Eq)]
 pub enum Command {
@@ -174,6 +176,12 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Instruction::ExitEditor => { self.running = false; }
             Instruction::SetMark(mark) => {
                 if let Some(object) = command.object {
+                    // TODO: move all this to buffer
+                    //       Buffer should take the entire command and do stuff with it.
+                    //       eg:
+                    //
+                    //           self.view.move_cursor(object, command.number)
+                    //
                     let mut dir = match object.offset {
                         Offset::Backward(_, _) => Direction::Left,
                         Offset::Forward(_, _) => Direction::Right,
@@ -182,18 +190,29 @@ impl<'e, T: Frontend> Editor<'e, T> {
                         Offset::Absolute(_) => Direction::Right
                     };
 
-                    if let Kind::Line(anchor) = object.kind {
-                        if dir == Direction::Left {
-                            dir = Direction::Up
-                        } else {
-                            dir = Direction::Down
+                    match object.kind {
+                        Kind::Line(anchor) => {
+                            if dir == Direction::Left {
+                                dir = Direction::Up
+                            } else {
+                                dir = Direction::Down
+                            }
+
+                            match anchor {
+                                Anchor::End => { return self.view.move_cursor_to_line_end() }
+                                Anchor::Start => { return self.view.move_cursor_to_line_start() }
+                                _ => {}
+                            }
+                        }
+                        Kind::Word(_) => {
+                            if let Offset::Forward(_, _) = object.offset {
+                                dir = Direction::RightWord(WordEdgeMatch::Alphabet)
+                            } else {
+                                dir = Direction::LeftWord(WordEdgeMatch::Alphabet)
+                            }
                         }
 
-                        match anchor {
-                            Anchor::End => { return self.view.move_cursor_to_line_end() }
-                            Anchor::Start => { return self.view.move_cursor_to_line_start() }
-                            _ => {}
-                        }
+                        _ => {}
                     }
 
 
