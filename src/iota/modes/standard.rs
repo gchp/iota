@@ -72,9 +72,23 @@ impl StandardMode {
         // keymap.bind_key(Key::Delete, Command::Delete(Direction::Right, 1));
         // keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right, 1));
 
-        // // History
-        // keymap.bind_key(Key::Ctrl('y'), Command::Redo);
-        // keymap.bind_key(Key::Ctrl('z'), Command::Undo);
+        // History
+        keymap.bind_key(Key::Ctrl('z'), Command {
+            number: 1,
+            action: Action::Operation(Operation::Undo),
+            object: TextObject {
+                kind: Kind::Char,
+                offset: Offset::Absolute(0)
+            }
+        });
+        keymap.bind_key(Key::Ctrl('y'), Command {
+            number: 1,
+            action: Action::Operation(Operation::Redo),
+            object: TextObject {
+                kind: Kind::Char,
+                offset: Offset::Absolute(0)
+            }
+        });
 
         keymap
     }
