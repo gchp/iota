@@ -98,6 +98,24 @@ impl Command {
             object: None,
         }
     }
+
+    /// Shortcut to create Undo command
+    pub fn undo() -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::Undo),
+            object: None
+        }
+    }
+
+    /// Shortcut to create Redo command
+    pub fn redo() -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::Redo),
+            object: None
+        }
+    }
 }
 
 pub struct Builder {

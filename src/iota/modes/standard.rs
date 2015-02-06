@@ -101,16 +101,8 @@ impl StandardMode {
         });
 
         // History
-        keymap.bind_key(Key::Ctrl('z'), Command {
-            number: 1,
-            action: Action::Operation(Operation::Undo),
-            object: None
-        });
-        keymap.bind_key(Key::Ctrl('y'), Command {
-            number: 1,
-            action: Action::Operation(Operation::Redo),
-            object: None
-        });
+        keymap.bind_key(Key::Ctrl('z'), Command::undo());
+        keymap.bind_key(Key::Ctrl('y'), Command::redo());
 
         keymap
     }
