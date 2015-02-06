@@ -8,8 +8,7 @@ use overlay::{Overlay, OverlayType, OverlayEvent};
 
 use command::Command as Cmd;
 use command::{Action, BuilderEvent, Operation, Instruction};
-
-use textobject::{TextObject, Kind, Offset};
+use textobject::{Anchor, TextObject, Kind, Offset};
 
 
 #[derive(Copy, Debug, PartialEq, Eq)]
@@ -189,13 +188,20 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     Offset::Absolute(n) => (Direction::Right, 0)
                 };
 
-                if let Kind::Line(_) = command.object.kind {
+                if let Kind::Line(anchor) = command.object.kind {
                     if dir == Direction::Left {
                         dir = Direction::Up
                     } else {
                         dir = Direction::Down
                     }
+
+                    match anchor {
+                        Anchor::End => { return self.view.move_cursor_to_line_end() }
+                        Anchor::Start => { return self.view.move_cursor_to_line_start() }
+                        _ => {}
+                    }
                 }
+
 
                 self.view.move_cursor(dir, n)
             }

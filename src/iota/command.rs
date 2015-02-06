@@ -336,6 +336,16 @@ fn default_keymap() -> KeyMap<Partial> {
         offset: Offset::Backward(1, Mark::Cursor(0))
     }));
 
+    // start/end line
+    keymap.bind_key(Key::Char('$'), Partial::Object(TextObject {
+        kind: Kind::Line(Anchor::End),
+        offset: Offset::Forward(1, Mark::Cursor(0)),
+    }));
+    keymap.bind_key(Key::Char('^'), Partial::Object(TextObject {
+        kind: Kind::Line(Anchor::Start),
+        offset: Offset::Forward(1, Mark::Cursor(0)),
+    }));
+
     // kinds
     keymap.bind_keys(&[Key::Char('`'), Key::Char('c')], Partial::Kind(Kind::Char));
     keymap.bind_keys(&[Key::Char('`'), Key::Char('w')], Partial::Kind(Kind::Word(Anchor::Before)));

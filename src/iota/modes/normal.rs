@@ -70,11 +70,7 @@ impl NormalMode {
 impl Mode for NormalMode {
     /// Given a key, pass it through the NormalMode KeyMap and return the associated Command, if any.
     fn handle_key_event(&mut self, key: Key) -> command::BuilderEvent {
-        let result = self.builder.check_key(key);
-
-        print!("{:?}", result);
-
-        result
+        self.builder.check_key(key)
     }
 }
 

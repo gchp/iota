@@ -43,9 +43,9 @@ impl Default for Kind {
 #[allow(dead_code)]
 pub enum Anchor {
     Before,     // Index just prior to TextObject
-    // Start,   // First index within TextObject
+    Start,      // First index within TextObject
     // Middle,  // Middle index of TextObject
-    // End,     // Last index within TextObject
+    End,        // Last index within TextObject
     After,      // First index after TextObject
     Same,       // Same as index within current TextObject of the same Kind
 }

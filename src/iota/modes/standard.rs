@@ -62,8 +62,8 @@ impl StandardMode {
         keymap.bind_key(Key::Ctrl('b'), movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
         keymap.bind_key(Key::Ctrl('f'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
 
-        // keymap.bind_key(Key::Ctrl('e'), Command::LineEnd);
-        // keymap.bind_key(Key::Ctrl('a'), Command::LineStart);
+        keymap.bind_key(Key::Ctrl('e'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::End)));
+        keymap.bind_key(Key::Ctrl('a'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Start)));
 
         // // Editing
         // keymap.bind_key(Key::Tab, Command::InsertTab);
