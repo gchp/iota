@@ -58,7 +58,7 @@ pub enum Action {
 pub struct Command {
     pub number: i32,        // numeric paramter, line number, repeat count, etc.
     pub action: Action,     // what to do
-    pub object: TextObject, // where to do it
+    pub object: Option<TextObject>, // where to do it
 }
 
 impl Command {
@@ -67,10 +67,10 @@ impl Command {
         Command {
             action: Action::Instruction(Instruction::ExitEditor),
             number: 0,
-            object: TextObject {
+            object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Absolute(0),
-            },
+            }),
         }
     }
 
@@ -79,10 +79,10 @@ impl Command {
         Command {
             action: Action::Instruction(Instruction::SaveBuffer),
             number: 0,
-            object: TextObject {
+            object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Absolute(0),
-            },
+            }),
         }
     }
 
@@ -91,10 +91,10 @@ impl Command {
         Command {
             number: 1,
             action: Action::Operation(Operation::Insert(c)),
-            object: TextObject {
+            object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Absolute(0)
-            }
+            })
         }
     }
 
@@ -104,10 +104,10 @@ impl Command {
         Command {
             number: 4,
             action: Action::Operation(Operation::Insert(' ')),
-            object: TextObject {
+            object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Absolute(0)
-            }
+            })
         }
     }
 }
@@ -239,7 +239,7 @@ impl Builder {
             return Some(Command {
                 number: self.repeat.unwrap_or(0) as i32,
                 action: Action::Instruction(i),
-                object: self.complete_object().unwrap_or_default()
+                object: self.complete_object()
             });
         }
 
@@ -249,14 +249,14 @@ impl Builder {
                 return Some(Command {
                     number: self.repeat.unwrap_or(0) as i32,
                     action: Action::Operation(o),
-                    object: to
+                    object: Some(to)
                 });
             } else {
                 // we have just an object, assume move cursor instruction
                 return Some(Command {
                     number: self.repeat.unwrap_or(0) as i32,
                     action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
-                    object: to
+                    object: Some(to)
                 });
             }
         }

@@ -173,30 +173,32 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Instruction::SaveBuffer => { self.view.try_save_buffer() }
             Instruction::ExitEditor => { self.running = false; }
             Instruction::SetMark(mark) => {
-                let (mut dir, n) = match command.object.offset {
-                    Offset::Backward(n, _) => (Direction::Left, n),
-                    Offset::Forward(n, _) => (Direction::Right, n),
+                if let Some(object) = command.object {
+                    let (mut dir, n) = match object.offset {
+                        Offset::Backward(n, _) => (Direction::Left, n),
+                        Offset::Forward(n, _) => (Direction::Right, n),
 
-                    // FIXME
-                    Offset::Absolute(n) => (Direction::Right, 0)
-                };
+                        // FIXME
+                        Offset::Absolute(n) => (Direction::Right, 0)
+                    };
 
-                if let Kind::Line(anchor) = command.object.kind {
-                    if dir == Direction::Left {
-                        dir = Direction::Up
-                    } else {
-                        dir = Direction::Down
+                    if let Kind::Line(anchor) = object.kind {
+                        if dir == Direction::Left {
+                            dir = Direction::Up
+                        } else {
+                            dir = Direction::Down
+                        }
+
+                        match anchor {
+                            Anchor::End => { return self.view.move_cursor_to_line_end() }
+                            Anchor::Start => { return self.view.move_cursor_to_line_start() }
+                            _ => {}
+                        }
                     }
 
-                    match anchor {
-                        Anchor::End => { return self.view.move_cursor_to_line_end() }
-                        Anchor::Start => { return self.view.move_cursor_to_line_start() }
-                        _ => {}
-                    }
+
+                    self.view.move_cursor(dir, n)
                 }
-
-
-                self.view.move_cursor(dir, n)
             }
             Instruction::SetOverlay(overlay_type) => {
                 self.view.set_overlay(overlay_type) 
@@ -213,16 +215,16 @@ impl<'e, T: Frontend> Editor<'e, T> {
             }
             Operation::Delete => {
                 // FIXME: update to delete lines
-                let obj = command.object;
+                if let Some(obj) = command.object {
+                    let (dir, n) = match obj.offset {
+                        Offset::Forward(n, _) => (Direction::Right, n),
+                        Offset::Backward(n, _) => (Direction::Left, n),
 
-                let (dir, n) = match obj.offset {
-                    Offset::Forward(n, _) => (Direction::Right, n),
-                    Offset::Backward(n, _) => (Direction::Left, n),
+                        Offset::Absolute(n) => (Direction::Right, 0),
+                    };
 
-                    Offset::Absolute(n) => (Direction::Right, 0),
-                };
-
-                self.view.delete_chars(dir, n) 
+                    self.view.delete_chars(dir, n) 
+                }
             }
             Operation::Undo => { self.view.undo() }
             Operation::Redo => { self.view.redo() }

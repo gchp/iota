@@ -13,10 +13,10 @@ fn movement(offset: Offset, kind: Kind) -> Command {
     Command {
         number: 0,
         action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
-        object: TextObject {
+        object: Some(TextObject {
             kind: kind,
             offset: offset
-        }
+        })
     }
 
 }
@@ -70,52 +70,46 @@ impl StandardMode {
         keymap.bind_key(Key::Backspace, Command {
             number: 1,
             action: Action::Operation(Operation::Delete),
-            object: TextObject {
+            object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Backward(1, Mark::Cursor(0))
-            }
+            })
         });
         keymap.bind_key(Key::Delete, Command {
             number: 1,
             action: Action::Operation(Operation::Delete),
-            object: TextObject {
+            object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Forward(1, Mark::Cursor(0))
-            }
+            })
         });
         keymap.bind_key(Key::Ctrl('h'), Command {
             number: 1,
             action: Action::Operation(Operation::Delete),
-            object: TextObject {
+            object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Backward(1, Mark::Cursor(0))
-            }
+            })
         });
         keymap.bind_key(Key::Ctrl('d'), Command {
             number: 1,
             action: Action::Operation(Operation::Delete),
-            object: TextObject {
+            object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Forward(1, Mark::Cursor(0))
-            }
+            })
         });
 
         // History
         keymap.bind_key(Key::Ctrl('z'), Command {
             number: 1,
             action: Action::Operation(Operation::Undo),
-            object: TextObject {
-                kind: Kind::Char,
-                offset: Offset::Absolute(0)
-            }
+            object: None
         });
         keymap.bind_key(Key::Ctrl('y'), Command {
             number: 1,
             action: Action::Operation(Operation::Redo),
-            object: TextObject {
-                kind: Kind::Char,
-                offset: Offset::Absolute(0)
-            }
+            object: None
         });
 
         keymap
