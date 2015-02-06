@@ -213,7 +213,11 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
     fn handle_operation(&mut self, operation: Operation, command: Cmd) {
         match operation {
-            Operation::Insert(c) => { self.view.insert_char(c) }
+            Operation::Insert(c) => {
+                for _ in 0..command.number {
+                    self.view.insert_char(c)
+                }
+            }
             Operation::Delete => {
                 // FIXME: update to delete lines
                 let obj = command.object;

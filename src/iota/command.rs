@@ -89,8 +89,21 @@ impl Command {
     /// Shortcut to create an Insert command
     pub fn insert_char(c: char) -> Command {
         Command {
-            number: 0,
+            number: 1,
             action: Action::Operation(Operation::Insert(c)),
+            object: TextObject {
+                kind: Kind::Char,
+                offset: Offset::Absolute(0)
+            }
+        }
+    }
+
+    /// Shortcut to create an Insert command
+    // FIXME: shouldn't need this method
+    pub fn insert_tab() -> Command {
+        Command {
+            number: 4,
+            action: Action::Operation(Operation::Insert(' ')),
             object: TextObject {
                 kind: Kind::Char,
                 offset: Offset::Absolute(0)
