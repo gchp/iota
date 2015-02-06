@@ -3,10 +3,23 @@ use super::KeyMap;
 use super::Key;
 use super::KeyMapState;
 use super::Direction;
+use buffer::Mark;
+use command::{BuilderEvent, Operation, Instruction, Command, Action};
+use textobject::{Anchor, Kind, TextObject, Offset};
 
-use command::{BuilderEvent, Operation, Command, Action};
-use textobject::{Kind, TextObject, Offset};
 
+// TODO: move this somewhere else - probably command module
+fn movement(offset: Offset, kind: Kind) -> Command {
+    Command {
+        number: 0,
+        action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+        object: TextObject {
+            kind: kind,
+            offset: offset
+        }
+    }
+
+}
 
 /// Standard mode is Iota's default mode.
 ///
@@ -39,16 +52,16 @@ impl StandardMode {
         keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('c')].as_slice(), Command::exit_editor());
         keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('s')].as_slice(), Command::save_buffer());
 
-        // // Navigation
-        // keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up, 1));
-        // keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down, 1));
-        // keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left, 1));
-        // keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right, 1));
+        keymap.bind_key(Key::Up, movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Down, movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Left, movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
+        keymap.bind_key(Key::Right, movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
 
-        // keymap.bind_key(Key::Ctrl('p'), Command::MoveCursor(Direction::Up, 1));
-        // keymap.bind_key(Key::Ctrl('n'), Command::MoveCursor(Direction::Down, 1));
-        // keymap.bind_key(Key::Ctrl('b'), Command::MoveCursor(Direction::Left, 1));
-        // keymap.bind_key(Key::Ctrl('f'), Command::MoveCursor(Direction::Right, 1));
+        keymap.bind_key(Key::Ctrl('p'), movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Ctrl('n'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Ctrl('b'), movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
+        keymap.bind_key(Key::Ctrl('f'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
+
         // keymap.bind_key(Key::Ctrl('e'), Command::LineEnd);
         // keymap.bind_key(Key::Ctrl('a'), Command::LineStart);
 
