@@ -1,6 +1,6 @@
 use std::default::Default;
 
-use buffer::{ Direction, Mark, WordEdgeMatch };
+use buffer::Mark;
 
 #[derive(Copy, Debug)]
 #[allow(dead_code)]

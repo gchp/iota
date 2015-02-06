@@ -2,7 +2,6 @@ use super::Mode;
 use super::KeyMap;
 use super::Key;
 use super::KeyMapState;
-use super::Direction;
 use buffer::Mark;
 use command::{BuilderEvent, Operation, Instruction, Command, Action};
 use textobject::{Anchor, Kind, TextObject, Offset};

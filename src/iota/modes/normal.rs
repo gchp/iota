@@ -3,9 +3,6 @@ use super::KeyMap;
 use super::Key;
 use super::Command;
 use super::KeyMapState;
-use super::Direction;
-use super::WordEdgeMatch;
-use super::OverlayType;
 
 use command;
 

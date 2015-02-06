@@ -1,8 +1,6 @@
-use std::default::Default;
-
 use keyboard::Key;
 use keymap::{ KeyMap, KeyMapState };
-use buffer::{ Direction, Mark, WordEdgeMatch };
+use buffer::Mark;
 use textobject::{ TextObject, Offset, Kind, Anchor };
 use overlay::OverlayType;
 

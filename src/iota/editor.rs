@@ -4,13 +4,11 @@ use keyboard::Key;
 use view::View;
 use frontends::{Frontend, EditorEvent};
 use modes::Mode;
-use overlay::{Overlay, OverlayType, OverlayEvent};
+use overlay::{Overlay, OverlayEvent};
 
 use command::Command as Cmd;
 use command::{Action, BuilderEvent, Operation, Instruction};
-use textobject::{Anchor, TextObject, Kind, Offset};
-
-use buffer::WordEdgeMatch;
+use textobject::Offset;
 
 
 #[derive(Copy, Debug, PartialEq, Eq)]
@@ -18,21 +16,7 @@ pub enum Command {
     SaveBuffer,
     ExitEditor,
 
-    MoveCursor(Direction, usize),
-    LineEnd,
-    LineStart,
-
-    Delete(Direction, usize),
-    InsertTab,
-    InsertChar(char),
-
-    SetOverlay(OverlayType),
-
-    Undo,
-    Redo,
-
     Unknown,
-    None,
 }
 
 impl Command {
@@ -176,7 +160,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Instruction::ExitEditor => { self.running = false; }
             Instruction::SetMark(mark) => {
                 if let Some(object) = command.object {
-                    self.view.move_mark(object, command.number as usize)
+                    self.view.move_mark(mark, object, command.number as usize)
                 }
             }
             Instruction::SetOverlay(overlay_type) => {

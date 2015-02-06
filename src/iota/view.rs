@@ -165,7 +165,7 @@ impl<'v> View<'v> {
         }
     }
 
-    pub fn move_mark(&mut self, object: TextObject, num: usize) {
+    pub fn move_mark(&mut self, mark: Mark, object: TextObject, num: usize) {
         // TODO: move all this to buffer
         //       Buffer should take the entire command and do stuff with it.
         //       eg:
@@ -174,12 +174,6 @@ impl<'v> View<'v> {
         //           self.buffer.shift_mark(object)
         //       }
         //
-        let mark = match object.offset {
-            Offset::Forward(_, mark) => mark,
-            Offset::Backward(_, mark) => mark,
-            _ => { return } // no mark found
-        };
-
         let mut dir = match object.offset {
             Offset::Backward(_, _) => Direction::Left,
             Offset::Forward(_, _) => Direction::Right,

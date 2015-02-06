@@ -2,7 +2,6 @@ pub use super::keyboard::Key;
 pub use super::keymap::KeyMap;
 pub use super::editor::Command;
 pub use super::keymap::KeyMapState;
-pub use super::buffer::Direction;
 pub use super::buffer::WordEdgeMatch;
 pub use super::overlay::{Overlay, OverlayType, OverlayEvent};
 
