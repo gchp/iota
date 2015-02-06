@@ -64,13 +64,41 @@ impl StandardMode {
         keymap.bind_key(Key::Ctrl('e'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::End)));
         keymap.bind_key(Key::Ctrl('a'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Start)));
 
-        // // Editing
+        // Editing
         keymap.bind_key(Key::Tab, Command::insert_tab());
         keymap.bind_key(Key::Enter, Command::insert_char('\n'));
-        // keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left, 1));
-        // keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left, 1));
-        // keymap.bind_key(Key::Delete, Command::Delete(Direction::Right, 1));
-        // keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right, 1));
+        keymap.bind_key(Key::Backspace, Command {
+            number: 1,
+            action: Action::Operation(Operation::Delete),
+            object: TextObject {
+                kind: Kind::Char,
+                offset: Offset::Backward(1, Mark::Cursor(0))
+            }
+        });
+        keymap.bind_key(Key::Delete, Command {
+            number: 1,
+            action: Action::Operation(Operation::Delete),
+            object: TextObject {
+                kind: Kind::Char,
+                offset: Offset::Forward(1, Mark::Cursor(0))
+            }
+        });
+        keymap.bind_key(Key::Ctrl('h'), Command {
+            number: 1,
+            action: Action::Operation(Operation::Delete),
+            object: TextObject {
+                kind: Kind::Char,
+                offset: Offset::Backward(1, Mark::Cursor(0))
+            }
+        });
+        keymap.bind_key(Key::Ctrl('d'), Command {
+            number: 1,
+            action: Action::Operation(Operation::Delete),
+            object: TextObject {
+                kind: Kind::Char,
+                offset: Offset::Forward(1, Mark::Cursor(0))
+            }
+        });
 
         // History
         keymap.bind_key(Key::Ctrl('z'), Command {
