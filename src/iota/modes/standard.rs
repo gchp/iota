@@ -67,7 +67,7 @@ impl StandardMode {
 
         // // Editing
         // keymap.bind_key(Key::Tab, Command::InsertTab);
-        // keymap.bind_key(Key::Enter, Command::InsertChar('\n'));
+        keymap.bind_key(Key::Enter, Command::insert_char('\n'));
         // keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left, 1));
         // keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left, 1));
         // keymap.bind_key(Key::Delete, Command::Delete(Direction::Right, 1));
@@ -88,14 +88,7 @@ impl Mode for StandardMode {
     fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
 
         if let Key::Char(c) = key {
-            BuilderEvent::Complete(Command {
-                number: 1,
-                action: Action::Operation(Operation::Insert(c)),
-                object: TextObject {
-                    kind: Kind::Char,
-                    offset: Offset::Absolute(0)
-                }
-            })
+            BuilderEvent::Complete(Command::insert_char(c))
         } else {
             if let KeyMapState::Match(c) = self.keymap.check_key(key) {
                 BuilderEvent::Complete(c)

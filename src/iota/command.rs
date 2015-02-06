@@ -85,6 +85,18 @@ impl Command {
             },
         }
     }
+
+    /// Shortcut to create an Insert command
+    pub fn insert_char(c: char) -> Command {
+        Command {
+            number: 0,
+            action: Action::Operation(Operation::Insert(c)),
+            object: TextObject {
+                kind: Kind::Char,
+                offset: Offset::Absolute(0)
+            }
+        }
+    }
 }
 
 pub struct Builder {
