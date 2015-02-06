@@ -226,13 +226,6 @@ impl<'v> View<'v> {
         }
     }
 
-    pub fn insert_tab(&mut self) {
-        // A tab is just 4 spaces
-        for _ in range(0, 4) {
-            self.insert_char(' ');
-        }
-    }
-
     /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {
         self.buffer.insert_char(self.cursor, ch as u8);
