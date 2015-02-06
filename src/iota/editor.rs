@@ -174,12 +174,12 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Instruction::ExitEditor => { self.running = false; }
             Instruction::SetMark(mark) => {
                 if let Some(object) = command.object {
-                    let (mut dir, n) = match object.offset {
-                        Offset::Backward(n, _) => (Direction::Left, n),
-                        Offset::Forward(n, _) => (Direction::Right, n),
+                    let mut dir = match object.offset {
+                        Offset::Backward(_, _) => Direction::Left,
+                        Offset::Forward(_, _) => Direction::Right,
 
                         // FIXME
-                        Offset::Absolute(n) => (Direction::Right, 0)
+                        Offset::Absolute(_) => Direction::Right
                     };
 
                     if let Kind::Line(anchor) = object.kind {
@@ -197,7 +197,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     }
 
 
-                    self.view.move_cursor(dir, n)
+                    self.view.move_cursor(dir, command.number as usize)
                 }
             }
             Instruction::SetOverlay(overlay_type) => {
@@ -216,14 +216,14 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Operation::Delete => {
                 // FIXME: update to delete lines
                 if let Some(obj) = command.object {
-                    let (dir, n) = match obj.offset {
-                        Offset::Forward(n, _) => (Direction::Right, n),
-                        Offset::Backward(n, _) => (Direction::Left, n),
+                    let dir = match obj.offset {
+                        Offset::Forward(_, _) => Direction::Right,
+                        Offset::Backward(_, _) => Direction::Left,
 
-                        Offset::Absolute(n) => (Direction::Right, 0),
+                        Offset::Absolute(_) => Direction::Right,
                     };
 
-                    self.view.delete_chars(dir, n) 
+                    self.view.delete_chars(dir, command.number as usize)
                 }
             }
             Operation::Undo => { self.view.undo() }

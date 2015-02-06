@@ -67,10 +67,7 @@ impl Command {
         Command {
             action: Action::Instruction(Instruction::ExitEditor),
             number: 0,
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Absolute(0),
-            }),
+            object: None,
         }
     }
 
@@ -79,10 +76,7 @@ impl Command {
         Command {
             action: Action::Instruction(Instruction::SaveBuffer),
             number: 0,
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Absolute(0),
-            }),
+            object: None,
         }
     }
 
@@ -91,10 +85,7 @@ impl Command {
         Command {
             number: 1,
             action: Action::Operation(Operation::Insert(c)),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Absolute(0)
-            })
+            object: None,
         }
     }
 
@@ -104,10 +95,7 @@ impl Command {
         Command {
             number: 4,
             action: Action::Operation(Operation::Insert(' ')),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Absolute(0)
-            })
+            object: None,
         }
     }
 }
@@ -237,7 +225,7 @@ impl Builder {
         // editor instructions may not need a text object, go ahead and return immediately
         if let Some(Action::Instruction(i)) = self.action {
             return Some(Command {
-                number: self.repeat.unwrap_or(0) as i32,
+                number: self.repeat.unwrap_or(1) as i32,
                 action: Action::Instruction(i),
                 object: self.complete_object()
             });
@@ -247,14 +235,14 @@ impl Builder {
             if let Some(Action::Operation(o)) = self.action {
                 // we have an object, and an operation
                 return Some(Command {
-                    number: self.repeat.unwrap_or(0) as i32,
+                    number: self.repeat.unwrap_or(1) as i32,
                     action: Action::Operation(o),
                     object: Some(to)
                 });
             } else {
                 // we have just an object, assume move cursor instruction
                 return Some(Command {
-                    number: self.repeat.unwrap_or(0) as i32,
+                    number: self.repeat.unwrap_or(1) as i32,
                     action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
                     object: Some(to)
                 });

@@ -11,7 +11,7 @@ use textobject::{Anchor, Kind, TextObject, Offset};
 // TODO: move this somewhere else - probably command module
 fn movement(offset: Offset, kind: Kind) -> Command {
     Command {
-        number: 0,
+        number: 1,
         action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
         object: Some(TextObject {
             kind: kind,
