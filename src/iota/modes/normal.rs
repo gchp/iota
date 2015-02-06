@@ -45,8 +45,17 @@ impl NormalMode {
         keymap.bind_keys(&[Key::Char('d'), Key::Char('b')], Command::Delete(Direction::LeftWord(WordEdgeMatch::Alphabet), 1));
         keymap.bind_key(Key::Char('x'), Command::Delete(Direction::Right, 1));
         keymap.bind_key(Key::Char('X'), Command::Delete(Direction::Left, 1));
-        keymap.bind_key(Key::Char('u'), Command::Undo);
-        keymap.bind_key(Key::Ctrl('r'), Command::Redo);
+
+        keymap.bind_key(Key::Char('u'), Command {
+            number: 1,
+            action: Action::Operation(Operation::Undo),
+            object: None
+        });
+        keymap.bind_key(Key::Ctrl('r'), Command {
+            number: 1,
+            action: Action::Operation(Operation::Redo),
+            object: None
+        });
 
         keymap
     }
