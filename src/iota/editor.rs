@@ -129,14 +129,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     Overlay::Prompt { .. } => {
                         match Command::from_str(&*data) {
                             Command::ExitEditor => {
-                                return BuilderEvent::Complete(Cmd {
-                                    action:Action::Instruction(Instruction::ExitEditor),
-                                    number: 0,
-                                    object: TextObject {
-                                        kind: Kind::Char,
-                                        offset: Offset::Absolute(0),
-                                    },
-                                })
+                                return BuilderEvent::Complete(Cmd::exit_editor())
                             }
                             _ => BuilderEvent::Incomplete
                         }
@@ -146,14 +139,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                         let path = Path::new(&*data);
                         self.view.buffer.file_path = Some(path);
                         // Command::SaveBuffer
-                        BuilderEvent::Complete(Cmd {
-                            action:Action::Instruction(Instruction::SaveBuffer),
-                            number: 0,
-                            object: TextObject {
-                                kind: Kind::Char,
-                                offset: Offset::Absolute(0),
-                            },
-                        })
+                        BuilderEvent::Complete(Cmd::save_buffer())
                     }
                     _ => BuilderEvent::Incomplete,
                 }

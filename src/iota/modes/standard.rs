@@ -1,12 +1,10 @@
 use super::Mode;
 use super::KeyMap;
 use super::Key;
-use super::Command;
 use super::KeyMapState;
 use super::Direction;
 
-use command;
-use command::Action;
+use command::{BuilderEvent, Operation, Command, Action};
 use textobject::{Kind, TextObject, Offset};
 
 
@@ -36,35 +34,35 @@ impl StandardMode {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
-        keymap.bind_key(Key::Ctrl('q'), Command::ExitEditor);
-        keymap.bind_key(Key::Ctrl('s'), Command::SaveBuffer);
-        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('c')].as_slice(), Command::ExitEditor);
-        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('s')].as_slice(), Command::SaveBuffer);
+        keymap.bind_key(Key::Ctrl('q'), Command::exit_editor());
+        keymap.bind_key(Key::Ctrl('s'), Command::save_buffer());
+        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('c')].as_slice(), Command::exit_editor());
+        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('s')].as_slice(), Command::save_buffer());
 
-        // Navigation
-        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up, 1));
-        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down, 1));
-        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left, 1));
-        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right, 1));
+        // // Navigation
+        // keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up, 1));
+        // keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down, 1));
+        // keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left, 1));
+        // keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right, 1));
 
-        keymap.bind_key(Key::Ctrl('p'), Command::MoveCursor(Direction::Up, 1));
-        keymap.bind_key(Key::Ctrl('n'), Command::MoveCursor(Direction::Down, 1));
-        keymap.bind_key(Key::Ctrl('b'), Command::MoveCursor(Direction::Left, 1));
-        keymap.bind_key(Key::Ctrl('f'), Command::MoveCursor(Direction::Right, 1));
-        keymap.bind_key(Key::Ctrl('e'), Command::LineEnd);
-        keymap.bind_key(Key::Ctrl('a'), Command::LineStart);
+        // keymap.bind_key(Key::Ctrl('p'), Command::MoveCursor(Direction::Up, 1));
+        // keymap.bind_key(Key::Ctrl('n'), Command::MoveCursor(Direction::Down, 1));
+        // keymap.bind_key(Key::Ctrl('b'), Command::MoveCursor(Direction::Left, 1));
+        // keymap.bind_key(Key::Ctrl('f'), Command::MoveCursor(Direction::Right, 1));
+        // keymap.bind_key(Key::Ctrl('e'), Command::LineEnd);
+        // keymap.bind_key(Key::Ctrl('a'), Command::LineStart);
 
-        // Editing
-        keymap.bind_key(Key::Tab, Command::InsertTab);
-        keymap.bind_key(Key::Enter, Command::InsertChar('\n'));
-        keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left, 1));
-        keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left, 1));
-        keymap.bind_key(Key::Delete, Command::Delete(Direction::Right, 1));
-        keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right, 1));
+        // // Editing
+        // keymap.bind_key(Key::Tab, Command::InsertTab);
+        // keymap.bind_key(Key::Enter, Command::InsertChar('\n'));
+        // keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left, 1));
+        // keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left, 1));
+        // keymap.bind_key(Key::Delete, Command::Delete(Direction::Right, 1));
+        // keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right, 1));
 
-        // History
-        keymap.bind_key(Key::Ctrl('y'), Command::Redo);
-        keymap.bind_key(Key::Ctrl('z'), Command::Undo);
+        // // History
+        // keymap.bind_key(Key::Ctrl('y'), Command::Redo);
+        // keymap.bind_key(Key::Ctrl('z'), Command::Undo);
 
         keymap
     }
@@ -74,19 +72,23 @@ impl StandardMode {
 impl Mode for StandardMode {
     /// Given a key, pass it through the StandardMode KeyMap and return the associated Command, if any.
     /// If no match is found, treat it as an InsertChar command.
-    fn handle_key_event(&mut self, key: Key) -> command::BuilderEvent {
+    fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
 
         if let Key::Char(c) = key {
-            command::BuilderEvent::Complete(command::Command {
+            BuilderEvent::Complete(Command {
                 number: 1,
-                action: command::Action::Operation(command::Operation::Insert(c)),
+                action: Action::Operation(Operation::Insert(c)),
                 object: TextObject {
                     kind: Kind::Char,
                     offset: Offset::Absolute(0)
                 }
             })
         } else {
-            command::BuilderEvent::Incomplete
+            if let KeyMapState::Match(c) = self.keymap.check_key(key) {
+                BuilderEvent::Complete(c)
+            } else {
+                BuilderEvent::Incomplete
+            }
         }
     }
 }
