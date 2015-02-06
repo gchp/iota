@@ -31,23 +31,12 @@ impl NormalMode {
         let mut keymap = KeyMap::new();
 
         // movement
-        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up, 1));
-        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down, 1));
-        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left, 1));
-        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right, 1));
-        keymap.bind_key(Key::Char('h'), Command::MoveCursor(Direction::Left, 1));
-        keymap.bind_key(Key::Char('j'), Command::MoveCursor(Direction::Down, 1));
-        keymap.bind_key(Key::Char('k'), Command::MoveCursor(Direction::Up, 1));
-        keymap.bind_key(Key::Char('l'), Command::MoveCursor(Direction::Right, 1));
         keymap.bind_key(Key::Char('W'), Command::MoveCursor(Direction::RightWord(WordEdgeMatch::Whitespace), 1));
         keymap.bind_key(Key::Char('B'), Command::MoveCursor(Direction::LeftWord(WordEdgeMatch::Whitespace), 1));
         keymap.bind_key(Key::Char('w'), Command::MoveCursor(Direction::RightWord(WordEdgeMatch::Alphabet), 1));
         keymap.bind_key(Key::Char('b'), Command::MoveCursor(Direction::LeftWord(WordEdgeMatch::Alphabet), 1));
         keymap.bind_key(Key::Char('G'), Command::MoveCursor(Direction::LastLine, 0));
         keymap.bind_keys(&[Key::Char('g'), Key::Char('g')], Command::MoveCursor(Direction::FirstLine, 0));
-
-        keymap.bind_key(Key::Char('0'), Command::LineStart);
-        keymap.bind_key(Key::Char('$'), Command::LineEnd);
 
         // editing
         keymap.bind_keys(&[Key::Char('d'), Key::Char('W')], Command::Delete(Direction::RightWord(WordEdgeMatch::Whitespace), 1));
@@ -58,9 +47,6 @@ impl NormalMode {
         keymap.bind_key(Key::Char('X'), Command::Delete(Direction::Left, 1));
         keymap.bind_key(Key::Char('u'), Command::Undo);
         keymap.bind_key(Key::Ctrl('r'), Command::Redo);
-
-        // open a prompt to the user
-        keymap.bind_key(Key::Char(':'), Command::SetOverlay(OverlayType::Prompt));
 
         keymap
     }

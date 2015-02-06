@@ -354,7 +354,7 @@ fn default_keymap() -> KeyMap<Partial> {
         kind: Kind::Line(Anchor::End),
         offset: Offset::Forward(1, Mark::Cursor(0)),
     }));
-    keymap.bind_key(Key::Char('^'), Partial::Object(TextObject {
+    keymap.bind_key(Key::Char('0'), Partial::Object(TextObject {
         kind: Kind::Line(Anchor::Start),
         offset: Offset::Forward(1, Mark::Cursor(0)),
     }));
