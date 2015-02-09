@@ -4,7 +4,7 @@ version = "0.1.0"
 dependencies = [
  "docopt 0.6.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "gapbuffer 0.0.4 (git+https://github.com/dlaronson/gapbuffer)",
- "rustbox 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustbox 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -34,11 +34,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustbox"
-version = "0.2.12"
+version = "0.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "termbox-sys 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termbox-sys 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -48,6 +48,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "termbox-sys"
-version = "0.1.4"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
