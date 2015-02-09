@@ -207,7 +207,7 @@ impl<'v> View<'v> {
             _ => {}
         }
 
-        self.buffer.shift_mark(mark, dir, num);
+        self.buffer.set_mark_to_object(mark, object);
         self.maybe_move_screen();
     }
 

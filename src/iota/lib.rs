@@ -38,3 +38,4 @@ mod modes;
 mod overlay;
 mod command;
 mod textobject;
+mod iterators;
