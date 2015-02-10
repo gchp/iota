@@ -254,8 +254,56 @@ impl Buffer {
     }
 
     fn get_word_index(&self, offset: Offset, anchor: Anchor) -> Option<usize> {
-        unimplemented!();
-        None
+        let (start, mut words, reverse) = match offset {
+            Offset::Absolute(words) => (0, words, false),
+            Offset::Forward(words, mark) => if let Some(idx) = self.get_mark_idx(mark) {
+                (idx, words, false)
+            } else { return None; },
+            Offset::Backward(words, mark) => if let Some(idx) = self.get_mark_idx(mark) {
+                (idx, words, true)
+            } else { return None; },
+        };
+
+        let offset: i32 = if !reverse {
+            // we're moving forwards
+            match anchor {
+                Anchor::End | Anchor::Start => -1,
+                Anchor::Before => -2,
+                _ => 0
+            }
+        } else {
+            // we're moving backwards
+            match anchor {
+                Anchor::End | Anchor::Before => 1,
+                Anchor::Start | Anchor::After => 1,
+                _ => 0
+            }
+        };
+
+        words += match anchor {
+            Anchor::End | Anchor::After if !reverse => 1,
+            Anchor::Start | Anchor::Before if reverse => 1,
+            _ => 0
+        };
+
+        if let Some(mut iter) = self.chars_from_idx(start) {
+            if reverse { iter = iter.backward(); }
+            let mut in_word = true;
+            for (idx, c) in iter.enumerate() {
+                if c.is_whitespace() {
+                    in_word = false;
+                    continue;
+                } else if ! in_word {
+                    in_word = true;
+                    words -= 1;
+                    if words == 0 {
+                        // we have traveled the requisite number of words, we need to adjust the index to account for the anchor
+                        return Some(((idx as i32) + offset) as usize);
+                    }
+                }
+            }
+        }
+        return None;
     }
 
     /// Returns the status text for this buffer.

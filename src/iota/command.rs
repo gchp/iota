@@ -357,11 +357,11 @@ fn default_keymap() -> KeyMap<Partial> {
 
     // next/previous word
     keymap.bind_key(Key::Char('w'), Partial::Object(TextObject {
-        kind: Kind::Word(Anchor::Before),
+        kind: Kind::Word(Anchor::Start),
         offset: Offset::Forward(1, Mark::Cursor(0))
     }));
     keymap.bind_key(Key::Char('b'), Partial::Object(TextObject {
-        kind: Kind::Word(Anchor::Before),
+        kind: Kind::Word(Anchor::End),
         offset: Offset::Backward(1, Mark::Cursor(0))
     }));
 
