@@ -396,6 +396,28 @@ impl Buffer {
         }
     }
 
+    // Remove the chars between mark and object
+    pub fn remove_from_mark_to_object(&mut self, mark: Mark, object: TextObject) -> Option<Vec<u8>> {
+        if let Some(&(mark_idx, _)) = self.marks.get(&mark) {
+            if let Some(obj_idx) = self.get_object_index(object) {
+                if mark_idx != obj_idx {
+                    let text = &mut self.text;
+                    let (start, end) = if mark_idx < obj_idx { (mark_idx, obj_idx) } else { (obj_idx, mark_idx) };
+                    let mut transaction = self.log.start(start);
+                    let mut vec = range(start, end)
+                        .rev()
+                        .filter_map(|idx| text.remove(idx).map(|ch| (idx, ch)))
+                        .inspect(|&(idx, ch)| transaction.log(Change::Remove(idx, ch), idx))
+                        .map(|(_, ch)| ch)
+                        .collect::<Vec<u8>>();
+                    vec.reverse();
+                    return Some(vec);
+                }
+            }
+        }
+        None
+    }
+
     /// Remove the chars at the mark.
     pub fn remove_chars(&mut self, mark: Mark, direction: Direction, num_chars: usize) -> Option<Vec<u8>> {
         let text = &mut self.text;

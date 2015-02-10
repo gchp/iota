@@ -28,6 +28,7 @@ pub enum Instruction {
 pub enum Operation {
     Insert(char), // insert text
     Delete,       // delete some object
+    DeleteFromMark(Mark), // delete from some mark to an object
 
     Undo,         // rewind buffer transaction log
     Redo,         // replay buffer transaction log
@@ -387,7 +388,7 @@ fn default_keymap() -> KeyMap<Partial> {
     keymap.bind_key(Key::Char('>'), Partial::Anchor(Anchor::After));
 
     // actions
-    keymap.bind_key(Key::Char('d'), Partial::Action(Action::Operation(Operation::Delete)));
+    keymap.bind_key(Key::Char('d'), Partial::Action(Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0)))));
     keymap.bind_key(Key::Char(':'), Partial::Action(Action::Instruction(Instruction::SetOverlay(OverlayType::Prompt))));
 
     keymap

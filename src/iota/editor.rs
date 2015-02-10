@@ -189,6 +189,11 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     self.view.delete_chars(dir, command.number as usize)
                 }
             }
+            Operation::DeleteFromMark(m) => {
+                if command.object.is_some() {
+                    self.view.delete_from_mark_to_object(m, command.object.unwrap())
+                }
+            }
             Operation::Undo => { self.view.undo() }
             Operation::Redo => { self.view.redo() }
         }

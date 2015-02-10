@@ -234,6 +234,16 @@ impl<'v> View<'v> {
         }
     }
 
+    pub fn delete_from_mark_to_object(&mut self, mark: Mark, object: TextObject) {
+        use std::cmp;
+        if let Some(idx) = self.buffer.get_object_index(object) {
+            if let Some(midx) = self.buffer.get_mark_idx(mark) {
+                self.buffer.remove_from_mark_to_object(mark, object);
+                self.buffer.set_mark(mark, cmp::min(idx, midx));
+            }
+        }
+    }
+
     /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {
         self.buffer.insert_char(self.cursor, ch as u8);
