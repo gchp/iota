@@ -368,21 +368,23 @@ fn default_keymap() -> KeyMap<Partial> {
     // start/end line
     keymap.bind_key(Key::Char('$'), Partial::Object(TextObject {
         kind: Kind::Line(Anchor::End),
-        offset: Offset::Forward(1, Mark::Cursor(0)),
+        offset: Offset::Forward(0, Mark::Cursor(0)),
     }));
     keymap.bind_key(Key::Char('0'), Partial::Object(TextObject {
         kind: Kind::Line(Anchor::Start),
-        offset: Offset::Forward(1, Mark::Cursor(0)),
+        offset: Offset::Backward(0, Mark::Cursor(0)),
     }));
 
     // kinds
     keymap.bind_keys(&[Key::Char('`'), Key::Char('c')], Partial::Kind(Kind::Char));
-    keymap.bind_keys(&[Key::Char('`'), Key::Char('w')], Partial::Kind(Kind::Word(Anchor::Before)));
-    keymap.bind_keys(&[Key::Char('`'), Key::Char('l')], Partial::Kind(Kind::Line(Anchor::Before)));
+    keymap.bind_keys(&[Key::Char('`'), Key::Char('w')], Partial::Kind(Kind::Word(Anchor::Start)));
+    keymap.bind_keys(&[Key::Char('`'), Key::Char('l')], Partial::Kind(Kind::Line(Anchor::Start)));
 
     // anchors
-    keymap.bind_key(Key::Char(','), Partial::Anchor(Anchor::Before));
-    keymap.bind_key(Key::Char('.'), Partial::Anchor(Anchor::After));
+    keymap.bind_key(Key::Char(','), Partial::Anchor(Anchor::Start));
+    keymap.bind_key(Key::Char('.'), Partial::Anchor(Anchor::End));
+    keymap.bind_key(Key::Char('<'), Partial::Anchor(Anchor::Before));
+    keymap.bind_key(Key::Char('>'), Partial::Anchor(Anchor::After));
 
     // actions
     keymap.bind_key(Key::Char('d'), Partial::Action(Action::Operation(Operation::Delete)));
