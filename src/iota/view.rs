@@ -166,47 +166,6 @@ impl<'v> View<'v> {
     }
 
     pub fn move_mark(&mut self, mark: Mark, object: TextObject, num: usize) {
-        // TODO: move all this to buffer
-        //       Buffer should take the entire command and do stuff with it.
-        //       eg:
-        //
-        //       for _ in 0..num {
-        //           self.buffer.shift_mark(object)
-        //       }
-        //
-        let mut dir = match object.offset {
-            Offset::Backward(_, _) => Direction::Left,
-            Offset::Forward(_, _) => Direction::Right,
-
-            // FIXME
-            Offset::Absolute(_) => Direction::Right
-        };
-
-        match object.kind {
-            Kind::Line(anchor) => {
-                if dir == Direction::Left {
-                    dir = Direction::Up
-                } else {
-                    dir = Direction::Down
-                }
-
-                match anchor {
-                    Anchor::End => { return self.move_cursor_to_line_end() }
-                    Anchor::Start => { return self.move_cursor_to_line_start() }
-                    _ => {}
-                }
-            }
-            Kind::Word(_) => {
-                if let Offset::Forward(_, _) = object.offset {
-                    dir = Direction::RightWord(WordEdgeMatch::Alphabet)
-                } else {
-                    dir = Direction::LeftWord(WordEdgeMatch::Alphabet)
-                }
-            }
-
-            _ => {}
-        }
-
         self.buffer.set_mark_to_object(mark, object);
         self.maybe_move_screen();
     }

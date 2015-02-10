@@ -56,12 +56,12 @@ impl StandardMode {
         keymap.bind_key(Key::Down, movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
         keymap.bind_key(Key::Left, movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
         keymap.bind_key(Key::Right, movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Ctrl('p'), movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Ctrl('n'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Ctrl('p'), movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::End)));
+        keymap.bind_key(Key::Ctrl('n'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::End)));
         keymap.bind_key(Key::Ctrl('b'), movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
         keymap.bind_key(Key::Ctrl('f'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Ctrl('e'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::End)));
-        keymap.bind_key(Key::Ctrl('a'), movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Start)));
+        keymap.bind_key(Key::Ctrl('e'), movement(Offset::Forward(0, Mark::Cursor(0)), Kind::Line(Anchor::End)));
+        keymap.bind_key(Key::Ctrl('a'), movement(Offset::Backward(0, Mark::Cursor(0)), Kind::Line(Anchor::Start)));
 
         // Editing
         keymap.bind_key(Key::Tab, Command::insert_tab());

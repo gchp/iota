@@ -189,8 +189,9 @@ impl Buffer {
         }
     }
 
+    // Most of get_line_index and get_word_index should really be under the textobject module, with the type definitions
     fn get_line_index(&self, offset: Offset, anchor: Anchor) -> Option<usize> {
-        let (start, lines, reverse) = match offset {
+        let (start, mut lines, reverse) = match offset {
             Offset::Absolute(lines) => (0, lines, false),
             Offset::Forward(lines, mark) => if let Some(idx) = self.get_mark_idx(mark) {
                 (idx, lines, false)
@@ -200,14 +201,52 @@ impl Buffer {
             } else { return None; },
         };
 
+        // the anchor parameter will specify one of three situations:
+        // 1) find the index of a newline (Before, End)
+        // 2) find the index immediately after a newline (After, Start)
+        // 3) find the index of the nth char after a newline (Same)
+        // which of these applies will affect how many newline characters we need to seek past
+
+        // if we're moving backwards, and the requested anchor is Start or Before, we need to
+        // find one additional newline prior (or start of buffer)
+        // if we're moving forwards, and the requested anchor is End or After, we need to find
+        // one additional newline after (or end of buffer)
+
+        lines += match anchor {
+            Anchor::End | Anchor::After if !reverse => 1,
+            Anchor::Start | Anchor::Before if reverse => 1,
+            _ => 0
+        };
+
+        // if we're starting on a newline, and going backwards, we need to ignore one line
+        if reverse && self.text[start] as char == '\n' {
+            lines += 1;
+        }
+
+        // these offsets seem a little weird (why does the "start of prev line" case need +2?)
+        // but it works for now
+        let offset: i32 = if !reverse {
+            // we're moving forwards
+            match anchor {
+                Anchor::End | Anchor::Before => -1,
+                _ => 0
+            }
+        } else {
+            // we're moving backwards
+            match anchor {
+                Anchor::End | Anchor::Before => 1,
+                Anchor::Start | Anchor::After => 2,
+                _ => 0
+            }
+        };
+
         if let Some(mut iter) = self.chars_from_idx(start) {
             if reverse { iter = iter.backward(); }
-            let mut cur_line = 0us;
             for (idx, c) in iter.enumerate().filter(|&(_, c)| c == '\n') {
-                cur_line += 1;
-                if cur_line >= lines {
+                lines -= 1;
+                if lines == 0 {
                     // we have traveled the requisite number of lines, we need to adjust the index to account for the anchor
-                    return Some(idx);
+                    return Some((idx as i32 + offset) as usize);
                 }
             }
         }
