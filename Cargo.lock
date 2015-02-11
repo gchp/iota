@@ -4,7 +4,7 @@ version = "0.1.0"
 dependencies = [
  "docopt 0.6.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "gapbuffer 0.0.5 (git+https://github.com/dlaronson/gapbuffer)",
- "rustbox 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustbox 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -34,7 +34,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustbox"
-version = "0.2.13"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
