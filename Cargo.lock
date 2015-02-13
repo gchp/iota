@@ -2,20 +2,20 @@
 name = "iota"
 version = "0.1.0"
 dependencies = [
- "docopt 0.6.36 (registry+https://github.com/rust-lang/crates.io-index)",
- "gapbuffer 0.0.4 (git+https://github.com/dlaronson/gapbuffer)",
- "rustbox 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "docopt 0.6.37 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gapbuffer 0.0.5 (git+https://github.com/dlaronson/gapbuffer)",
+ "rustbox 0.2.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.2.12 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "bitflags"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "docopt"
-version = "0.6.36"
+version = "0.6.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "regex 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -24,8 +24,8 @@ dependencies = [
 
 [[package]]
 name = "gapbuffer"
-version = "0.0.4"
-source = "git+https://github.com/dlaronson/gapbuffer#c9b5cde39e03ebd8f6ab2a8df12f90e7a595c8ec"
+version = "0.0.5"
+source = "git+https://github.com/dlaronson/gapbuffer#8ba05babbb24e3b6df3683c427a987bbd8f4b88b"
 
 [[package]]
 name = "regex"
@@ -34,11 +34,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustbox"
-version = "0.2.12"
+version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "bitflags 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "termbox-sys 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termbox-sys 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -48,6 +48,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "termbox-sys"
-version = "0.1.4"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
