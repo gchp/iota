@@ -243,6 +243,11 @@ impl<'v> View<'v> {
         }
     }
 
+    // Delete chars from the first index of object to the last index of object
+    pub fn delete_object(&mut self, object: TextObject) {
+        self.buffer.remove_object(object);
+    }
+
     pub fn delete_from_mark_to_object(&mut self, mark: Mark, object: TextObject) {
         use std::cmp;
         if let Some(idx) = self.buffer.get_object_index(object) {

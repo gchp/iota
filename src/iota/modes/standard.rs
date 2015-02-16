@@ -68,7 +68,7 @@ impl StandardMode {
         keymap.bind_key(Key::Enter, Command::insert_char('\n'));
         keymap.bind_key(Key::Backspace, Command {
             number: 1,
-            action: Action::Operation(Operation::Delete),
+            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
             object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Backward(1, Mark::Cursor(0))
@@ -76,7 +76,7 @@ impl StandardMode {
         });
         keymap.bind_key(Key::Delete, Command {
             number: 1,
-            action: Action::Operation(Operation::Delete),
+            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
             object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Forward(1, Mark::Cursor(0))
@@ -84,7 +84,7 @@ impl StandardMode {
         });
         keymap.bind_key(Key::Ctrl('h'), Command {
             number: 1,
-            action: Action::Operation(Operation::Delete),
+            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
             object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Backward(1, Mark::Cursor(0))
@@ -92,7 +92,7 @@ impl StandardMode {
         });
         keymap.bind_key(Key::Ctrl('d'), Command {
             number: 1,
-            action: Action::Operation(Operation::Delete),
+            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
             object: Some(TextObject {
                 kind: Kind::Char,
                 offset: Offset::Forward(1, Mark::Cursor(0))

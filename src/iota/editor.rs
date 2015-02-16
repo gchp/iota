@@ -147,9 +147,14 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
     /// Handle the given command, performing the associated action
     fn handle_command(&mut self, command: Cmd) {
-        match command.action {
-            Action::Instruction(i) => self.handle_instruction(i, command),
-            Action::Operation(o) => self.handle_operation(o, command),
+        let repeat = if command.number > 0 {
+            command.number
+        } else { 1 };
+        for _ in range(0, repeat) {
+            match command.action {
+                Action::Instruction(i) => self.handle_instruction(i, command),
+                Action::Operation(o) => self.handle_operation(o, command),
+            }
         }
     }
 
@@ -176,17 +181,9 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     self.view.insert_char(c)
                 }
             }
-            Operation::Delete => {
-                // FIXME: update to delete lines
+            Operation::DeleteObject => {
                 if let Some(obj) = command.object {
-                    let dir = match obj.offset {
-                        Offset::Forward(_, _) => Direction::Right,
-                        Offset::Backward(_, _) => Direction::Left,
-
-                        Offset::Absolute(_) => Direction::Right,
-                    };
-
-                    self.view.delete_chars(dir, command.number as usize)
+                    self.view.delete_object(obj);
                 }
             }
             Operation::DeleteFromMark(m) => {
