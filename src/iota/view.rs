@@ -103,13 +103,22 @@ impl<'v> View<'v> {
     }
 
     pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
-        for (index,line) in self.buffer
-                                .lines_from(self.top_line)
-                                .unwrap()
-                                .take(self.get_height())
-                                .enumerate() {
-            draw_line(&mut self.uibuf, &*line, index, self.left_col);
-            if index == self.get_height() { break; }
+        let height = self.get_height();
+        let width = self.get_width();
+        let mut line = 0;
+        let mut col = 0;
+        for c in self.buffer.chars_from(self.top_line).unwrap() {
+            if c == '\n' {
+                if line == height { break; }
+                for i in range(col, width) {
+                    self.uibuf.update_cell_content(i, line, ' ');
+                }
+                col = 0;
+                line += 1;
+            } else {
+                self.uibuf.update_cell_content(col, line, c);
+                col += 1;
+            }
         }
 
         match self.overlay {
