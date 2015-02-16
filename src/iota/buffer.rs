@@ -171,17 +171,26 @@ impl Buffer {
         }
     }
 
+    fn get_nth_char_index_from_index(&self, start: usize, n: usize) -> Option<usize> {
+        if let Some(iter) = self.chars_from_idx(start) {
+            if let Some((index, _)) = iter.enumerate().skip(n-1).next() {
+                return Some(cmp::max(0, index))
+            }
+        }
+        None
+    }
+
     fn get_char_index(&self, offset: Offset) -> Option<usize> {
         match offset {
-            Offset::Absolute(idx) => Some(idx),
+            Offset::Absolute(idx) => self.get_nth_char_index_from_index(0, idx),
             Offset::Forward(off, mark) => if let Some(idx) = self.get_mark_idx(mark) {
-                Some(idx + off)
+                Some(self.get_nth_char_index_from_index(idx, off).unwrap())
             } else {
                 None
             },
             Offset::Backward(off, mark) => if let Some(idx) = self.get_mark_idx(mark) {
                 if idx - off >= 0 {
-                    Some(idx - off)
+                    Some(self.chars_from_idx(idx).unwrap().enumerate().rev().skip(off-1).next().unwrap().0)
                 } else { None }
             } else {
                 None
