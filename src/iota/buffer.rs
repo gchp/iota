@@ -200,13 +200,13 @@ impl Buffer {
 
     // Most of get_line_index and get_word_index should really be under the textobject module, with the type definitions
     fn get_line_index(&self, offset: Offset, anchor: Anchor) -> Option<usize> {
-        let (start, mut lines, reverse) = match offset {
-            Offset::Absolute(lines) => (0, lines, false),
+        let (start, mut lines, reverse, mark) = match offset {
+            Offset::Absolute(lines) => (0, lines, false, None),
             Offset::Forward(lines, mark) => if let Some(idx) = self.get_mark_idx(mark) {
-                (idx, lines, false)
+                (idx, lines, false, Some(mark))
             } else { return None; },
             Offset::Backward(lines, mark) => if let Some(idx) = self.get_mark_idx(mark) {
-                (idx, lines, true)
+                (idx, lines, true, Some(mark))
             } else { return None; },
         };
 
@@ -239,8 +239,12 @@ impl Buffer {
             match anchor {
                 Anchor::End | Anchor::Before => -1,
                 Anchor::Same => {
-                    let (current_line_offset, _) = self.get_mark_coords(Mark::Cursor(0)).unwrap();
-                    current_line_offset as i32
+                    if let Some(mark) = mark {
+                        let (current_line_offset, _) = self.get_mark_coords(mark).unwrap();
+                        current_line_offset as i32
+                    } else {
+                        0
+                    }
                 }
                 _ => 0
             }
