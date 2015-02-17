@@ -238,6 +238,16 @@ impl Buffer {
             // we're moving forwards
             match anchor {
                 Anchor::End | Anchor::Before => -1,
+                Anchor::Same => {
+                    // to get the offset from the start of the line:
+                    // 1. get the absolute index of the start of the current line
+                    let current_line_start_index = get_line(start, &self.text).unwrap();
+                    // 2. subtract that from the current offset
+                    let offset_from_start_of_line = start - current_line_start_index;
+
+
+                    offset_from_start_of_line as i32
+                }
                 _ => 0
             }
         } else {
