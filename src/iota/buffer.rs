@@ -1,7 +1,6 @@
 //FIXME: Check unicode support
 // stdlib dependencies
 use std::cmp;
-use std::mem;
 use std::collections::HashMap;
 use std::old_io::{File, Reader, BufferedReader};
 
@@ -11,6 +10,8 @@ use gapbuffer::GapBuffer;
 // local dependencies
 use log::{Log, Change, LogEntry};
 use utils::is_alpha_or_;
+use iterators::{Lines, Chars};
+use textobject::{TextObject, Kind, Offset, Anchor};
 
 
 #[derive(Copy, PartialEq, Eq, Hash, Debug)]
@@ -121,16 +122,21 @@ impl Buffer {
         }
     }
 
+    /// Creates an iterator on the text by chars that begins at the specified index.
+    pub fn chars_from_idx(&self, idx: usize) -> Option<Chars> {
+        if idx < self.len() {
+            Some(Chars {
+                buffer: &self.text,
+                idx: idx,
+                forward: true,
+            })
+        } else { None }
+    }
+
     /// Creates an iterator on the text by chars that begins at the specified mark.
     pub fn chars_from(&self, mark: Mark) -> Option<Chars> {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
-            if idx < self.len() {
-                Some(Chars {
-                    buffer: &self.text,
-                    idx: idx,
-                    forward: true,
-                })
-            } else { None }
+            self.chars_from_idx(idx)
         } else { None }
     }
 
@@ -156,11 +162,171 @@ impl Buffer {
         } else { None }
     }
 
+    /// Return the buffer index of a TextObject
+    pub fn get_object_index(&self, obj: TextObject) -> Option<usize> {
+        match obj.kind {
+            Kind::Char => self.get_char_index(obj.offset),
+            Kind::Line(a) => self.get_line_index(obj.offset, a),
+            Kind::Word(a) => self.get_word_index(obj.offset, a),
+        }
+    }
+
+    fn get_nth_char_index_from_index(&self, start: usize, n: usize) -> Option<usize> {
+        if let Some(iter) = self.chars_from_idx(start) {
+            if let Some((index, _)) = iter.enumerate().skip(n-1).next() {
+                return Some(cmp::max(0, index))
+            }
+        }
+        None
+    }
+
+    fn get_char_index(&self, offset: Offset) -> Option<usize> {
+        match offset {
+            Offset::Absolute(idx) => self.get_nth_char_index_from_index(0, idx),
+            Offset::Forward(off, mark) => if let Some(idx) = self.get_mark_idx(mark) {
+                Some(self.get_nth_char_index_from_index(idx, off).unwrap())
+            } else {
+                None
+            },
+            Offset::Backward(off, mark) => if let Some(idx) = self.get_mark_idx(mark) {
+                if idx - off >= 0 {
+                    Some(self.chars_from_idx(idx).unwrap().enumerate().rev().skip(off-1).next().unwrap().0)
+                } else { None }
+            } else {
+                None
+            },
+        }
+    }
+
+    // Most of get_line_index and get_word_index should really be under the textobject module, with the type definitions
+    fn get_line_index(&self, offset: Offset, anchor: Anchor) -> Option<usize> {
+        let (start, mut lines, reverse) = match offset {
+            Offset::Absolute(lines) => (0, lines, false),
+            Offset::Forward(lines, mark) => if let Some(idx) = self.get_mark_idx(mark) {
+                (idx, lines, false)
+            } else { return None; },
+            Offset::Backward(lines, mark) => if let Some(idx) = self.get_mark_idx(mark) {
+                (idx, lines, true)
+            } else { return None; },
+        };
+
+        // the anchor parameter will specify one of three situations:
+        // 1) find the index of a newline (Before, End)
+        // 2) find the index immediately after a newline (After, Start)
+        // 3) find the index of the nth char after a newline (Same)
+        // which of these applies will affect how many newline characters we need to seek past
+
+        // if we're moving backwards, and the requested anchor is Start or Before, we need to
+        // find one additional newline prior (or start of buffer)
+        // if we're moving forwards, and the requested anchor is End or After, we need to find
+        // one additional newline after (or end of buffer)
+
+        lines += match anchor {
+            Anchor::End | Anchor::After if !reverse => 1,
+            Anchor::Start | Anchor::Before if reverse => 1,
+            _ => 0
+        };
+
+        // if we're starting on a newline, and going backwards, we need to ignore one line
+        if reverse && self.text[start] as char == '\n' {
+            lines += 1;
+        }
+
+        // these offsets seem a little weird (why does the "start of prev line" case need +2?)
+        // but it works for now
+        let offset: i32 = if !reverse {
+            // we're moving forwards
+            match anchor {
+                Anchor::End | Anchor::Before => -1,
+                _ => 0
+            }
+        } else {
+            // we're moving backwards
+            match anchor {
+                Anchor::End | Anchor::Before => 1,
+                Anchor::Start | Anchor::After => 2,
+                _ => 0
+            }
+        };
+
+        if let Some(mut iter) = self.chars_from_idx(start) {
+            if reverse { iter = iter.backward(); }
+            for (idx, c) in iter.enumerate().filter(|&(_, c)| c == '\n') {
+                lines -= 1;
+                if lines == 0 {
+                    // we have traveled the requisite number of lines, we need to adjust the index to account for the anchor
+                    return Some((idx as i32 + offset) as usize);
+                }
+            }
+        }
+        return None;
+    }
+
+    fn get_word_index(&self, offset: Offset, anchor: Anchor) -> Option<usize> {
+        let (start, mut words, reverse) = match offset {
+            Offset::Absolute(words) => (0, words, false),
+            Offset::Forward(words, mark) => if let Some(idx) = self.get_mark_idx(mark) {
+                (idx, words, false)
+            } else { return None; },
+            Offset::Backward(words, mark) => if let Some(idx) = self.get_mark_idx(mark) {
+                (idx, words, true)
+            } else { return None; },
+        };
+
+        let offset: i32 = if !reverse {
+            // we're moving forwards
+            match anchor {
+                Anchor::End | Anchor::Start => -1,
+                Anchor::Before => -2,
+                _ => 0
+            }
+        } else {
+            // we're moving backwards
+            match anchor {
+                Anchor::End | Anchor::Before => 1,
+                Anchor::Start | Anchor::After => 1,
+                _ => 0
+            }
+        };
+
+        words += match anchor {
+            Anchor::End | Anchor::After if !reverse => 1,
+            Anchor::Start | Anchor::Before if reverse => 1,
+            _ => 0
+        };
+
+        if let Some(mut iter) = self.chars_from_idx(start) {
+            if reverse { iter = iter.backward(); }
+            let mut in_word = true;
+            for (idx, c) in iter.enumerate() {
+                if c.is_whitespace() {
+                    in_word = false;
+                    continue;
+                } else if ! in_word {
+                    in_word = true;
+                    words -= 1;
+                    if words == 0 {
+                        // we have traveled the requisite number of words, we need to adjust the index to account for the anchor
+                        return Some(((idx as i32) + offset) as usize);
+                    }
+                }
+            }
+        }
+        return None;
+    }
+
     /// Returns the status text for this buffer.
     pub fn status_text(&self) -> String {
         match self.file_path {
             Some(ref path)  =>  format!("{} ", path.display()),
             None            =>  format!("untitled "),
+        }
+    }
+
+    /// Sets the mark to the location of a given TextObject, if it exists.  Adds a new mark or overwrites an existing mark.
+    pub fn set_mark_to_object(&mut self, mark: Mark, obj: TextObject) {
+        if let Some(idx) = self.get_object_index(obj) {
+            self.set_mark(mark, idx);
         }
     }
 
@@ -237,6 +403,42 @@ impl Buffer {
                 }
             }
         }
+    }
+
+    // Remove the chars in the range from start to end
+    pub fn remove_range(&mut self, start: usize, end: usize) -> Option<Vec<u8>> {
+        let text = &mut self.text;
+        let mut transaction = self.log.start(start);
+        let mut vec = range(start, end)
+            .rev()
+            .filter_map(|idx| text.remove(idx).map(|ch| (idx, ch)))
+            .inspect(|&(idx, ch)| transaction.log(Change::Remove(idx, ch), idx))
+            .map(|(_, ch)| ch)
+            .collect::<Vec<u8>>();
+        vec.reverse();
+        Some(vec)
+    }
+
+    // Remove the chars between mark and object
+    pub fn remove_from_mark_to_object(&mut self, mark: Mark, object: TextObject) -> Option<Vec<u8>> {
+        if let Some(&(mark_idx, _)) = self.marks.get(&mark) {
+            if let Some(obj_idx) = self.get_object_index(object) {
+                if mark_idx != obj_idx {
+                    let (start, end) = if mark_idx < obj_idx { (mark_idx, obj_idx) } else { (obj_idx, mark_idx) };
+                    return self.remove_range(start, end);
+                }
+            }
+        }
+        None
+    }
+
+    pub fn remove_object(&mut self, object: TextObject) -> Option<Vec<u8>> {
+        let object_start = TextObject { kind: object.kind.with_anchor(Anchor::Start), offset: object.offset };
+        let object_end = TextObject { kind: object.kind.with_anchor(Anchor::End), offset: object.offset };
+        if let (Some(start), Some(end)) = (self.get_object_index(object_start), self.get_object_index(object_end)) {
+            return self.remove_range(start, end);
+        }
+        None
     }
 
     /// Remove the chars at the mark.
@@ -354,155 +556,6 @@ fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
             &Change::Remove(idx, _) => {
                 text.remove(idx);
             }
-        }
-    }
-}
-
-pub struct Lines<'a> {
-    buffer: &'a GapBuffer<u8>,
-    tail: usize,
-    head: usize,
-}
-
-impl<'a> Iterator for Lines<'a> {
-    type Item = Vec<u8>;
-
-    fn next(&mut self) -> Option<Vec<u8>> {
-        if self.tail != self.head {
-            let old_tail = self.tail;
-            //update tail to either the first char after the next \n or to self.head
-            self.tail = range(old_tail, self.head).filter(|i| { *i + 1 == self.head
-                                                                || self.buffer[*i] == b'\n' })
-                                                  .take(1)
-                                                  .next()
-                                                  .unwrap() + 1;
-            Some(range(old_tail, if self.tail == self.head { self.tail - 1 } else { self.tail })
-                .map( |i| self.buffer[i] ).collect())
-        } else { None }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        //TODO: this is technically correct but a better estimate could be implemented
-        (1, Some(self.head))
-    }
-
-}
-
-/// Iterator traversing GapBuffer as chars
-/// Can be made to traverse forwards or backwards with the methods
-/// `rev()` `forward()` and `backward()`
-pub struct Chars<'a> {
-    buffer: &'a GapBuffer<u8>,
-    idx: usize,
-    forward: bool,
-}
-
-// helper macros/constants
-// u8 -> char code is mostly copied from core::str::Chars
-const CONT_MASK:   u8 = 0b0011_1111u8;
-const TAG_CONT_U8: u8 = 0b1000_0000u8;
-
-// Return the initial codepoint accumulator for the first byte.
-// The first byte is special, only want bottom 5 bits for width 2, 4 bits
-// for width 3, and 3 bits for width 4
-macro_rules! utf8_first_byte {
-    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as u32)
-}
-
-// return the value of $ch updated with continuation byte $byte
-macro_rules! utf8_acc_cont_byte {
-    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & CONT_MASK) as u32)
-}
-
-macro_rules! utf8_is_cont_byte {
-    ($byte:expr) => (($byte & !CONT_MASK) == TAG_CONT_U8)
-}
-
-
-impl<'a> Chars<'a> {
-    pub fn rev(mut self) -> Chars<'a> {
-        self.forward = !self.forward;
-        self
-    }
-    pub fn forward(mut self) -> Chars<'a> {
-        self.forward = true;
-        self
-    }
-    pub fn backward(mut self) -> Chars<'a> {
-        self.forward = false;
-        self
-    }
-
-    fn next_u8(&mut self) -> Option<u8> {
-        let n = if self.idx < self.buffer.len() {
-            Some(self.buffer[self.idx])
-        } else { None };
-        self.idx += if self.forward { 1 } else { -1 };
-        n
-    }
-}
-
-impl<'a> Iterator for Chars<'a> {
-    type Item = char;
-
-    #[inline]
-    fn next(&mut self) -> Option<char> {
-        if self.forward {
-            // read u8s forwards into char (largely copied from core::str::Chars)
-            let x = match self.next_u8() {
-                None => return None,
-                Some(next_byte) if next_byte < 128 => return Some(next_byte as char),
-                Some(next_byte) => next_byte
-            };
-
-            // Multibyte case follows
-            // Decode from a byte combination out of: [[[x y] z] w]
-            let init = utf8_first_byte!(x, 2);
-            let y = self.next_u8().unwrap_or(0);
-            let mut ch = utf8_acc_cont_byte!(init, y);
-            if x >= 0xE0 {
-                // [[x y z] w] case
-                // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
-                let z = self.next_u8().unwrap_or(0);
-                let y_z = utf8_acc_cont_byte!((y & CONT_MASK) as u32, z);
-                ch = init << 12 | y_z;
-                if x >= 0xF0 {
-                    // [x y z w] case
-                    // use only the lower 3 bits of `init`
-                    let w = self.next_u8().unwrap_or(0);
-                    ch = (init & 7) << 18 | utf8_acc_cont_byte!(y_z, w);
-                }
-            }
-
-            // str invariant says `ch` is a valid Unicode Scalar Value
-            return unsafe { Some(mem::transmute(ch)) };
-        } else {
-            // read u8s backwards into char (largely copied from core::str::Chars)
-            let w = match self.next_u8() {
-                None => return None,
-                Some(back_byte) if back_byte < 128 => return Some(back_byte as char),
-                Some(back_byte) => back_byte,
-            };
-
-            // Multibyte case follows
-            // Decode from a byte combination out of: [x [y [z w]]]
-            let mut ch;
-            let z = self.next_u8().unwrap_or(0);
-            ch = utf8_first_byte!(z, 2);
-            if utf8_is_cont_byte!(z) {
-                let y = self.next_u8().unwrap_or(0);
-                ch = utf8_first_byte!(y, 3);
-                if utf8_is_cont_byte!(y) {
-                    let x = self.next_u8().unwrap_or(0);
-                    ch = utf8_first_byte!(x, 4);
-                    ch = utf8_acc_cont_byte!(ch, y);
-                }
-                ch = utf8_acc_cont_byte!(ch, z);
-            }
-            ch = utf8_acc_cont_byte!(ch, w);
-
-            // str invariant says `ch` is a valid Unicode Scalar Value
-            return unsafe { Some(mem::transmute(ch)) };
         }
     }
 }

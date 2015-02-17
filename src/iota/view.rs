@@ -103,13 +103,22 @@ impl<'v> View<'v> {
     }
 
     pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
-        for (index,line) in self.buffer
-                                .lines_from(self.top_line)
-                                .unwrap()
-                                .take(self.get_height())
-                                .enumerate() {
-            draw_line(&mut self.uibuf, &*line, index, self.left_col);
-            if index == self.get_height() { break; }
+        let height = self.get_height();
+        let width = self.get_width();
+        let mut line = 0;
+        let mut col = 0;
+        for c in self.buffer.chars_from(self.top_line).unwrap() {
+            if c == '\n' {
+                if line == height { break; }
+                for i in range(col, width) {
+                    self.uibuf.update_cell_content(i, line, ' ');
+                }
+                col = 0;
+                line += 1;
+            } else {
+                self.uibuf.update_cell_content(col, line, c);
+                col += 1;
+            }
         }
 
         match self.overlay {
@@ -166,48 +175,7 @@ impl<'v> View<'v> {
     }
 
     pub fn move_mark(&mut self, mark: Mark, object: TextObject, num: usize) {
-        // TODO: move all this to buffer
-        //       Buffer should take the entire command and do stuff with it.
-        //       eg:
-        //
-        //       for _ in 0..num {
-        //           self.buffer.shift_mark(object)
-        //       }
-        //
-        let mut dir = match object.offset {
-            Offset::Backward(_, _) => Direction::Left,
-            Offset::Forward(_, _) => Direction::Right,
-
-            // FIXME
-            Offset::Absolute(_) => Direction::Right
-        };
-
-        match object.kind {
-            Kind::Line(anchor) => {
-                if dir == Direction::Left {
-                    dir = Direction::Up
-                } else {
-                    dir = Direction::Down
-                }
-
-                match anchor {
-                    Anchor::End => { return self.move_cursor_to_line_end() }
-                    Anchor::Start => { return self.move_cursor_to_line_start() }
-                    _ => {}
-                }
-            }
-            Kind::Word(_) => {
-                if let Offset::Forward(_, _) = object.offset {
-                    dir = Direction::RightWord(WordEdgeMatch::Alphabet)
-                } else {
-                    dir = Direction::LeftWord(WordEdgeMatch::Alphabet)
-                }
-            }
-
-            _ => {}
-        }
-
-        self.buffer.shift_mark(mark, dir, num);
+        self.buffer.set_mark_to_object(mark, object);
         self.maybe_move_screen();
     }
 
@@ -272,6 +240,21 @@ impl<'v> View<'v> {
                 self.move_cursor(Direction::Left, chars.len());
             }
             _ => {}
+        }
+    }
+
+    // Delete chars from the first index of object to the last index of object
+    pub fn delete_object(&mut self, object: TextObject) {
+        self.buffer.remove_object(object);
+    }
+
+    pub fn delete_from_mark_to_object(&mut self, mark: Mark, object: TextObject) {
+        use std::cmp;
+        if let Some(idx) = self.buffer.get_object_index(object) {
+            if let Some(midx) = self.buffer.get_mark_idx(mark) {
+                self.buffer.remove_from_mark_to_object(mark, object);
+                self.buffer.set_mark(mark, cmp::min(idx, midx));
+            }
         }
     }
 

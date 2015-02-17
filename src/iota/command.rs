@@ -27,7 +27,8 @@ pub enum Instruction {
 #[allow(dead_code)]
 pub enum Operation {
     Insert(char), // insert text
-    Delete,       // delete some object
+    DeleteObject,         // delete some object
+    DeleteFromMark(Mark), // delete from some mark to an object
 
     Undo,         // rewind buffer transaction log
     Redo,         // replay buffer transaction log
@@ -357,35 +358,38 @@ fn default_keymap() -> KeyMap<Partial> {
 
     // next/previous word
     keymap.bind_key(Key::Char('w'), Partial::Object(TextObject {
-        kind: Kind::Word(Anchor::Before),
+        kind: Kind::Word(Anchor::Start),
         offset: Offset::Forward(1, Mark::Cursor(0))
     }));
     keymap.bind_key(Key::Char('b'), Partial::Object(TextObject {
-        kind: Kind::Word(Anchor::Before),
+        kind: Kind::Word(Anchor::End),
         offset: Offset::Backward(1, Mark::Cursor(0))
     }));
 
     // start/end line
     keymap.bind_key(Key::Char('$'), Partial::Object(TextObject {
         kind: Kind::Line(Anchor::End),
-        offset: Offset::Forward(1, Mark::Cursor(0)),
+        offset: Offset::Forward(0, Mark::Cursor(0)),
     }));
     keymap.bind_key(Key::Char('0'), Partial::Object(TextObject {
         kind: Kind::Line(Anchor::Start),
-        offset: Offset::Forward(1, Mark::Cursor(0)),
+        offset: Offset::Backward(0, Mark::Cursor(0)),
     }));
 
     // kinds
     keymap.bind_keys(&[Key::Char('`'), Key::Char('c')], Partial::Kind(Kind::Char));
-    keymap.bind_keys(&[Key::Char('`'), Key::Char('w')], Partial::Kind(Kind::Word(Anchor::Before)));
-    keymap.bind_keys(&[Key::Char('`'), Key::Char('l')], Partial::Kind(Kind::Line(Anchor::Before)));
+    keymap.bind_keys(&[Key::Char('`'), Key::Char('w')], Partial::Kind(Kind::Word(Anchor::Start)));
+    keymap.bind_keys(&[Key::Char('`'), Key::Char('l')], Partial::Kind(Kind::Line(Anchor::Start)));
 
     // anchors
-    keymap.bind_key(Key::Char(','), Partial::Anchor(Anchor::Before));
-    keymap.bind_key(Key::Char('.'), Partial::Anchor(Anchor::After));
+    keymap.bind_key(Key::Char(','), Partial::Anchor(Anchor::Start));
+    keymap.bind_key(Key::Char('.'), Partial::Anchor(Anchor::End));
+    keymap.bind_key(Key::Char('<'), Partial::Anchor(Anchor::Before));
+    keymap.bind_key(Key::Char('>'), Partial::Anchor(Anchor::After));
 
     // actions
-    keymap.bind_key(Key::Char('d'), Partial::Action(Action::Operation(Operation::Delete)));
+    keymap.bind_key(Key::Char('D'), Partial::Action(Action::Operation(Operation::DeleteObject)));
+    keymap.bind_key(Key::Char('d'), Partial::Action(Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0)))));
     keymap.bind_key(Key::Char(':'), Partial::Action(Action::Instruction(Instruction::SetOverlay(OverlayType::Prompt))));
 
     keymap
