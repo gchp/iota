@@ -316,7 +316,8 @@ impl Buffer {
             *tuple = match obj.kind {
                 Kind::Char => {
                     match obj.offset {
-                        Offset::Forward(offset, _) => {
+                        // FIXME: don't ignore the from_mark here
+                        Offset::Forward(offset, from_mark) => {
                             let absolute_index = index + offset;
                             if absolute_index < last {
                                 (absolute_index, absolute_index - get_line(absolute_index, text).unwrap())
@@ -325,7 +326,8 @@ impl Buffer {
                             }
                         }
 
-                        Offset::Backward(offset, _) => {
+                        // FIXME: don't ignore the from_mark here
+                        Offset::Backward(offset, from_mark) => {
                             if index >= offset {
                                 let absolute_index = index - offset;
                                 (absolute_index, absolute_index - get_line(absolute_index, text).unwrap())
@@ -343,7 +345,8 @@ impl Buffer {
 
                 Kind::Line(anchor) => {
                     match obj.offset {
-                        Offset::Forward(offset, _) => {
+                        // FIXME: don't ignore the from_mark here
+                        Offset::Forward(offset, from_mark) => {
                             let nlines = range(index, text.len()).filter(|i| text[*i] == b'\n')
                                                                .take(offset + 1)
                                                                .collect::<Vec<usize>>();
@@ -360,7 +363,8 @@ impl Buffer {
                             }
                         }
 
-                        Offset::Backward(offset, _) => {
+                        // FIXME: don't ignore the from_mark here
+                        Offset::Backward(offset, from_mark) => {
                             let nlines = range(0, index).rev().filter(|i| text[*i] == b'\n')
                                                             .take(offset + 1)
                                                             .collect::<Vec<usize>>();
@@ -401,7 +405,8 @@ impl Buffer {
 
                 Kind::Word(anchor) => {
                     match obj.offset {
-                        Offset::Forward(offset, _) => {
+                        // FIXME: don't ignore the from_mark here
+                        Offset::Forward(offset, from_mark) => {
                             // TODO: use anchor to determine this
                             let edger = WordEdgeMatch::Whitespace;
 
@@ -416,7 +421,8 @@ impl Buffer {
                             }
                         }
 
-                        Offset::Backward(offset, _) => {
+                        // FIXME: don't ignore the from_mark here
+                        Offset::Backward(offset, from_mark) => {
                             // TODO: use anchor to determine this
                             let edger = WordEdgeMatch::Whitespace;
 
