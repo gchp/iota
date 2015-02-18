@@ -335,7 +335,7 @@ impl Buffer {
                         }
 
                         Offset::Absolute(absolute_char_offset) => {
-                            (absolute_char_offset, absolute_char_offset)
+                            (absolute_char_offset, absolute_char_offset - get_line(absolute_char_offset, text).unwrap())
                         },
                     }
                 }
