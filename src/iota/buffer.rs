@@ -176,7 +176,7 @@ impl Buffer {
 
     fn get_nth_char_index_from_index(&self, start: usize, n: usize) -> Option<usize> {
         if let Some(iter) = self.chars_from_idx(start) {
-            if let Some((index, _)) = iter.enumerate().skip(n-1).next() {
+            if let Some((index, _)) = iter.indices().skip(n-1).next() {
                 return Some(cmp::max(0, index))
             }
         }
@@ -193,7 +193,7 @@ impl Buffer {
             },
             Offset::Backward(off, mark) => if let Some(idx) = self.get_mark_idx(mark) {
                 if idx - off >= 0 {
-                    Some(self.chars_from_idx(idx).unwrap().enumerate().rev().skip(off-1).next().unwrap().0)
+                    Some(self.chars_from_idx(idx).unwrap().indices().rev().skip(off-1).next().unwrap().0)
                 } else { None }
             } else {
                 None
@@ -229,7 +229,7 @@ impl Buffer {
             // iterator gives us the index of the character in the buffer, rather
             // than the iteration count.
             let mut counter = 0;
-            for (index, c) in iter.enumerate().filter(|&(_, c)| c == '\n') {
+            for (index, c) in iter.indices().filter(|&(_, c)| c == '\n') {
                 counter += 1;
                 if counter == num_lines {
                     let desired_line_start = get_line(index, &self.text).unwrap();
@@ -280,7 +280,7 @@ impl Buffer {
         if let Some(mut iter) = self.chars_from_idx(start) {
             if reverse { iter = iter.backward(); }
             let mut in_word = true;
-            for (idx, c) in iter.enumerate() {
+            for (idx, c) in iter.indices() {
                 if c.is_whitespace() {
                     in_word = false;
                     continue;
@@ -1047,7 +1047,7 @@ mod test {
         // 𐍈 encodes as utf8 in 4 bytes... we need a solution for buffer offsets by byte/char
         let mut buffer = setup_buffer("Test𐍈Test");
         buffer.set_mark(Mark::Cursor(0), 8);
-        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap().rev();
+        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap().reverse();
         assert!(chars.next().unwrap() == 'T');
         assert!(chars.next().unwrap() == '𐍈');
         assert!(chars.next().unwrap() == 't');
