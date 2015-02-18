@@ -680,7 +680,7 @@ mod test {
         // 𐍈 encodes as utf8 in 4 bytes... we need a solution for buffer offsets by byte/char
         let mut buffer = setup_buffer("Test𐍈Test");
         buffer.set_mark(Mark::Cursor(0), 8);
-        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap().rev();
+        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap().reverse();
         assert!(chars.next().unwrap() == 'T');
         assert!(chars.next().unwrap() == '𐍈');
         assert!(chars.next().unwrap() == 't');
