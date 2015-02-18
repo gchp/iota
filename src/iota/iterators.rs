@@ -70,7 +70,7 @@ macro_rules! utf8_is_cont_byte {
 
 
 impl<'a> Chars<'a> {
-    pub fn rev(mut self) -> Chars<'a> {
+    pub fn reverse(mut self) -> Chars<'a> {
         self.forward = !self.forward;
         self
     }
@@ -82,7 +82,9 @@ impl<'a> Chars<'a> {
         self.forward = false;
         self
     }
-    pub fn enumerate(mut self) -> CharIndices<'a> {
+
+    /// Return an iterator over (byte-index, char)
+    pub fn indices(mut self) -> CharIndices<'a> {
         CharIndices {
             iter: self
         }
