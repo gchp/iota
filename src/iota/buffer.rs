@@ -351,16 +351,33 @@ impl Buffer {
                                                                .take(offset + 1)
                                                                .collect::<Vec<usize>>();
 
-                            if offset > nlines.len() {
-                                (last, last - get_line(last, text).unwrap())
-                            } else if offset == nlines.len() {
-                                (cmp::min(line_index + nlines[offset-1] + 1, last), line_index)
-                            } else if offset == 0 {
-                                let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-                                (end_offset, end_offset - get_line(end_offset, text).unwrap())
-                            } else {
-                                (cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index)
+                            match anchor {
+                                Anchor::Same => {
+                                    if offset == nlines.len() {
+                                        (cmp::min(line_index + nlines[offset-1] + 1, last), line_index)
+                                    } else {
+                                        (cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index)
+                                    }
+                                }
+
+                                Anchor::End => {
+                                    let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
+                                    (end_offset, end_offset - get_line(end_offset, text).unwrap())
+                                }
+
+                                _ => (0, 0),
                             }
+
+                            // if offset > nlines.len() {
+                            //     (last, last - get_line(last, text).unwrap())
+                            // } else if offset == nlines.len() {
+                            //     (cmp::min(line_index + nlines[offset-1] + 1, last), line_index)
+                            // } else if offset == 0 {
+                            //     let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
+                            //     (end_offset, end_offset - get_line(end_offset, text).unwrap())
+                            // } else {
+                            //     (cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index)
+                            // }
                         }
 
                         // FIXME: don't ignore the from_mark here
@@ -368,39 +385,55 @@ impl Buffer {
                             let nlines = range(0, index).rev().filter(|i| text[*i] == b'\n')
                                                             .take(offset + 1)
                                                             .collect::<Vec<usize>>();
-                            if offset == nlines.len() {
-                                if offset == 0 {
-                                    // going to the start of the first line
-                                    (0, 0)
-                                } else {
-                                    (cmp::min(line_index, nlines[0]), line_index)
+
+                            match anchor {
+
+                                Anchor::Start => {
+                                    let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
+                                    (start_offset + 1, 0)
                                 }
-                            } else if offset > nlines.len() {
-                                (0, 0)
-                            } else if offset == 0 {
-                                // going to the start of the line
-                                let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-                                (start_offset + 1, 0)
-                            } else {
-                                (cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index)
+
+                                Anchor::Same => {
+                                    if offset == 0 {
+                                        (0, 0) // going to start of the first line
+                                    } else {
+                                        (cmp::min(line_index, nlines[0]), line_index)
+                                    }
+                                }
+
+                                _ => (0, 0)
                             }
+
+                            // if offset == nlines.len() {
+                            //     if offset == 0 {
+                            //         // going to the start of the first line
+                            //         (0, 0)
+                            //     } else {
+                            //         (cmp::min(line_index, nlines[0]), line_index)
+                            //     }
+                            // } else if offset > nlines.len() {
+                            //     (0, 0)
+                            // } else if offset == 0 {
+                            //     // going to the start of the line
+                            //     let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
+                            //     (start_offset + 1, 0)
+                            // } else {
+                            //     (cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index)
+                            // }
                         }
 
                         Offset::Absolute(line_number) => {
+                            let nlines = range(0, text.len()).filter(|i| text[*i] == b'\n')
+                                                             .take(line_number + 1)
+                                                             .collect::<Vec<usize>>();
                             match anchor {
                                 Anchor::Start => {
-                                    let nlines = range(0, text.len()).filter(|i| text[*i] == b'\n')
-                                                                       .take(line_number + 1)
-                                                                       .collect::<Vec<usize>>();
                                     let end_offset = nlines[line_number - 1];
                                     let start = get_line(end_offset, text).unwrap();
                                     (start, 0)
                                 }
 
                                 Anchor::End => {
-                                    let nlines = range(0, text.len()).filter(|i| text[*i] == b'\n')
-                                                                       .take(line_number + 1)
-                                                                       .collect::<Vec<usize>>();
                                     let end_offset = nlines[line_number - 1];
                                     (end_offset, end_offset)
                                 }
@@ -759,7 +792,7 @@ mod test {
 
     #[test]
     fn move_mark_textobject_line_down() {
-        let mut buffer = setup_buffer("Some test content\nnew lines!");
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
             kind: Kind::Line(Anchor::Same),
@@ -828,7 +861,6 @@ mod test {
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (15, 0));
     }
 
-    #[test]
     fn move_mark_textobject_two_words_right() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
@@ -843,7 +875,6 @@ mod test {
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (10, 0));
     }
 
-    #[test]
     fn move_mark_textobject_second_word_in_buffer() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
