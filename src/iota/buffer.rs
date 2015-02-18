@@ -308,9 +308,116 @@ impl Buffer {
     /// Sets the mark to the location of a given TextObject, if it exists.
     /// Adds a new mark or overwrites an existing mark.
     pub fn set_mark_to_object(&mut self, mark: Mark, obj: TextObject) {
-        if let Some(idx) = self.get_object_index(obj) {
-            self.set_mark(mark, idx);
+        let last = self.len() - 1;
+        let text = &self.text;
+        if let Some(tuple) = self.marks.get_mut(&mark) {
+            let (index, line_index) = *tuple;
+
+            *tuple = match obj.kind {
+                Kind::Char => {
+                    match obj.offset {
+                        Offset::Forward(offset, _) => {
+                            let absolute_index = index + offset;
+                            if absolute_index < last {
+                                (absolute_index, absolute_index - get_line(absolute_index, text).unwrap())
+                            } else {
+                                (last, last - get_line(last, text).unwrap())
+                            }
+                        }
+
+                        Offset::Backward(offset, _) => {
+                            if index >= offset {
+                                let absolute_index = index - offset;
+                                (absolute_index, absolute_index - get_line(absolute_index, text).unwrap())
+                            } else {
+                                (0, 0)
+                            }
+                        }
+
+                        // TODO: find out the usecase for this
+                        Offset::Absolute(_) => (0, 0),
+                    }
+                }
+
+
+                Kind::Line(anchor) => {
+                    match obj.offset {
+                        Offset::Forward(offset, _) => {
+                            let nlines = range(index, text.len()).filter(|i| text[*i] == b'\n')
+                                                               .take(offset + 1)
+                                                               .collect::<Vec<usize>>();
+                            if offset > nlines.len() {
+                                (last, last - get_line(last, text).unwrap())
+                            } else if offset == nlines.len() {
+                                (cmp::min(line_index + nlines[offset-1] + 1, last), line_index)
+                            } else {
+                                (cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index)
+                            }
+                        }
+
+                        Offset::Backward(offset, _) => {
+                            let nlines = range(0, index).rev().filter(|i| text[*i] == b'\n')
+                                                            .take(offset + 1)
+                                                            .collect::<Vec<usize>>();
+                            if offset == nlines.len() {
+                                (cmp::min(line_index, nlines[0]), line_index)
+                            } else if offset > nlines.len() {
+                                (0, 0)
+                            } else {
+                                (cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index)
+                            }
+                        }
+
+                        // TODO: find out the usecase for this
+                        Offset::Absolute(_) => (0, 0)
+                    }
+                }
+
+
+                Kind::Word(anchor) => {
+                    match obj.offset {
+                        Offset::Forward(offset, _) => {
+                            // TODO: use anchor to determine this
+                            let edger = WordEdgeMatch::Whitespace;
+
+                            if let Some(new_idx) = get_words(index, offset, edger, text) {
+                                if new_idx < last {
+                                    (new_idx, new_idx - get_line(new_idx, text).unwrap())
+                                } else {
+                                    (last, last - get_line(last, text).unwrap())
+                                }
+                            } else {
+                                (last, last - get_line(last, text).unwrap())
+                            }
+                        }
+
+                        Offset::Backward(offset, _) => {
+                            // TODO: use anchor to determine this
+                            let edger = WordEdgeMatch::Whitespace;
+
+                            if let Some(new_idx) = get_words_rev(index, offset, edger, text) {
+                                if new_idx > 0 {
+                                    (new_idx, new_idx - get_line(new_idx, text).unwrap())
+                                } else {
+                                    (0, 0)
+                                }
+                            } else {
+                                (0, 0)
+                            }
+                        }
+
+                        // TODO: find out the usecase for this
+                        Offset::Absolute(_) => (0, 0)
+                    }
+                }
+
+
+            }
         }
+
+        // if let Some(idx) = self.get_object_index(obj) {
+        //     self.set_mark(mark, idx);
+        // }
     }
 
     /// Sets the mark to a given absolute index. Adds a new mark or overwrites an existing mark.
