@@ -369,9 +369,18 @@ impl Buffer {
                                                             .take(offset + 1)
                                                             .collect::<Vec<usize>>();
                             if offset == nlines.len() {
-                                (cmp::min(line_index, nlines[0]), line_index)
+                                if offset == 0 {
+                                    // going to the start of the first line
+                                    (0, 0)
+                                } else {
+                                    (cmp::min(line_index, nlines[0]), line_index)
+                                }
                             } else if offset > nlines.len() {
                                 (0, 0)
+                            } else if offset == 0 {
+                                // going to the start of the line
+                                let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
+                                (start_offset + 1, 0)
                             } else {
                                 (cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index)
                             }
@@ -895,6 +904,22 @@ mod test {
 
         assert_eq!(buffer.marks.get(&mark).unwrap(), &(26, 8));
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (8, 1));
+    }
+
+    #[test]
+    fn move_mark_textobject_start_of_line() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Start),
+            offset: Offset::Backward(0, mark),
+        };
+
+        buffer.set_mark(mark, 19);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
     }
 
     #[test]
