@@ -347,10 +347,14 @@ impl Buffer {
                             let nlines = range(index, text.len()).filter(|i| text[*i] == b'\n')
                                                                .take(offset + 1)
                                                                .collect::<Vec<usize>>();
+
                             if offset > nlines.len() {
                                 (last, last - get_line(last, text).unwrap())
                             } else if offset == nlines.len() {
                                 (cmp::min(line_index + nlines[offset-1] + 1, last), line_index)
+                            } else if offset == 0 {
+                                let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
+                                (end_offset, end_offset - get_line(end_offset, text).unwrap())
                             } else {
                                 (cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index)
                             }
@@ -869,6 +873,22 @@ mod test {
 
         assert_eq!(buffer.marks.get(&mark).unwrap(), &(2, 2));
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (2, 0));
+    }
+
+    #[test]
+    fn move_mark_textobject_end_of_line() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::End),
+            offset: Offset::Forward(0, mark),
+        };
+
+        buffer.set_mark(mark, 19);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(26, 8));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (8, 1));
     }
 
     #[test]
