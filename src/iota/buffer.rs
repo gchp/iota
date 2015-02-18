@@ -50,6 +50,9 @@ pub struct Buffer {
 
     /// Table of marked indices in the text
     /// KEY: mark id => VALUE : (absolute index, line index)
+    ///
+    /// - absolute index is the offset from the start of the buffer
+    /// - line index is the offset from the start of the current line
     marks: HashMap<Mark, (usize, usize)>,
 
     /// Transaction history (used for undo/redo)
@@ -198,76 +201,47 @@ impl Buffer {
         }
     }
 
-    // Most of get_line_index and get_word_index should really be under the textobject module, with the type definitions
     fn get_line_index(&self, offset: Offset, anchor: Anchor) -> Option<usize> {
-        let (start, mut lines, reverse, mark) = match offset {
-            Offset::Absolute(lines) => (0, lines, false, None),
-            Offset::Forward(lines, mark) => if let Some(idx) = self.get_mark_idx(mark) {
-                (idx, lines, false, Some(mark))
-            } else { return None; },
-            Offset::Backward(lines, mark) => if let Some(idx) = self.get_mark_idx(mark) {
-                (idx, lines, true, Some(mark))
-            } else { return None; },
+        // FIXME: Don't assume cursor is the mark.
+        //        Instead, get the mark from the offset match expression below
+        let mark = Mark::Cursor(0);
+
+        let mut reverse = false;
+        let mut new_absolute_offset = 0;
+
+        let mut num_lines: i32 = match offset {
+            Offset::Backward(n, _) => { reverse = true; n as i32 },
+            Offset::Forward(n, _) => n as i32,
+            Offset::Absolute(n) => n as i32
         };
 
-        // the anchor parameter will specify one of three situations:
-        // 1) find the index of a newline (Before, End)
-        // 2) find the index immediately after a newline (After, Start)
-        // 3) find the index of the nth char after a newline (Same)
-        // which of these applies will affect how many newline characters we need to seek past
+        let (current_offset, _) = self.get_mark_coords(mark).unwrap();
 
-        // if we're moving backwards, and the requested anchor is Start or Before, we need to
-        // find one additional newline prior (or start of buffer)
-        // if we're moving forwards, and the requested anchor is End or After, we need to find
-        // one additional newline after (or end of buffer)
 
-        lines += match anchor {
-            Anchor::End | Anchor::After if !reverse => 1,
-            Anchor::Start | Anchor::Before if reverse => 1,
-            _ => 0
-        };
-
-        // if we're starting on a newline, and going backwards, we need to ignore one line
-        if reverse && self.text[start] as char == '\n' {
-            lines += 1;
-        }
-
-        // these offsets seem a little weird (why does the "start of prev line" case need +2?)
-        // but it works for now
-        let offset: i32 = if !reverse {
-            // we're moving forwards
-            match anchor {
-                Anchor::End | Anchor::Before => -1,
-                Anchor::Same => {
-                    if let Some(mark) = mark {
-                        let (current_line_offset, _) = self.get_mark_coords(mark).unwrap();
-                        current_line_offset as i32
-                    } else {
-                        0
-                    }
-                }
-                _ => 0
+        // iterate in the desired direction, couting the number of newline chars
+        // until we get to the desired line
+        if let Some(mut iter) = self.chars_from(mark) {
+            if reverse {
+                iter = iter.backward();
             }
-        } else {
-            // we're moving backwards
-            match anchor {
-                Anchor::End | Anchor::Before => 1,
-                Anchor::Start | Anchor::After => 2,
-                _ => 0
-            }
-        };
 
-        if let Some(mut iter) = self.chars_from_idx(start) {
-            if reverse { iter = iter.backward(); }
-            for (idx, c) in iter.enumerate().filter(|&(_, c)| c == '\n') {
-                lines -= 1;
-                if lines == 0 {
-                    // we have traveled the requisite number of lines, we need to adjust the index to account for the anchor
-                    return Some((idx as i32 + offset) as usize);
+            // we need an explicit counter here because enumerate() on the chars
+            // iterator gives us the index of the character in the buffer, rather
+            // than the iteration count.
+            let mut counter = 0;
+            for (index, c) in iter.enumerate().filter(|&(_, c)| c == '\n') {
+                counter += 1;
+                if counter == num_lines {
+                    let desired_line_start = get_line(index, &self.text).unwrap();
+
+                    // TODO: fix positioning when the target line is shorter than the
+                    // current_offset
+                    new_absolute_offset = desired_line_start + current_offset;
                 }
             }
         }
-        return None;
+
+        Some(new_absolute_offset)
     }
 
     fn get_word_index(&self, offset: Offset, anchor: Anchor) -> Option<usize> {
@@ -331,7 +305,8 @@ impl Buffer {
         }
     }
 
-    /// Sets the mark to the location of a given TextObject, if it exists.  Adds a new mark or overwrites an existing mark.
+    /// Sets the mark to the location of a given TextObject, if it exists.
+    /// Adds a new mark or overwrites an existing mark.
     pub fn set_mark_to_object(&mut self, mark: Mark, obj: TextObject) {
         if let Some(idx) = self.get_object_index(obj) {
             self.set_mark(mark, idx);
