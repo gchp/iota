@@ -173,7 +173,7 @@ impl Builder {
             if c.is_digit(10) && (self.reading_number || c != '0') {
                 let n = c.to_digit(10).unwrap();
                 self.reading_number = true;
-                self.append_digit(n);
+                self.append_digit(n as i32);
                 return BuilderEvent::Incomplete;
             } else if self.reading_number {
                 
@@ -268,11 +268,11 @@ impl Builder {
         None
     }
 
-    fn append_digit(&mut self, n: usize) {
+    fn append_digit(&mut self, n: i32) {
         if let Some(current) = self.number {
-            self.number = Some((current*10) + n as i32);
+            self.number = Some((current*10) + n);
         } else {
-            self.number = Some(n as i32);
+            self.number = Some(n);
         }
     }
 
