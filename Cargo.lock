@@ -5,7 +5,7 @@ dependencies = [
  "docopt 0.6.37 (registry+https://github.com/rust-lang/crates.io-index)",
  "gapbuffer 0.0.5 (git+https://github.com/dlaronson/gapbuffer)",
  "rustbox 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -19,7 +19,7 @@ version = "0.6.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "regex 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -43,7 +43,7 @@ dependencies = [
 
 [[package]]
 name = "rustc-serialize"
-version = "0.2.13"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
