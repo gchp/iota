@@ -5,3 +5,7 @@ os:
 script:
     - cargo build --verbose
     - cargo test --verbose
+notifications:
+    webhooks:
+        urls:
+            - https://webhooks.gitter.im/e/79294a7e7b016f660d66
