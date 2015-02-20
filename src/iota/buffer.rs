@@ -174,12 +174,27 @@ impl Buffer {
         }
     }
 
+    /// Get the absolute index of a specific character in the buffer
+    ///
+    /// This character can be at an absolute position, or a postion relative
+    /// to a given mark.
+    ///
+    /// The absolute offset is in the form (index, line_index) where:
+    ///     index = the offset from the start of the buffer
+    ///     line_index = the offset from the start of the current line
+    ///
+    /// ie: get the index of the 7th character after the cursor
+    /// or: get the index of the 130th character from the start of the buffer
     fn get_char_index(&self, offset: Offset) -> Option<(usize, usize)> {
-        let last = self.len() - 1;
         let text = &self.text;
 
         match offset {
+            // get the index of the char `offset` chars in front of `mark`
+            //
+            // ie: get the index of the char which is X chars in front of the MARK
+            // or: get the index of the char which is 5 chars in front of the Cursor
             Offset::Forward(offset, from_mark) => {
+                let last = self.len() - 1;
                 if let Some(tuple)= self.marks.get(&from_mark) {
                     let (index, _) = *tuple;
                     let absolute_index = index + offset;
@@ -193,6 +208,10 @@ impl Buffer {
                 }
             }
 
+            // get the index of the char `offset` chars before of `mark`
+            //
+            // ie: get the index of the char which is X chars before the MARK
+            // or: get the index of the char which is 5 chars before the Cursor
             Offset::Backward(offset, from_mark) => {
                 if let Some(tuple)= self.marks.get(&from_mark) {
                     let (index, _) = *tuple;
@@ -207,6 +226,9 @@ impl Buffer {
                 }
             }
 
+            // get the index of the char at position `offset` in the buffer
+            //
+            // ie: get the index of the 5th char in the buffer
             Offset::Absolute(absolute_char_offset) => {
                 Some((absolute_char_offset, absolute_char_offset - get_line(absolute_char_offset, text).unwrap()))
             },
