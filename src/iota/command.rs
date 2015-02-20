@@ -362,7 +362,7 @@ fn default_keymap() -> KeyMap<Partial> {
         offset: Offset::Forward(1, Mark::Cursor(0))
     }));
     keymap.bind_key(Key::Char('b'), Partial::Object(TextObject {
-        kind: Kind::Word(Anchor::End),
+        kind: Kind::Word(Anchor::Start),
         offset: Offset::Backward(1, Mark::Cursor(0))
     }));
 

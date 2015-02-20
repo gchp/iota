@@ -455,10 +455,11 @@ impl Buffer {
                             match anchor {
                                 Anchor::Start => {
                                     // move to the start of nth_word from the mark
-                                    //
-                                    let new_index = get_words(index, nth_word, edger, text).unwrap();
-
-                                    (new_index, new_index - get_line(new_index, text).unwrap())
+                                    if let Some(new_index) = get_words(index, nth_word, edger, text) {
+                                        (new_index, new_index - get_line(new_index, text).unwrap())
+                                    } else {
+                                        (last, last - get_line(last, text).unwrap())
+                                    }
                                 }
 
                                 _ => {
@@ -481,19 +482,31 @@ impl Buffer {
                         }
 
                         // FIXME: don't ignore the from_mark here
-                        Offset::Backward(offset, from_mark) => {
+                        Offset::Backward(nth_word, from_mark) => {
                             // TODO: use anchor to determine this
                             let edger = WordEdgeMatch::Whitespace;
 
-                            if let Some(new_idx) = get_words_rev(index, offset, edger, text) {
-                                if new_idx > 0 {
-                                    (new_idx, new_idx - get_line(new_idx, text).unwrap())
-                                } else {
-                                    (0, 0)
+                            match anchor {
+                                Anchor::Start => {
+                                    // move to the start of the nth_word before the mark
+                                    if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
+                                        (new_index, new_index - get_line(new_index, text).unwrap())
+                                    } else {
+                                        (0, 0)
+                                    }
                                 }
-                            } else {
-                                (0, 0)
+
+                                _ => (0, 0),
                             }
+                            // if let Some(new_idx) = get_words_rev(index, offset, edger, text) {
+                            //     if new_idx > 0 {
+                            //         (new_idx, new_idx - get_line(new_idx, text).unwrap())
+                            //     } else {
+                            //         (0, 0)
+                            //     }
+                            // } else {
+                            //     (0, 0)
+                            // }
                         }
 
                         // FIXME
@@ -707,37 +720,19 @@ impl WordEdgeMatch {
     }
 }
 
-// FIXME: this could do with refactoring
 fn get_words(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
-    let mut word_index = None;
-    let mut internal_mark = mark;
-
-    for _ in range(mark, n_words) {
-        word_index = range(internal_mark + 1, text.len() - 1)
-                    .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
-                    .take(n_words)
-                    .next();
-        if let Some(n) = word_index {
-            internal_mark = n;
-        }
-    }
-
-    word_index
+    range(mark + 1, text.len() - 1)
+        .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
+        .take(n_words)
+        .last()
 }
 
-// FIXME: investigate if this actually behaves the same as get_words
 fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
-    let mut word_index = None;
-
-    for _ in range(mark, n_words).rev() {
-        word_index = range(1, mark)
-                    .rev()
-                    .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
-                    .take(n_words)
-                    .next();
-    }
-
-    word_index
+    range(1, mark)
+        .rev()
+        .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
+        .take(n_words)
+        .last()
 }
 
 /// Returns the index of the first character of the line the mark is in.
@@ -915,6 +910,54 @@ mod test {
 
         assert_eq!(buffer.marks.get(&mark).unwrap(), &(10, 10));
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (10, 0));
+    }
+
+    #[test]
+    fn move_mark_textobject_two_words_left() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Word(Anchor::Start),
+            offset: Offset::Backward(2, mark),
+        };
+
+        buffer.set_mark(mark, 18);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 5));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 0));
+    }
+
+    #[test]
+    fn move_mark_textobject_move_word_left_at_start_of_buffer() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Word(Anchor::Start),
+            offset: Offset::Backward(1, mark),
+        };
+
+        buffer.set_mark(mark, 5);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(0, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 0));
+    }
+
+    #[test]
+    fn move_mark_textobject_move_word_right_past_end_of_buffer() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Word(Anchor::Start),
+            offset: Offset::Forward(8, mark),
+        };
+
+        buffer.set_mark(mark, 28);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(33, 6));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (6, 2));
     }
 
     #[test]
