@@ -455,17 +455,8 @@ impl Buffer {
                             match anchor {
                                 Anchor::Start => {
                                     // move to the start of nth_word from the mark
-
-                                    let mut new_index = index;
-
-                                    // FIXME: there's something wrong with the get_words function
-                                    //        the second argument does not work! Incrementing the
-                                    //        second argument should get that number of words from
-                                    //        the mark, but it always stops after just one.
-                                    for _ in range(0, nth_word) {
-                                        let word_index = get_words(new_index, 1, edger, text).unwrap();
-                                        new_index = word_index;
-                                    }
+                                    //
+                                    let new_index = get_words(index, nth_word, edger, text).unwrap();
 
                                     (new_index, new_index - get_line(new_index, text).unwrap())
                                 }
@@ -513,15 +504,7 @@ impl Buffer {
                             match anchor {
                                 Anchor::Start => {
                                     let mut new_index = 0;
-
-                                    // FIXME: there's something wrong with the get_words function
-                                    //        the second argument does not work! Incrementing the
-                                    //        second argument should get that number of words from
-                                    //        the mark, but it always stops after just one.
-                                    for _ in range(0, word_number - 1) {
-                                        let word_index = get_words(new_index, 1, edger, text).unwrap();
-                                        new_index = word_index;
-                                    }
+                                    let new_index = get_words(0, word_number - 1, edger, text).unwrap();
 
                                     (new_index, new_index - get_line(new_index, text).unwrap())
                                 }
@@ -724,19 +707,37 @@ impl WordEdgeMatch {
     }
 }
 
+// FIXME: this could do with refactoring
 fn get_words(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
-    range(mark + 1, text.len() - 1)
-        .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
-        .take(n_words)
-        .next()
+    let mut word_index = None;
+    let mut internal_mark = mark;
+
+    for _ in range(mark, n_words) {
+        word_index = range(internal_mark + 1, text.len() - 1)
+                    .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
+                    .take(n_words)
+                    .next();
+        if let Some(n) = word_index {
+            internal_mark = n;
+        }
+    }
+
+    word_index
 }
 
+// FIXME: investigate if this actually behaves the same as get_words
 fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
-    range(1, mark)
-        .rev()
-        .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
-        .take(n_words)
-        .next()
+    let mut word_index = None;
+
+    for _ in range(mark, n_words).rev() {
+        word_index = range(1, mark)
+                    .rev()
+                    .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
+                    .take(n_words)
+                    .next();
+    }
+
+    word_index
 }
 
 /// Returns the index of the first character of the line the mark is in.
