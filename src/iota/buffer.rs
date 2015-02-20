@@ -312,7 +312,6 @@ impl Buffer {
         let text = &self.text;
         if let Some(tuple) = self.marks.get_mut(&mark) {
             let (index, line_index) = *tuple;
-            print!("{:?}", obj);
             *tuple = match obj.kind {
                 Kind::Char => {
                     match obj.offset {
@@ -365,7 +364,10 @@ impl Buffer {
                                     (end_offset, end_offset - get_line(end_offset, text).unwrap())
                                 }
 
-                                _ => (0, 0),
+                                _ => {
+                                    print!("Unhandled anchor from: {:?} ", obj);
+                                    (0, 0)
+                                },
                             }
 
                             // if offset > nlines.len() {
@@ -401,7 +403,10 @@ impl Buffer {
                                     }
                                 }
 
-                                _ => (0, 0)
+                                _ => {
+                                    print!("Unhandled anchor from: {:?} ", obj);
+                                    (0, 0)
+                                },
                             }
 
                             // if offset == nlines.len() {
@@ -438,7 +443,10 @@ impl Buffer {
                                     (end_offset, end_offset)
                                 }
 
-                                _ => (0, 0),
+                                _ => {
+                                    print!("Unhandled anchor from: {:?} ", obj);
+                                    (0, 0)
+                                },
                             }
                         }
                     }
@@ -463,7 +471,7 @@ impl Buffer {
                                 }
 
                                 _ => {
-                                    panic!("If you hit this message, please open a bug report stating how you did so!");
+                                    print!("Unhandled anchor from: {:?} ", obj);
                                     (last, last - get_line(last, text).unwrap())
                                 }
                             }
@@ -496,7 +504,10 @@ impl Buffer {
                                     }
                                 }
 
-                                _ => (0, 0),
+                                _ => {
+                                    print!("Unhandled anchor from: {:?} ", obj);
+                                    (0, 0)
+                                },
                             }
                             // if let Some(new_idx) = get_words_rev(index, offset, edger, text) {
                             //     if new_idx > 0 {
@@ -522,7 +533,10 @@ impl Buffer {
                                     (new_index, new_index - get_line(new_index, text).unwrap())
                                 }
 
-                                _ => (0, 0),
+                                _ => {
+                                    print!("Unhandled anchor from: {:?} ", obj);
+                                    (0, 0)
+                                },
                             }
                         }
                     }
