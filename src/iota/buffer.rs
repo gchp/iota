@@ -194,14 +194,15 @@ impl Buffer {
     fn get_char_index(&self, offset: Offset, index: usize, line_index: usize) -> Option<(usize, usize)> {
         let last = self.len() - 1;
         let text = &self.text;
-        let new_positions = match offset {
+
+        match offset {
             // FIXME: don't ignore the from_mark here
             Offset::Forward(offset, from_mark) => {
                 let absolute_index = index + offset;
                 if absolute_index < last {
-                    (absolute_index, absolute_index - get_line(absolute_index, text).unwrap())
+                    Some((absolute_index, absolute_index - get_line(absolute_index, text).unwrap()))
                 } else {
-                    (last, last - get_line(last, text).unwrap())
+                    Some((last, last - get_line(last, text).unwrap()))
                 }
             }
 
@@ -209,24 +210,23 @@ impl Buffer {
             Offset::Backward(offset, from_mark) => {
                 if index >= offset {
                     let absolute_index = index - offset;
-                    (absolute_index, absolute_index - get_line(absolute_index, text).unwrap())
+                    Some((absolute_index, absolute_index - get_line(absolute_index, text).unwrap()))
                 } else {
-                    (0, 0)
+                    None
                 }
             }
 
             Offset::Absolute(absolute_char_offset) => {
-                (absolute_char_offset, absolute_char_offset - get_line(absolute_char_offset, text).unwrap())
+                Some((absolute_char_offset, absolute_char_offset - get_line(absolute_char_offset, text).unwrap()))
             },
-        };
-
-        Some(new_positions)
+        }
     }
 
     fn get_line_index(&self, offset: Offset, anchor: Anchor, index: usize, line_index: usize) -> Option<(usize, usize)> {
         let text = &self.text;
         let last = self.len() - 1;
-        let new_positions = match offset {
+
+        match offset {
             // FIXME: don't ignore the from_mark here
             Offset::Forward(offset, from_mark) => {
                 let nlines = range(index, text.len()).filter(|i| text[*i] == b'\n')
@@ -236,33 +236,22 @@ impl Buffer {
                 match anchor {
                     Anchor::Same => {
                         if offset == nlines.len() {
-                            (cmp::min(line_index + nlines[offset-1] + 1, last), line_index)
+                            Some((cmp::min(line_index + nlines[offset-1] + 1, last), line_index))
                         } else {
-                            (cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index)
+                            Some((cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index))
                         }
                     }
 
                     Anchor::End => {
                         let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-                        (end_offset, end_offset - get_line(end_offset, text).unwrap())
+                        Some((end_offset, end_offset - get_line(end_offset, text).unwrap()))
                     }
 
                     _ => {
                         print!("Unhandled line anchor: {:?} ", anchor);
-                        (0, 0)
+                        None
                     },
                 }
-
-                // if offset > nlines.len() {
-                //     (last, last - get_line(last, text).unwrap())
-                // } else if offset == nlines.len() {
-                //     (cmp::min(line_index + nlines[offset-1] + 1, last), line_index)
-                // } else if offset == 0 {
-                //     let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-                //     (end_offset, end_offset - get_line(end_offset, text).unwrap())
-                // } else {
-                //     (cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index)
-                // }
             }
 
             // FIXME: don't ignore the from_mark here
@@ -275,39 +264,22 @@ impl Buffer {
 
                     Anchor::Start => {
                         let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-                        (start_offset + 1, 0)
+                        Some((start_offset + 1, 0))
                     }
 
                     Anchor::Same => {
                         if offset == 0 {
-                            (0, 0) // going to start of the first line
+                            Some((0, 0)) // going to start of the first line
                         } else {
-                            (cmp::min(line_index, nlines[0]), line_index)
+                            Some((cmp::min(line_index, nlines[0]), line_index))
                         }
                     }
 
                     _ => {
                         print!("Unhandled line anchor: {:?} ", anchor);
-                        (0, 0)
+                        None
                     },
                 }
-
-                // if offset == nlines.len() {
-                //     if offset == 0 {
-                //         // going to the start of the first line
-                //         (0, 0)
-                //     } else {
-                //         (cmp::min(line_index, nlines[0]), line_index)
-                //     }
-                // } else if offset > nlines.len() {
-                //     (0, 0)
-                // } else if offset == 0 {
-                //     // going to the start of the line
-                //     let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-                //     (start_offset + 1, 0)
-                // } else {
-                //     (cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index)
-                // }
             }
 
             Offset::Absolute(line_number) => {
@@ -318,115 +290,86 @@ impl Buffer {
                     Anchor::Start => {
                         let end_offset = nlines[line_number - 1];
                         let start = get_line(end_offset, text).unwrap();
-                        (start, 0)
+                        Some((start, 0))
                     }
 
                     Anchor::End => {
                         let end_offset = nlines[line_number - 1];
-                        (end_offset, end_offset)
+                        Some((end_offset, end_offset))
                     }
 
                     _ => {
                         print!("Unhandled line anchor: {:?} ", anchor);
-                        (0, 0)
+                        None
                     },
                 }
             }
-        };
-
-        Some(new_positions)
+        }
     }
 
     fn get_word_index(&self, offset: Offset, anchor: Anchor, index: usize, line_index: usize) -> Option<(usize, usize)> {
         let last = self.len() - 1;
         let text = &self.text;
-        let new_positions = match offset {
+
+        // TODO: use anchor to determine this
+        let edger = WordEdgeMatch::Whitespace;
+
+        match offset {
             // FIXME: don't ignore the from_mark here
             Offset::Forward(nth_word, from_mark) => {
-                // TODO: use anchor to determine this
-                let edger = WordEdgeMatch::Whitespace;
-
                 match anchor {
                     Anchor::Start => {
                         // move to the start of nth_word from the mark
                         if let Some(new_index) = get_words(index, nth_word, edger, text) {
-                            (new_index, new_index - get_line(new_index, text).unwrap())
+                            Some((new_index, new_index - get_line(new_index, text).unwrap()))
                         } else {
-                            (last, last - get_line(last, text).unwrap())
+                            Some((last, last - get_line(last, text).unwrap()))
                         }
                     }
 
                     _ => {
                         print!("Unhandled word anchor: {:?} ", anchor);
-                        (last, last - get_line(last, text).unwrap())
+                        Some((last, last - get_line(last, text).unwrap()))
                     }
                 }
-                // if let Some(new_idx) = get_words(index, offset, edger, text) {
-                //     if new_idx < last {
-                //         panic!("1a");
-                //         (new_idx, new_idx - get_line(new_idx, text).unwrap())
-                //     } else {
-                //         panic!("1b");
-                //         (last, last - get_line(last, text).unwrap())
-                //     }
-                // } else {
-                //     panic!("2");
-                //     (last, last - get_line(last, text).unwrap())
-                // }
             }
 
             // FIXME: don't ignore the from_mark here
             Offset::Backward(nth_word, from_mark) => {
-                // TODO: use anchor to determine this
-                let edger = WordEdgeMatch::Whitespace;
-
                 match anchor {
                     Anchor::Start => {
                         // move to the start of the nth_word before the mark
                         if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
-                            (new_index, new_index - get_line(new_index, text).unwrap())
+                            Some((new_index, new_index - get_line(new_index, text).unwrap()))
                         } else {
-                            (0, 0)
+                            Some((0, 0))
                         }
                     }
 
                     _ => {
                         print!("Unhandled word anchor: {:?} ", anchor);
-                        (0, 0)
+                        None
                     },
                 }
-                // if let Some(new_idx) = get_words_rev(index, offset, edger, text) {
-                //     if new_idx > 0 {
-                //         (new_idx, new_idx - get_line(new_idx, text).unwrap())
-                //     } else {
-                //         (0, 0)
-                //     }
-                // } else {
-                //     (0, 0)
-                // }
             }
 
             // FIXME
             Offset::Absolute(word_number) => {
-                // TODO: use anchor to determine this
-                let edger = WordEdgeMatch::Whitespace;
-
                 match anchor {
                     Anchor::Start => {
                         let mut new_index = 0;
                         let new_index = get_words(0, word_number - 1, edger, text).unwrap();
 
-                        (new_index, new_index - get_line(new_index, text).unwrap())
+                        Some((new_index, new_index - get_line(new_index, text).unwrap()))
                     }
 
                     _ => {
                         print!("Unhandled word anchor: {:?} ", anchor);
-                        (0, 0)
+                        None
                     },
                 }
             }
-        };
-        Some(new_positions)
+        }
     }
 
     /// Returns the status text for this buffer.
@@ -440,246 +383,8 @@ impl Buffer {
     /// Sets the mark to the location of a given TextObject, if it exists.
     /// Adds a new mark or overwrites an existing mark.
     pub fn set_mark_to_object(&mut self, mark: Mark, obj: TextObject) {
-        let last = self.len() - 1;
-        let text = &self.text;
-        // if let Some(tuple) = self.marks.get_mut(&mark) {
-        //     let (index, line_index) = *tuple;
-        //     *tuple = match obj.kind {
-        //         Kind::Char => {
-        //             match offset {
-        //                 // FIXME: don't ignore the from_mark here
-        //                 Offset::Forward(offset, from_mark) => {
-        //                     let absolute_index = index + offset;
-        //                     if absolute_index < last {
-        //                         (absolute_index, absolute_index - get_line(absolute_index, text).unwrap())
-        //                     } else {
-        //                         (last, last - get_line(last, text).unwrap())
-        //                     }
-        //                 }
-
-        //                 // FIXME: don't ignore the from_mark here
-        //                 Offset::Backward(offset, from_mark) => {
-        //                     if index >= offset {
-        //                         let absolute_index = index - offset;
-        //                         (absolute_index, absolute_index - get_line(absolute_index, text).unwrap())
-        //                     } else {
-        //                         (0, 0)
-        //                     }
-        //                 }
-
-        //                 Offset::Absolute(absolute_char_offset) => {
-        //                     (absolute_char_offset, absolute_char_offset - get_line(absolute_char_offset, text).unwrap())
-        //                 },
-        //             }
-        //         }
-
-
-        //         Kind::Line(anchor) => {
-        //             match obj.offset {
-        //                 // FIXME: don't ignore the from_mark here
-        //                 Offset::Forward(offset, from_mark) => {
-        //                     let nlines = range(index, text.len()).filter(|i| text[*i] == b'\n')
-        //                                                        .take(offset + 1)
-        //                                                        .collect::<Vec<usize>>();
-
-        //                     match anchor {
-        //                         Anchor::Same => {
-        //                             if offset == nlines.len() {
-        //                                 (cmp::min(line_index + nlines[offset-1] + 1, last), line_index)
-        //                             } else {
-        //                                 (cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index)
-        //                             }
-        //                         }
-
-        //                         Anchor::End => {
-        //                             let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-        //                             (end_offset, end_offset - get_line(end_offset, text).unwrap())
-        //                         }
-
-        //                         _ => {
-        //                             print!("Unhandled anchor from: {:?} ", obj);
-        //                             (0, 0)
-        //                         },
-        //                     }
-
-        //                     // if offset > nlines.len() {
-        //                     //     (last, last - get_line(last, text).unwrap())
-        //                     // } else if offset == nlines.len() {
-        //                     //     (cmp::min(line_index + nlines[offset-1] + 1, last), line_index)
-        //                     // } else if offset == 0 {
-        //                     //     let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-        //                     //     (end_offset, end_offset - get_line(end_offset, text).unwrap())
-        //                     // } else {
-        //                     //     (cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index)
-        //                     // }
-        //                 }
-
-        //                 // FIXME: don't ignore the from_mark here
-        //                 Offset::Backward(offset, from_mark) => {
-        //                     let nlines = range(0, index).rev().filter(|i| text[*i] == b'\n')
-        //                                                     .take(offset + 1)
-        //                                                     .collect::<Vec<usize>>();
-
-        //                     match anchor {
-
-        //                         Anchor::Start => {
-        //                             let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-        //                             (start_offset + 1, 0)
-        //                         }
-
-        //                         Anchor::Same => {
-        //                             if offset == 0 {
-        //                                 (0, 0) // going to start of the first line
-        //                             } else {
-        //                                 (cmp::min(line_index, nlines[0]), line_index)
-        //                             }
-        //                         }
-
-        //                         _ => {
-        //                             print!("Unhandled anchor from: {:?} ", obj);
-        //                             (0, 0)
-        //                         },
-        //                     }
-
-        //                     // if offset == nlines.len() {
-        //                     //     if offset == 0 {
-        //                     //         // going to the start of the first line
-        //                     //         (0, 0)
-        //                     //     } else {
-        //                     //         (cmp::min(line_index, nlines[0]), line_index)
-        //                     //     }
-        //                     // } else if offset > nlines.len() {
-        //                     //     (0, 0)
-        //                     // } else if offset == 0 {
-        //                     //     // going to the start of the line
-        //                     //     let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-        //                     //     (start_offset + 1, 0)
-        //                     // } else {
-        //                     //     (cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index)
-        //                     // }
-        //                 }
-
-        //                 Offset::Absolute(line_number) => {
-        //                     let nlines = range(0, text.len()).filter(|i| text[*i] == b'\n')
-        //                                                      .take(line_number + 1)
-        //                                                      .collect::<Vec<usize>>();
-        //                     match anchor {
-        //                         Anchor::Start => {
-        //                             let end_offset = nlines[line_number - 1];
-        //                             let start = get_line(end_offset, text).unwrap();
-        //                             (start, 0)
-        //                         }
-
-        //                         Anchor::End => {
-        //                             let end_offset = nlines[line_number - 1];
-        //                             (end_offset, end_offset)
-        //                         }
-
-        //                         _ => {
-        //                             print!("Unhandled anchor from: {:?} ", obj);
-        //                             (0, 0)
-        //                         },
-        //                     }
-        //                 }
-        //             }
-        //         }
-
-
-        //         Kind::Word(anchor) => {
-        //             match obj.offset {
-        //                 // FIXME: don't ignore the from_mark here
-        //                 Offset::Forward(nth_word, from_mark) => {
-        //                     // TODO: use anchor to determine this
-        //                     let edger = WordEdgeMatch::Whitespace;
-
-        //                     match anchor {
-        //                         Anchor::Start => {
-        //                             // move to the start of nth_word from the mark
-        //                             if let Some(new_index) = get_words(index, nth_word, edger, text) {
-        //                                 (new_index, new_index - get_line(new_index, text).unwrap())
-        //                             } else {
-        //                                 (last, last - get_line(last, text).unwrap())
-        //                             }
-        //                         }
-
-        //                         _ => {
-        //                             print!("Unhandled anchor from: {:?} ", obj);
-        //                             (last, last - get_line(last, text).unwrap())
-        //                         }
-        //                     }
-        //                     // if let Some(new_idx) = get_words(index, offset, edger, text) {
-        //                     //     if new_idx < last {
-        //                     //         panic!("1a");
-        //                     //         (new_idx, new_idx - get_line(new_idx, text).unwrap())
-        //                     //     } else {
-        //                     //         panic!("1b");
-        //                     //         (last, last - get_line(last, text).unwrap())
-        //                     //     }
-        //                     // } else {
-        //                     //     panic!("2");
-        //                     //     (last, last - get_line(last, text).unwrap())
-        //                     // }
-        //                 }
-
-        //                 // FIXME: don't ignore the from_mark here
-        //                 Offset::Backward(nth_word, from_mark) => {
-        //                     // TODO: use anchor to determine this
-        //                     let edger = WordEdgeMatch::Whitespace;
-
-        //                     match anchor {
-        //                         Anchor::Start => {
-        //                             // move to the start of the nth_word before the mark
-        //                             if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
-        //                                 (new_index, new_index - get_line(new_index, text).unwrap())
-        //                             } else {
-        //                                 (0, 0)
-        //                             }
-        //                         }
-
-        //                         _ => {
-        //                             print!("Unhandled anchor from: {:?} ", obj);
-        //                             (0, 0)
-        //                         },
-        //                     }
-        //                     // if let Some(new_idx) = get_words_rev(index, offset, edger, text) {
-        //                     //     if new_idx > 0 {
-        //                     //         (new_idx, new_idx - get_line(new_idx, text).unwrap())
-        //                     //     } else {
-        //                     //         (0, 0)
-        //                     //     }
-        //                     // } else {
-        //                     //     (0, 0)
-        //                     // }
-        //                 }
-
-        //                 // FIXME
-        //                 Offset::Absolute(word_number) => {
-        //                     // TODO: use anchor to determine this
-        //                     let edger = WordEdgeMatch::Whitespace;
-
-        //                     match anchor {
-        //                         Anchor::Start => {
-        //                             let mut new_index = 0;
-        //                             let new_index = get_words(0, word_number - 1, edger, text).unwrap();
-
-        //                             (new_index, new_index - get_line(new_index, text).unwrap())
-        //                         }
-
-        //                         _ => {
-        //                             print!("Unhandled anchor from: {:?} ", obj);
-        //                             (0, 0)
-        //                         },
-        //                     }
-        //                 }
-        //             }
-        //         }
-
-
-        //     }
-        // }
-
-        if let Some(tple) = self.get_object_index(obj) {
-            self.marks.insert(mark, tple);
+        if let Some(tuple) = self.get_object_index(obj) {
+            self.marks.insert(mark, tuple);
         }
     }
 
