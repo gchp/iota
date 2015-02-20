@@ -448,19 +448,45 @@ impl Buffer {
                 Kind::Word(anchor) => {
                     match obj.offset {
                         // FIXME: don't ignore the from_mark here
-                        Offset::Forward(offset, from_mark) => {
+                        Offset::Forward(nth_word, from_mark) => {
                             // TODO: use anchor to determine this
                             let edger = WordEdgeMatch::Whitespace;
 
-                            if let Some(new_idx) = get_words(index, offset, edger, text) {
-                                if new_idx < last {
-                                    (new_idx, new_idx - get_line(new_idx, text).unwrap())
-                                } else {
+                            match anchor {
+                                Anchor::Start => {
+                                    // move to the start of nth_word from the mark
+
+                                    let mut new_index = index;
+
+                                    // FIXME: there's something wrong with the get_words function
+                                    //        the second argument does not work! Incrementing the
+                                    //        second argument should get that number of words from
+                                    //        the mark, but it always stops after just one.
+                                    for _ in range(0, nth_word) {
+                                        let word_index = get_words(new_index, 1, edger, text).unwrap();
+                                        new_index = word_index;
+                                    }
+
+                                    (new_index, new_index - get_line(new_index, text).unwrap())
+                                }
+
+                                _ => {
+                                    panic!("If you hit this message, please open a bug report stating how you did so!");
                                     (last, last - get_line(last, text).unwrap())
                                 }
-                            } else {
-                                (last, last - get_line(last, text).unwrap())
                             }
+                            // if let Some(new_idx) = get_words(index, offset, edger, text) {
+                            //     if new_idx < last {
+                            //         panic!("1a");
+                            //         (new_idx, new_idx - get_line(new_idx, text).unwrap())
+                            //     } else {
+                            //         panic!("1b");
+                            //         (last, last - get_line(last, text).unwrap())
+                            //     }
+                            // } else {
+                            //     panic!("2");
+                            //     (last, last - get_line(last, text).unwrap())
+                            // }
                         }
 
                         // FIXME: don't ignore the from_mark here
@@ -481,9 +507,23 @@ impl Buffer {
 
                         // FIXME
                         Offset::Absolute(word_number) => {
+                            // TODO: use anchor to determine this
+                            let edger = WordEdgeMatch::Whitespace;
+
                             match anchor {
                                 Anchor::Start => {
-                                    (0,0)
+                                    let mut new_index = 0;
+
+                                    // FIXME: there's something wrong with the get_words function
+                                    //        the second argument does not work! Incrementing the
+                                    //        second argument should get that number of words from
+                                    //        the mark, but it always stops after just one.
+                                    for _ in range(0, word_number - 1) {
+                                        let word_index = get_words(new_index, 1, edger, text).unwrap();
+                                        new_index = word_index;
+                                    }
+
+                                    (new_index, new_index - get_line(new_index, text).unwrap())
                                 }
 
                                 _ => (0, 0),
@@ -861,6 +901,7 @@ mod test {
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (15, 0));
     }
 
+    #[test]
     fn move_mark_textobject_two_words_right() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
@@ -875,6 +916,7 @@ mod test {
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (10, 0));
     }
 
+    #[test]
     fn move_mark_textobject_second_word_in_buffer() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
@@ -886,8 +928,24 @@ mod test {
         buffer.set_mark(mark, 18);
         buffer.set_mark_to_object(mark, obj);
 
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(10, 10));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (10, 0));
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 5));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 0));
+    }
+
+    #[test]
+    fn move_mark_textobject_fifth_word_in_buffer() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Word(Anchor::Start),
+            offset: Offset::Absolute(5),
+        };
+
+        buffer.set_mark(mark, 18);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(23, 5));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 1));
     }
 
     #[test]
