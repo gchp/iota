@@ -16,8 +16,11 @@ use textobject::{TextObject, Kind, Offset, Anchor};
 
 #[derive(Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Mark {
-    Cursor(usize),           //For keeping track of cursors.
-    DisplayMark(usize),      //For using in determining some display of characters.
+    /// For keeping track of cursors.
+    Cursor(usize),
+    
+    /// For using in determining some display of characters
+    DisplayMark(usize),
 }
 
 #[derive(Copy, PartialEq, Eq, Debug)]
@@ -217,11 +220,29 @@ impl Buffer {
         }
     }
 
+    /// Get the absolute index of a specific line in the buffer
+    ///
+    /// This line can be at an absolute position, or a postion relative
+    /// to a given mark.
+    ///
+    /// The absolute offset is in the form (index, line_index) where:
+    ///     index = the offset from the start of the buffer
+    ///     line_index = the offset from the start of the current line
+    ///
+    /// The index is calculated based on a given Anchor. This Anchor determines
+    /// where in the line the index is calculated. For instance, if you want
+    /// the index of the start of the line, you would use Anchor::Start. If you
+    /// are on the 5th char in a line, and want to get the index of the 5th char
+    /// in another line, you can use Anchor::Same.
+    ///
+    /// ie: get the index of the middle of the 7th line after the cursor
+    /// or: get the index of the start of the 130th line from the start of the buffer
     fn get_line_index(&self, offset: Offset, anchor: Anchor) -> Option<(usize, usize)> {
         let text = &self.text;
         let last = self.len() - 1;
 
         match offset {
+            // The desired line is below the current line - ie moving down
             Offset::Forward(offset, from_mark) => {
                 if let Some(tuple) = self.marks.get(&from_mark) {
                     let (index, line_index) = *tuple;
@@ -230,6 +251,11 @@ impl Buffer {
                                                        .collect::<Vec<usize>>();
 
                     match anchor {
+                        // Get the same index as the current line_index
+                        //
+                        // ie. If the current line_index is 5, then the line_index
+                        // returned will be the fifth index from the start of the
+                        // desired line.
                         Anchor::Same => {
                             if offset == nlines.len() {
                                 Some((cmp::min(line_index + nlines[offset-1] + 1, last), line_index))
@@ -242,6 +268,7 @@ impl Buffer {
                             }
                         }
 
+                        // Get the index of the end of the desired line
                         Anchor::End => {
                             let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
                             Some((end_offset, end_offset - get_line(end_offset, text).unwrap()))
@@ -257,6 +284,7 @@ impl Buffer {
                 }
             }
 
+            // The desired line is above the current line - ie moving up
             Offset::Backward(offset, from_mark) => {
                 if let Some(tuple) = self.marks.get(&from_mark) {
                     let (index, line_index) = *tuple;
@@ -265,11 +293,15 @@ impl Buffer {
                                                     .collect::<Vec<usize>>();
 
                     match anchor {
+                        // Get the index of the start of the desired line
                         Anchor::Start => {
                             let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
                             Some((start_offset + 1, 0))
                         }
 
+                        // ie. If the current line_index is 5, then the line_index
+                        // returned will be the fifth index from the start of the
+                        // desired line.
                         Anchor::Same => {
                             if offset == 0 {
                                 Some((0, 0)) // going to start of the first line
@@ -292,6 +324,10 @@ impl Buffer {
                 }
             }
 
+            // The desired line is identified by line_number
+            //
+            // ie. Get the index of Anchor inside the 23th line in the buffer
+            // or: Get the index of the start of the 23th line
             Offset::Absolute(line_number) => {
                 let nlines = range(0, text.len()).filter(|i| text[*i] == b'\n')
                                                  .take(line_number + 1)
