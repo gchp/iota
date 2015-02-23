@@ -2,10 +2,10 @@
 name = "iota"
 version = "0.1.0"
 dependencies = [
- "docopt 0.6.37 (registry+https://github.com/rust-lang/crates.io-index)",
+ "docopt 0.6.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "gapbuffer 0.0.5 (git+https://github.com/dlaronson/gapbuffer)",
  "rustbox 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -15,11 +15,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "docopt"
-version = "0.6.37"
+version = "0.6.39"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "regex 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -29,7 +29,7 @@ source = "git+https://github.com/dlaronson/gapbuffer#8ba05babbb24e3b6df3683c427a
 
 [[package]]
 name = "regex"
-version = "0.1.14"
+version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -43,7 +43,7 @@ dependencies = [
 
 [[package]]
 name = "rustc-serialize"
-version = "0.2.14"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]

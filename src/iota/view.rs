@@ -15,7 +15,7 @@ use utils;
 /// screen. It maintains the status bar for the current view, the "dirty status"
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
-pub struct View<'v> {
+pub struct View {
     pub buffer: Buffer,
     pub overlay: Overlay,
 
@@ -36,9 +36,9 @@ pub struct View<'v> {
     threshold: usize,
 }
 
-impl<'v> View<'v> {
+impl View {
 
-    pub fn new(source: Input, width: usize, height: usize) -> View<'v> {
+    pub fn new(source: Input, width: usize, height: usize) -> View {
         let mut buffer = match source {
             Input::Filename(path) => {
                 match path {

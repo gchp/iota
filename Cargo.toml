@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
 [dependencies]
-docopt = "0.6.37"
+docopt = "0.6.39"
 rustbox = "0.3.0"
-rustc-serialize = "0.2.13"
+rustc-serialize = "0.2.15"
 
 [dependencies.gapbuffer]
 git = "https://github.com/dlaronson/gapbuffer"
