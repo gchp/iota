@@ -100,6 +100,7 @@ impl View {
         self.uibuf.draw_everything(frontend);
     }
 
+    // FIXME: should probably use draw_line here...
     pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
         let height = self.get_height() - 2;
         let width = self.get_width();
