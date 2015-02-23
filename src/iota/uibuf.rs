@@ -178,8 +178,8 @@ mod tests {
     #[test]
     fn update_cell_updates_all_attrs_of_cell() {
         let mut uibuf = setup_uibuf();
-        let cell_num = 10us;
-        let row_num = 0us;
+        let cell_num = 10;
+        let row_num = 0;
         let ch = 'q';
         let fg = CharColor::Default;
         let bg = CharColor::Blue;

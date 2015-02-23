@@ -115,6 +115,18 @@ impl Command {
             object: None
         }
     }
+
+    pub fn movement(offset: Offset, kind: Kind) -> Command {
+        Command {
+            number: 1,
+            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: kind,
+                offset: offset
+            })
+        }
+
+    }
 }
 
 pub struct Builder {

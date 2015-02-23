@@ -5,30 +5,9 @@ use frontends::{Frontend, EditorEvent};
 use modes::Mode;
 use overlay::{Overlay, OverlayEvent};
 
-use command::Command as Cmd;
+use command::Command;
 use command::{Action, BuilderEvent, Operation, Instruction};
-use textobject::Offset;
 
-
-#[derive(Copy, Debug, PartialEq, Eq)]
-pub enum Command {
-    SaveBuffer,
-    ExitEditor,
-
-    Unknown,
-}
-
-impl Command {
-    #[inline]
-    pub fn from_str(string: &str) -> Command {
-        match string {
-            "q" | "quit"  => Command::ExitEditor,
-            "w" | "write" => Command::SaveBuffer,
-
-            _             => Command::Unknown,
-        }
-    }
-}
 
 /// The main Editor structure
 ///
@@ -98,7 +77,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
         }
     }
 
-    /// Translate the response from an Overlay to a Command
+    /// Translate the response from an Overlay to a Command wrapped in a BuilderEvent
     ///
     /// In most cases, we will just want to convert the response directly to
     /// a Command, however in some cases we will want to perform other actions
@@ -110,11 +89,10 @@ impl<'e, T: Frontend> Editor<'e, T> {
                 match self.view.overlay {
 
                     // FIXME: this is just a temporary fix
-                    Overlay::Prompt { .. } => {
-                        match Command::from_str(&*data) {
-                            Command::ExitEditor => {
-                                return BuilderEvent::Complete(Cmd::exit_editor())
-                            }
+                    Overlay::Prompt { ref data, .. } => {
+                        match &**data {
+                            "q" | "quit" => BuilderEvent::Complete(Command::exit_editor()),
+
                             _ => BuilderEvent::Incomplete
                         }
                     }
@@ -122,8 +100,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     Overlay::SavePrompt { .. } => {
                         let path = Path::new(&*data);
                         self.view.buffer.file_path = Some(path);
-                        // Command::SaveBuffer
-                        BuilderEvent::Complete(Cmd::save_buffer())
+                        BuilderEvent::Complete(Command::save_buffer())
                     }
                     _ => BuilderEvent::Incomplete,
                 }
@@ -145,7 +122,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
     }
 
     /// Handle the given command, performing the associated action
-    fn handle_command(&mut self, command: Cmd) {
+    fn handle_command(&mut self, command: Command) {
         let repeat = if command.number > 0 {
             command.number
         } else { 1 };
@@ -158,7 +135,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
     }
 
 
-    fn handle_instruction(&mut self, instruction: Instruction, command: Cmd) {
+    fn handle_instruction(&mut self, instruction: Instruction, command: Command) {
         match instruction {
             Instruction::SaveBuffer => { self.view.try_save_buffer() }
             Instruction::ExitEditor => { self.running = false; }
@@ -173,7 +150,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
         }
     }
 
-    fn handle_operation(&mut self, operation: Operation, command: Cmd) {
+    fn handle_operation(&mut self, operation: Operation, command: Command) {
         match operation {
             Operation::Insert(c) => {
                 for _ in 0..command.number {
