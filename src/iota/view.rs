@@ -101,7 +101,7 @@ impl View {
     }
 
     pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
-        let height = self.get_height();
+        let height = self.get_height() - 2;
         let width = self.get_width();
         let mut line = 0;
         let mut col = 0;
