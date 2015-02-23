@@ -35,7 +35,7 @@ impl Command {
 ///
 /// This is the top-most structure in Iota.
 pub struct Editor<'e, T: Frontend> {
-    view: View<'e>,
+    view: View,
     running: bool,
     frontend: T,
     mode: Box<Mode + 'e>,
