@@ -252,7 +252,11 @@ impl Buffer {
                             if offset == nlines.len() {
                                 Some((cmp::min(line_index + nlines[offset-1] + 1, last), line_index))
                             } else {
-                                Some((cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index))
+                                if offset > nlines.len() {
+                                    Some((last, last - get_line(last, text).unwrap()))
+                                } else {
+                                    Some((cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index))
+                                }
                             }
                         }
 
@@ -287,8 +291,12 @@ impl Buffer {
                         Anchor::Same => {
                             if offset == 0 {
                                 Some((0, 0)) // going to start of the first line
-                            } else {
+                            } else if offset == nlines.len() {
                                 Some((cmp::min(line_index, nlines[0]), line_index))
+                            } else if offset > nlines.len() {
+                                Some((0, 0)) // trying to move up from the first line
+                            } else {
+                                Some((cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index))
                             }
                         }
 
@@ -938,6 +946,52 @@ mod test {
 
         assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+    }
+
+    #[test]
+    fn move_mark_textobject_past_last_line() {
+        let mut buffer = setup_buffer("Some test content\n");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Forward(6, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+    }
+
+    #[test]
+    fn move_mark_textobject_line_up_middle_of_file() {
+        let mut buffer = setup_buffer("Some\ntest\ncontent");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Backward(1, mark),
+        };
+
+        buffer.set_mark(mark, 10);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+    }
+
+    #[test]
+    fn move_mark_textobject_line_up_past_first_line() {
+        let mut buffer = setup_buffer("Some\ntest\ncontent");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Backward(1, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(0, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 0));
     }
 
     #[test]

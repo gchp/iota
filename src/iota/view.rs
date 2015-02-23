@@ -368,7 +368,7 @@ mod tests {
     use view::View;
     use input::Input;
 
-    fn setup_view<'v>(testcase: &'static str) -> View<'v> {
+    fn setup_view(testcase: &'static str) -> View {
         let mut view = View::new(Input::Filename(None), 50, 50);
         for ch in testcase.chars() {
             view.insert_char(ch);
