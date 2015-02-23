@@ -2,7 +2,7 @@ use std::cmp;
 use std::borrow::Cow;
 use std::old_io::{fs, File, FileMode, FileAccess, TempDir};
 
-use buffer::{Buffer, Direction, Mark};
+use buffer::{Buffer, Mark};
 use input::Input;
 use uibuf::{UIBuffer, CharColor};
 use frontends::Frontend;
@@ -174,23 +174,8 @@ impl View {
         }
     }
 
-    pub fn move_mark(&mut self, mark: Mark, object: TextObject, num: usize) {
+    pub fn move_mark(&mut self, mark: Mark, object: TextObject) {
         self.buffer.set_mark_to_object(mark, object);
-        self.maybe_move_screen();
-    }
-
-    pub fn move_cursor(&mut self, direction: Direction, amount: usize) {
-        self.buffer.shift_mark(self.cursor, direction, amount);
-        self.maybe_move_screen();
-    }
-
-    pub fn move_cursor_to_line_end(&mut self) {
-        self.buffer.shift_mark(self.cursor, Direction::LineEnd, 0);
-        self.maybe_move_screen();
-    }
-
-    pub fn move_cursor_to_line_start(&mut self) {
-        self.buffer.shift_mark(self.cursor, Direction::LineStart, 0);
         self.maybe_move_screen();
     }
 
@@ -216,30 +201,23 @@ impl View {
             //up-down shifting
             match cursor.1 as isize - top_line as isize {
                 y_offset if y_offset < self.threshold as isize && top_line > 0 => {
-                    self.buffer.shift_mark(self.top_line,
-                                           Direction::Up,
-                                           (self.threshold as isize - y_offset) as usize);
+                    let amount = (self.threshold as isize - y_offset) as usize;
+                    let obj = TextObject {
+                        kind: Kind::Line(Anchor::Same),
+                        offset: Offset::Backward(amount, self.top_line)
+                    };
+                    self.buffer.set_mark_to_object(self.top_line, obj);
                 }
                 y_offset if y_offset >= height => {
-                    self.buffer.shift_mark(self.top_line,
-                                           Direction::Down,
-                                           (y_offset - height + 1) as usize);
+                    let amount = (y_offset - height + 1) as usize;
+                    let obj = TextObject {
+                        kind: Kind::Line(Anchor::Same),
+                        offset: Offset::Forward(amount, self.top_line)
+                    };
+                    self.buffer.set_mark_to_object(self.top_line, obj);
                 }
                 _ => { }
             }
-        }
-    }
-
-    pub fn delete_chars(&mut self, direction: Direction, num_chars: usize) {
-        let chars = self.buffer.remove_chars(self.cursor, direction, num_chars);
-        match (chars, direction) {
-            (Some(chars), Direction::Left) => {
-                self.move_cursor(Direction::Left, chars.len());
-            }
-            (Some(chars), Direction::LeftWord(..)) => {
-                self.move_cursor(Direction::Left, chars.len());
-            }
-            _ => {}
         }
     }
 
@@ -263,7 +241,11 @@ impl View {
         self.buffer.insert_char(self.cursor, ch as u8);
         // NOTE: the last param to char_width here may not be correct
         if let Some(ch_width) = utils::char_width(ch, false, 4, 1) {
-            self.move_cursor(Direction::Right, ch_width)
+            let obj = TextObject {
+                kind: Kind::Char,
+                offset: Offset::Forward(ch_width, Mark::Cursor(0))
+            };
+            self.move_mark(Mark::Cursor(0), obj)
         }
     }
 
@@ -364,7 +346,6 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
 #[cfg(test)]
 mod tests {
 
-    use buffer::Direction;
     use view::View;
     use input::Input;
 
@@ -378,83 +359,10 @@ mod tests {
     }
 
     #[test]
-    fn test_move_cursor_down() {
-        let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Down, 1);
-        assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().1, 1);
-        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"second");
-    }
-
-    #[test]
-    fn test_move_cursor_up() {
-        let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Down, 1);
-        view.move_cursor(Direction::Up, 1);
-        assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap().1, 0);
-        assert_eq!(view.buffer.lines_from(view.cursor).unwrap().next().unwrap(), b"test\n");
-    }
-
-    #[test]
-    fn test_insert_line() {
-        let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Right, 1);
-        view.insert_char('\n');
-
-        assert_eq!(view.buffer.get_mark_coords(view.cursor).unwrap(), (0, 1))
-    }
-
-    #[test]
     fn test_insert_char() {
         let mut view = setup_view("test\nsecond");
         view.insert_char('t');
 
         assert_eq!(view.buffer.lines().next().unwrap(), b"ttest\n");
-    }
-
-    #[test]
-    fn test_delete_char_to_right() {
-        let mut view = setup_view("test\nsecond");
-        view.delete_chars(Direction::Right, 1);
-
-        assert_eq!(view.buffer.lines().next().unwrap(), b"est\n");
-    }
-
-    #[test]
-    fn test_delete_char_to_left() {
-        let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Right, 1);
-        view.delete_chars(Direction::Left, 1);
-
-        assert_eq!(view.buffer.lines().next().unwrap(), b"est\n");
-    }
-
-
-    #[test]
-    fn test_delete_char_at_start_of_line() {
-        let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Down, 1);
-        view.delete_chars(Direction::Left, 1);
-
-        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond");
-    }
-
-    #[test]
-    fn test_delete_char_at_end_of_line() {
-        let mut view = setup_view("test\nsecond");
-        view.move_cursor(Direction::Right, 4);
-        view.delete_chars(Direction::Right, 1);
-
-        assert_eq!(view.buffer.lines().next().unwrap(), b"testsecond");
-    }
-
-    #[test]
-    fn deleting_backward_at_start_of_first_line_does_nothing() {
-        let mut view = setup_view("test\nsecond");
-        view.delete_chars(Direction::Left, 1);
-
-        let lines: Vec<_> = view.buffer.lines().collect();
-
-        assert_eq!(lines.len(), 2);
-        assert_eq!(view.buffer.lines().next().unwrap(), b"test\n");
     }
 }

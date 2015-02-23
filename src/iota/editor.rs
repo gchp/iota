@@ -1,5 +1,4 @@
 use input::Input;
-use buffer::Direction;
 use keyboard::Key;
 use view::View;
 use frontends::{Frontend, EditorEvent};
@@ -165,7 +164,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Instruction::ExitEditor => { self.running = false; }
             Instruction::SetMark(mark) => {
                 if let Some(object) = command.object {
-                    self.view.move_mark(mark, object, command.number as usize)
+                    self.view.move_mark(mark, object)
                 }
             }
             Instruction::SetOverlay(overlay_type) => {
