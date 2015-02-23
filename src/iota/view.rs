@@ -10,8 +10,6 @@ use overlay::{Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
 
-use buffer::WordEdgeMatch;
-
 /// A View is an abstract Window (into a Buffer).
 ///
 /// It draws a portion of a Buffer to a UIBuffer which in turn is drawn to the

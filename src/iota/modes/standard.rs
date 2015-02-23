@@ -1,7 +1,7 @@
 use keyboard::Key;
 use keymap::{KeyMap, KeyMapState};
 use buffer::Mark;
-use command::{BuilderEvent, Operation, Instruction, Command, Action};
+use command::{BuilderEvent, Operation, Command, Action};
 use textobject::{Anchor, Kind, TextObject, Offset};
 
 use super::Mode;

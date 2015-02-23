@@ -562,7 +562,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_char_right() {
+    fn move_mark_char_right() {
         let mut buffer = setup_buffer("Some test content");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -577,7 +577,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_char_left() {
+    fn move_mark_char_left() {
         let mut buffer = setup_buffer("Some test content");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -593,7 +593,7 @@ mod test {
     }
     
     #[test]
-    fn move_mark_textobject_five_chars_right() {
+    fn move_mark_five_chars_right() {
         let mut buffer = setup_buffer("Some test content");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -608,7 +608,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_line_down() {
+    fn move_mark_line_down() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -623,7 +623,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_line_up() {
+    fn move_mark_line_up() {
         let mut buffer = setup_buffer("Some test content\nnew lines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -639,7 +639,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_two_lines_down() {
+    fn move_mark_two_lines_down() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -654,7 +654,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_line_down_to_shorter_line() {
+    fn move_mark_line_down_to_shorter_line() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -679,7 +679,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_two_words_right() {
+    fn move_mark_two_words_right() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -694,7 +694,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_two_words_left() {
+    fn move_mark_two_words_left() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -710,7 +710,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_move_word_left_at_start_of_buffer() {
+    fn move_mark_move_word_left_at_start_of_buffer() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -726,7 +726,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_move_word_right_past_end_of_buffer() {
+    fn move_mark_move_word_right_past_end_of_buffer() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -742,7 +742,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_second_word_in_buffer() {
+    fn move_mark_second_word_in_buffer() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -758,7 +758,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_fifth_word_in_buffer() {
+    fn move_mark_fifth_word_in_buffer() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -774,7 +774,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_second_line_in_buffer() {
+    fn move_mark_second_line_in_buffer() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -789,7 +789,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_second_char_in_buffer() {
+    fn move_mark_second_char_in_buffer() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -805,7 +805,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_end_of_line() {
+    fn move_mark_end_of_line() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -821,7 +821,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_start_of_line() {
+    fn move_mark_start_of_line() {
         let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -837,7 +837,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_past_last_line() {
+    fn move_mark_past_last_line() {
         let mut buffer = setup_buffer("Some test content\n");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -852,7 +852,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_line_up_middle_of_file() {
+    fn move_mark_line_up_middle_of_file() {
         let mut buffer = setup_buffer("Some\ntest\ncontent");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
@@ -868,7 +868,7 @@ mod test {
     }
 
     #[test]
-    fn move_mark_textobject_line_up_past_first_line() {
+    fn move_mark_line_up_past_first_line() {
         let mut buffer = setup_buffer("Some\ntest\ncontent");
         let mark = Mark::Cursor(0);
         let obj = TextObject {
