@@ -1,19 +1,20 @@
 #![feature(old_io)]
+#![cfg(not(test))]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate rustbox;
 extern crate docopt;
 extern crate iota;
 
-#[cfg(not(test))] use std::old_io::stdio;
-#[cfg(not(test))] use docopt::Docopt;
-#[cfg(not(test))] use iota::{
+use std::old_io::stdio;
+use docopt::Docopt;
+use iota::{
     Editor, Input,
     StandardMode, NormalMode,
     RustboxFrontend, Mode
 };
-#[cfg(not(test))] use rustbox::{InitOptions, RustBox, InputMode};
-#[cfg(not(test))] static USAGE: &'static str = "
+use rustbox::{InitOptions, RustBox, InputMode};
+static USAGE: &'static str = "
 Usage: iota [<filename>] [options]
        iota --help
 
@@ -30,7 +31,6 @@ struct Args {
     flag_help: bool,
 }
 
-#[cfg(not(test))]
 fn main() {
     let args: Args = Docopt::new(USAGE)
                             .and_then(|d| d.decode())
