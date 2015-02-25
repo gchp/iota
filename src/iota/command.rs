@@ -7,7 +7,6 @@ use overlay::OverlayType;
 /// Instructions for the Editor.
 /// These do NOT alter the text, but may change editor/view state
 #[derive(Copy, Debug)]
-#[allow(dead_code)]
 pub enum Instruction {
     SaveBuffer,
     //FindFile,
@@ -24,7 +23,6 @@ pub enum Instruction {
 /// operations dependent on state (cursor/mark locations, etc.), as opposed
 /// to concrete operations on absolute indexes (insert 'a' at index 158, etc.)
 #[derive(Copy, Debug)]
-#[allow(dead_code)]
 pub enum Operation {
     Insert(char), // insert text
     DeleteObject,         // delete some object
@@ -36,7 +34,6 @@ pub enum Operation {
 
 /// Fragments that can be combined to specify a command
 #[derive(Copy, Debug)]
-#[allow(dead_code)]
 pub enum Partial {
     Kind(Kind),
     Anchor(Anchor),
@@ -46,7 +43,6 @@ pub enum Partial {
 }
 
 #[derive(Copy, Debug)]
-#[allow(dead_code)]
 pub enum Action {
     Operation(Operation),
     Instruction(Instruction),
@@ -188,7 +184,7 @@ impl Builder {
                 self.append_digit(n as i32);
                 return BuilderEvent::Incomplete;
             } else if self.reading_number {
-                
+
                 self.reading_number = false;
             }
         }
@@ -198,7 +194,7 @@ impl Builder {
             KeyMapState::None           => { self.reset(); return BuilderEvent::Invalid; }
             _ => {},
         }
-        
+
         if let Some(c) = self.complete_command() {
             self.reset();
             return BuilderEvent::Complete(c)
@@ -250,7 +246,7 @@ impl Builder {
               | yes (operation)   | yes    | no     | no           | no   |   | incomplete                                                        |
               | yes (operation)   | yes    | no     | no           | yes  |   | apply operation to nth instance of kind                           |
         */
-        
+
         // editor instructions may not need a text object, go ahead and return immediately
         if let Some(Action::Instruction(i)) = self.action {
             return Some(Command {
@@ -294,7 +290,7 @@ impl Builder {
             Partial::Anchor(a)    => self.anchor = Some(a),
             Partial::Offset(o)    => self.offset = Some(o),
             Partial::Object(o)    => self.object = Some(o),
-            Partial::Action(a)    => { 
+            Partial::Action(a)    => {
                 self.action = Some(a);
                 if !self.reading_number && self.number.is_some() && self.repeat.is_none() {
                     // the first number followed by an action is treated as a repetition
@@ -303,7 +299,7 @@ impl Builder {
                 }
             }
         }
-        
+
         // propagate upwards from anchor to object
         // if both an object(a) and an anchor(b) have been applied, the resulting
         // object should be exactly the same as (a), only using (b) as the anchor
@@ -317,7 +313,7 @@ impl Builder {
                     offset: object.offset,
                 });
             }
-        }        
+        }
         if let Some(kind) = self.kind {
             if let Some(ref mut object) = self.object {
                 object.kind = kind;
