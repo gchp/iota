@@ -9,8 +9,7 @@ rustbox = "0.3.0"
 rustc-serialize = "0.2.15"
 
 [dependencies.gapbuffer]
-git = "https://github.com/gchp/gapbuffer"
-branch = "rustup"
+git = "https://github.com/dlaronson/gapbuffer"
 version = "0.0.5"
 
 [lib]
