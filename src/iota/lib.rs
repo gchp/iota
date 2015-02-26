@@ -6,13 +6,11 @@
 
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
-#![feature(slicing_syntax)]
 #![feature(collections)]
+#![feature(old_path)]
 #![feature(unicode)]
+#![feature(old_io)]
 #![feature(core)]
-#![feature(path)]
-#![feature(hash)]
-#![feature(io)]
 
 #![warn(missing_docs)]
 
@@ -36,3 +34,6 @@ mod log;
 mod frontends;
 mod modes;
 mod overlay;
+mod command;
+mod textobject;
+mod iterators;

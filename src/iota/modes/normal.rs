@@ -1,16 +1,14 @@
+use keyboard::Key;
+use keymap::{KeyMap, KeyMapState};
+use command::{Builder, BuilderEvent, Command};
+
 use super::Mode;
-use super::KeyMap;
-use super::Key;
-use super::Command;
-use super::KeyMapState;
-use super::Direction;
-use super::WordEdgeMatch;
-use super::OverlayType;
 
 
 /// NormalMode mimics Vi's Normal mode.
 pub struct NormalMode {
     keymap: KeyMap<Command>,
+    builder: Builder,
 }
 
 impl NormalMode {
@@ -19,6 +17,7 @@ impl NormalMode {
     pub fn new() -> NormalMode {
         NormalMode {
             keymap: NormalMode::key_defaults(),
+            builder: Builder::new(),
         }
     }
 
@@ -26,73 +25,42 @@ impl NormalMode {
     fn key_defaults() -> KeyMap<Command> {
         let mut keymap = KeyMap::new();
 
-        // movement
-        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up, 1));
-        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down, 1));
-        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left, 1));
-        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right, 1));
-        keymap.bind_key(Key::Char('h'), Command::MoveCursor(Direction::Left, 1));
-        keymap.bind_key(Key::Char('j'), Command::MoveCursor(Direction::Down, 1));
-        keymap.bind_key(Key::Char('k'), Command::MoveCursor(Direction::Up, 1));
-        keymap.bind_key(Key::Char('l'), Command::MoveCursor(Direction::Right, 1));
-        keymap.bind_key(Key::Char('W'), Command::MoveCursor(Direction::RightWord(WordEdgeMatch::Whitespace), 1));
-        keymap.bind_key(Key::Char('B'), Command::MoveCursor(Direction::LeftWord(WordEdgeMatch::Whitespace), 1));
-        keymap.bind_key(Key::Char('w'), Command::MoveCursor(Direction::RightWord(WordEdgeMatch::Alphabet), 1));
-        keymap.bind_key(Key::Char('b'), Command::MoveCursor(Direction::LeftWord(WordEdgeMatch::Alphabet), 1));
-        keymap.bind_key(Key::Char('G'), Command::MoveCursor(Direction::LastLine, 0));
-        keymap.bind_keys(&[Key::Char('g'), Key::Char('g')], Command::MoveCursor(Direction::FirstLine, 0));
-
-        keymap.bind_key(Key::Char('0'), Command::LineStart);
-        keymap.bind_key(Key::Char('$'), Command::LineEnd);
-
-        // editing
-        keymap.bind_keys(&[Key::Char('d'), Key::Char('W')], Command::Delete(Direction::RightWord(WordEdgeMatch::Whitespace), 1));
-        keymap.bind_keys(&[Key::Char('d'), Key::Char('B')], Command::Delete(Direction::LeftWord(WordEdgeMatch::Whitespace), 1));
-        keymap.bind_keys(&[Key::Char('d'), Key::Char('w')], Command::Delete(Direction::RightWord(WordEdgeMatch::Alphabet), 1));
-        keymap.bind_keys(&[Key::Char('d'), Key::Char('b')], Command::Delete(Direction::LeftWord(WordEdgeMatch::Alphabet), 1));
-        keymap.bind_key(Key::Char('x'), Command::Delete(Direction::Right, 1));
-        keymap.bind_key(Key::Char('X'), Command::Delete(Direction::Left, 1));
-        keymap.bind_key(Key::Char('u'), Command::Undo);
-        keymap.bind_key(Key::Ctrl('r'), Command::Redo);
-
-        // open a prompt to the user
-        keymap.bind_key(Key::Char(':'), Command::SetOverlay(OverlayType::Prompt));
+        keymap.bind_key(Key::Char('u'), Command::undo());
+        keymap.bind_key(Key::Ctrl('r'), Command::redo());
 
         keymap
+    }
+
+    fn check_keymap(&mut self, key: Key) -> BuilderEvent {
+        if let KeyMapState::Match(c) = self.keymap.check_key(key) {
+            BuilderEvent::Complete(c)
+        } else {
+            BuilderEvent::Incomplete
+        }
     }
 
 }
 
 impl Mode for NormalMode {
-    /// Given a key, pass it through the NormalMode KeyMap and return the associated Command, if any.
-    fn handle_key_event(&mut self, key: Key) -> Command {
-        if let KeyMapState::Match(command) = self.keymap.check_key(key) {
-            return command
+    fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
+        match self.builder.check_key(key) {
+            // builder gives us a full command, return that
+            BuilderEvent::Complete(cmd) => BuilderEvent::Complete(cmd),
+
+            // no command from the builder, check the internal keymap
+            BuilderEvent::Incomplete => { self.check_keymap(key) }
+
+            // invalid result from builder, return invalid if the internal
+            // keymap doesn't give a match
+            BuilderEvent::Invalid => {
+                let val = self.check_keymap(key);
+
+                if let BuilderEvent::Incomplete = val {
+                    BuilderEvent::Invalid 
+                } else {
+                    val
+                }
+            }
         }
-
-        Command::Unknown
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use editor::Command;
-    use buffer::Direction;
-    use keyboard::Key;
-    use modes::Mode;
-    use super::*;
-
-    fn expect_key_command(k: Key, c: Command) {
-        let mut mode: Box<Mode> = Box::new(NormalMode::new());
-        let command = mode.handle_key_event(k);
-        assert_eq!(command, c)
-    }
-
-    #[test]
-    fn test_movement_keybindings() {
-        expect_key_command(Key::Char('h'), Command::MoveCursor(Direction::Left, 1));
-        expect_key_command(Key::Char('j'), Command::MoveCursor(Direction::Down, 1));
-        expect_key_command(Key::Char('k'), Command::MoveCursor(Direction::Up, 1));
-        expect_key_command(Key::Char('l'), Command::MoveCursor(Direction::Right, 1));
     }
 }

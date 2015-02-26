@@ -1,45 +1,13 @@
 use input::Input;
-use buffer::Direction;
 use keyboard::Key;
 use view::View;
 use frontends::{Frontend, EditorEvent};
 use modes::Mode;
-use overlay::{Overlay, OverlayType, OverlayEvent};
+use overlay::{Overlay, OverlayEvent};
 
+use command::Command;
+use command::{Action, BuilderEvent, Operation, Instruction};
 
-#[derive(Copy, Debug, PartialEq, Eq)]
-pub enum Command {
-    SaveBuffer,
-    ExitEditor,
-
-    MoveCursor(Direction, usize),
-    LineEnd,
-    LineStart,
-
-    Delete(Direction, usize),
-    InsertTab,
-    InsertChar(char),
-
-    SetOverlay(OverlayType),
-
-    Undo,
-    Redo,
-
-    Unknown,
-    None,
-}
-
-impl Command {
-    #[inline]
-    pub fn from_str(string: &str) -> Command {
-        match string {
-            "q" | "quit"  => Command::ExitEditor,
-            "w" | "write" => Command::SaveBuffer,
-
-            _             => Command::Unknown,
-        }
-    }
-}
 
 /// The main Editor structure
 ///
@@ -94,7 +62,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                         self.handle_overlay_response(response)
                     }
 
-                    _ => { Command:: None }
+                    _ => { BuilderEvent::Incomplete }
                 }
             }
         };
@@ -104,28 +72,40 @@ impl<'e, T: Frontend> Editor<'e, T> {
             self.view.clear(&mut self.frontend);
         }
 
-        self.handle_command(command);
+        if let BuilderEvent::Complete(c) = command {
+            self.handle_command(c);
+        }
     }
 
-    /// Translate the response from an Overlay to a Command
+    /// Translate the response from an Overlay to a Command wrapped in a BuilderEvent
     ///
     /// In most cases, we will just want to convert the response directly to
     /// a Command, however in some cases we will want to perform other actions
     /// first, such as in the case of Overlay::SavePrompt.
-    fn handle_overlay_response(&mut self, response: Option<String>) -> Command {
+    fn handle_overlay_response(&mut self, response: Option<String>) -> BuilderEvent {
+        // FIXME: This entire method neext to be updated
         match response {
             Some(data) => {
                 match self.view.overlay {
-                    Overlay::Prompt { .. } => Command::from_str(&*data),
+
+                    // FIXME: this is just a temporary fix
+                    Overlay::Prompt { ref data, .. } => {
+                        match &**data {
+                            "q" | "quit" => BuilderEvent::Complete(Command::exit_editor()),
+
+                            _ => BuilderEvent::Incomplete
+                        }
+                    }
+
                     Overlay::SavePrompt { .. } => {
                         let path = Path::new(&*data);
                         self.view.buffer.file_path = Some(path);
-                        Command::SaveBuffer
+                        BuilderEvent::Complete(Command::save_buffer())
                     }
-                    _ => Command::None,
+                    _ => BuilderEvent::Incomplete,
                 }
             }
-            None => Command::None
+            None => BuilderEvent::Incomplete
         }
     }
 
@@ -143,30 +123,52 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
     /// Handle the given command, performing the associated action
     fn handle_command(&mut self, command: Command) {
-        // check for the ExitEditor command first
-        if let Command::ExitEditor = command {
-            self.running = false;
-            return;
+        let repeat = if command.number > 0 {
+            command.number
+        } else { 1 };
+        for _ in range(0, repeat) {
+            match command.action {
+                Action::Instruction(i) => self.handle_instruction(i, command),
+                Action::Operation(o) => self.handle_operation(o, command),
+            }
         }
+    }
 
-        match command {
-            // Editor Commands
-            Command::SaveBuffer         => self.view.try_save_buffer(),
-            Command::SetOverlay(o)      => self.view.set_overlay(o),
 
-            // Navigation
-            Command::MoveCursor(dir, n) => self.view.move_cursor(dir, n),
-            Command::LineEnd            => self.view.move_cursor_to_line_end(),
-            Command::LineStart          => self.view.move_cursor_to_line_start(),
+    fn handle_instruction(&mut self, instruction: Instruction, command: Command) {
+        match instruction {
+            Instruction::SaveBuffer => { self.view.try_save_buffer() }
+            Instruction::ExitEditor => { self.running = false; }
+            Instruction::SetMark(mark) => {
+                if let Some(object) = command.object {
+                    self.view.move_mark(mark, object)
+                }
+            }
+            Instruction::SetOverlay(overlay_type) => {
+                self.view.set_overlay(overlay_type) 
+            }
+        }
+    }
 
-            // Editing
-            Command::Delete(dir, n)     => self.view.delete_chars(dir, n),
-            Command::InsertTab          => self.view.insert_tab(),
-            Command::InsertChar(c)      => self.view.insert_char(c),
-            Command::Redo               => self.view.redo(),
-            Command::Undo               => self.view.undo(),
-
-            _ => {},
+    fn handle_operation(&mut self, operation: Operation, command: Command) {
+        match operation {
+            Operation::Insert(c) => {
+                for _ in 0..command.number {
+                    self.view.insert_char(c)
+                }
+            }
+            Operation::DeleteObject => {
+                if let Some(obj) = command.object {
+                    self.view.delete_object(obj);
+                }
+            }
+            Operation::DeleteFromMark(m) => {
+                if command.object.is_some() {
+                    self.view.delete_from_mark_to_object(m, command.object.unwrap())
+                }
+            }
+            Operation::Undo => { self.view.undo() }
+            Operation::Redo => { self.view.redo() }
         }
     }
 

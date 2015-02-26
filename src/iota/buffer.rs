@@ -1,7 +1,6 @@
 //FIXME: Check unicode support
 // stdlib dependencies
 use std::cmp;
-use std::mem;
 use std::collections::HashMap;
 use std::old_io::{File, Reader, BufferedReader};
 
@@ -11,12 +10,17 @@ use gapbuffer::GapBuffer;
 // local dependencies
 use log::{Log, Change, LogEntry};
 use utils::is_alpha_or_;
+use iterators::{Lines, Chars};
+use textobject::{TextObject, Kind, Offset, Anchor};
 
 
 #[derive(Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Mark {
-    Cursor(usize),           //For keeping track of cursors.
-    DisplayMark(usize),      //For using in determining some display of characters.
+    /// For keeping track of cursors.
+    Cursor(usize),
+    
+    /// For using in determining some display of characters
+    DisplayMark(usize),
 }
 
 #[derive(Copy, PartialEq, Eq, Debug)]
@@ -25,30 +29,15 @@ pub enum WordEdgeMatch {
     Whitespace,
 }
 
-#[derive(Copy, PartialEq, Eq, Debug)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-
-    // TODO: extract to TextObject::Word - or similar
-    LeftWord(WordEdgeMatch),
-    RightWord(WordEdgeMatch),
-
-    // TODO: extract to TextObject::Line - or similar
-    LineStart,
-    LineEnd,
-    FirstLine,
-    LastLine,
-}
-
 pub struct Buffer {
     /// Current buffers text
     text: GapBuffer<u8>,
 
     /// Table of marked indices in the text
     /// KEY: mark id => VALUE : (absolute index, line index)
+    ///
+    /// - absolute index is the offset from the start of the buffer
+    /// - line index is the offset from the start of the current line
     marks: HashMap<Mark, (usize, usize)>,
 
     /// Transaction history (used for undo/redo)
@@ -121,16 +110,21 @@ impl Buffer {
         }
     }
 
+    /// Creates an iterator on the text by chars that begins at the specified index.
+    pub fn chars_from_idx(&self, idx: usize) -> Option<Chars> {
+        if idx < self.len() {
+            Some(Chars {
+                buffer: &self.text,
+                idx: idx,
+                forward: true,
+            })
+        } else { None }
+    }
+
     /// Creates an iterator on the text by chars that begins at the specified mark.
     pub fn chars_from(&self, mark: Mark) -> Option<Chars> {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
-            if idx < self.len() {
-                Some(Chars {
-                    buffer: &self.text,
-                    idx: idx,
-                    forward: true,
-                })
-            } else { None }
+            self.chars_from_idx(idx)
         } else { None }
     }
 
@@ -156,11 +150,294 @@ impl Buffer {
         } else { None }
     }
 
+    /// Return the buffer index of a TextObject
+    pub fn get_object_index(&self, obj: TextObject) -> Option<(usize, usize)> {
+        match obj.kind {
+            Kind::Char => self.get_char_index(obj.offset),
+            Kind::Line(anchor) => self.get_line_index(obj.offset, anchor),
+            Kind::Word(anchor) => self.get_word_index(obj.offset, anchor),
+        }
+    }
+
+    /// Get the absolute index of a specific character in the buffer
+    ///
+    /// This character can be at an absolute position, or a postion relative
+    /// to a given mark.
+    ///
+    /// The absolute offset is in the form (index, line_index) where:
+    ///     index = the offset from the start of the buffer
+    ///     line_index = the offset from the start of the current line
+    ///
+    /// ie: get the index of the 7th character after the cursor
+    /// or: get the index of the 130th character from the start of the buffer
+    fn get_char_index(&self, offset: Offset) -> Option<(usize, usize)> {
+        let text = &self.text;
+
+        match offset {
+            // get the index of the char `offset` chars in front of `mark`
+            //
+            // ie: get the index of the char which is X chars in front of the MARK
+            // or: get the index of the char which is 5 chars in front of the Cursor
+            Offset::Forward(offset, from_mark) => {
+                let last = self.len() - 1;
+                if let Some(tuple)= self.marks.get(&from_mark) {
+                    let (index, _) = *tuple;
+                    let absolute_index = index + offset;
+                    if absolute_index < last {
+                        Some((absolute_index, absolute_index - get_line(absolute_index, text).unwrap()))
+                    } else {
+                        Some((last, last - get_line(last, text).unwrap()))
+                    }
+                } else {
+                    None
+                }
+            }
+
+            // get the index of the char `offset` chars before of `mark`
+            //
+            // ie: get the index of the char which is X chars before the MARK
+            // or: get the index of the char which is 5 chars before the Cursor
+            Offset::Backward(offset, from_mark) => {
+                if let Some(tuple)= self.marks.get(&from_mark) {
+                    let (index, _) = *tuple;
+                    if index >= offset {
+                        let absolute_index = index - offset;
+                        Some((absolute_index, absolute_index - get_line(absolute_index, text).unwrap()))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+
+            // get the index of the char at position `offset` in the buffer
+            //
+            // ie: get the index of the 5th char in the buffer
+            Offset::Absolute(absolute_char_offset) => {
+                Some((absolute_char_offset, absolute_char_offset - get_line(absolute_char_offset, text).unwrap()))
+            },
+        }
+    }
+
+    /// Get the absolute index of a specific line in the buffer
+    ///
+    /// This line can be at an absolute position, or a postion relative
+    /// to a given mark.
+    ///
+    /// The absolute offset is in the form (index, line_index) where:
+    ///     index = the offset from the start of the buffer
+    ///     line_index = the offset from the start of the current line
+    ///
+    /// The index is calculated based on a given Anchor. This Anchor determines
+    /// where in the line the index is calculated. For instance, if you want
+    /// the index of the start of the line, you would use Anchor::Start. If you
+    /// are on the 5th char in a line, and want to get the index of the 5th char
+    /// in another line, you can use Anchor::Same.
+    ///
+    /// ie: get the index of the middle of the 7th line after the cursor
+    /// or: get the index of the start of the 130th line from the start of the buffer
+    fn get_line_index(&self, offset: Offset, anchor: Anchor) -> Option<(usize, usize)> {
+        let text = &self.text;
+        let last = self.len() - 1;
+
+        match offset {
+            // The desired line is below the current line - ie moving down
+            Offset::Forward(offset, from_mark) => {
+                if let Some(tuple) = self.marks.get(&from_mark) {
+                    let (index, line_index) = *tuple;
+                    let nlines = range(index, text.len()).filter(|i| text[*i] == b'\n')
+                                                       .take(offset + 1)
+                                                       .collect::<Vec<usize>>();
+
+                    match anchor {
+                        // Get the same index as the current line_index
+                        //
+                        // ie. If the current line_index is 5, then the line_index
+                        // returned will be the fifth index from the start of the
+                        // desired line.
+                        Anchor::Same => {
+                            if offset == nlines.len() {
+                                Some((cmp::min(line_index + nlines[offset-1] + 1, last), line_index))
+                            } else {
+                                if offset > nlines.len() {
+                                    Some((last, last - get_line(last, text).unwrap()))
+                                } else {
+                                    Some((cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index))
+                                }
+                            }
+                        }
+
+                        // Get the index of the end of the desired line
+                        Anchor::End => {
+                            let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
+                            Some((end_offset, end_offset - get_line(end_offset, text).unwrap()))
+                        }
+
+                        _ => {
+                            print!("Unhandled line anchor: {:?} ", anchor);
+                            None
+                        },
+                    }
+                } else {
+                    None
+                }
+            }
+
+            // The desired line is above the current line - ie moving up
+            Offset::Backward(offset, from_mark) => {
+                if let Some(tuple) = self.marks.get(&from_mark) {
+                    let (index, line_index) = *tuple;
+                    let nlines = range(0, index).rev().filter(|i| text[*i] == b'\n')
+                                                    .take(offset + 1)
+                                                    .collect::<Vec<usize>>();
+
+                    match anchor {
+                        // Get the index of the start of the desired line
+                        Anchor::Start => {
+                            let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
+                            Some((start_offset + 1, 0))
+                        }
+
+                        // ie. If the current line_index is 5, then the line_index
+                        // returned will be the fifth index from the start of the
+                        // desired line.
+                        Anchor::Same => {
+                            if offset == 0 {
+                                Some((0, 0)) // going to start of the first line
+                            } else if offset == nlines.len() {
+                                Some((cmp::min(line_index, nlines[0]), line_index))
+                            } else if offset > nlines.len() {
+                                Some((0, 0)) // trying to move up from the first line
+                            } else {
+                                Some((cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index))
+                            }
+                        }
+
+                        _ => {
+                            print!("Unhandled line anchor: {:?} ", anchor);
+                            None
+                        },
+                    }
+                } else {
+                    None
+                }
+            }
+
+            // The desired line is identified by line_number
+            //
+            // ie. Get the index of Anchor inside the 23th line in the buffer
+            // or: Get the index of the start of the 23th line
+            Offset::Absolute(line_number) => {
+                let nlines = range(0, text.len()).filter(|i| text[*i] == b'\n')
+                                                 .take(line_number + 1)
+                                                 .collect::<Vec<usize>>();
+                match anchor {
+                    Anchor::Start => {
+                        let end_offset = nlines[line_number - 1];
+                        let start = get_line(end_offset, text).unwrap();
+                        Some((start, 0))
+                    }
+
+                    Anchor::End => {
+                        let end_offset = nlines[line_number - 1];
+                        Some((end_offset, end_offset))
+                    }
+
+                    _ => {
+                        print!("Unhandled line anchor: {:?} ", anchor);
+                        None
+                    },
+                }
+            }
+        }
+    }
+
+    fn get_word_index(&self, offset: Offset, anchor: Anchor) -> Option<(usize, usize)> {
+        let last = self.len() - 1;
+        let text = &self.text;
+
+        // TODO: use anchor to determine this
+        let edger = WordEdgeMatch::Whitespace;
+
+        match offset {
+            Offset::Forward(nth_word, from_mark) => {
+                if let Some(tuple) = self.marks.get(&from_mark) {
+                    let (index, _) = *tuple;
+                    match anchor {
+                        Anchor::Start => {
+                            // move to the start of nth_word from the mark
+                            if let Some(new_index) = get_words(index, nth_word, edger, text) {
+                                Some((new_index, new_index - get_line(new_index, text).unwrap()))
+                            } else {
+                                Some((last, last - get_line(last, text).unwrap()))
+                            }
+                        }
+
+                        _ => {
+                            print!("Unhandled word anchor: {:?} ", anchor);
+                            Some((last, last - get_line(last, text).unwrap()))
+                        }
+                    }
+                } else {
+                    None
+                }
+            }
+
+            Offset::Backward(nth_word, from_mark) => {
+                if let Some(tuple) = self.marks.get(&from_mark) {
+                    let (index, _) = *tuple;
+                    match anchor {
+                        Anchor::Start => {
+                            // move to the start of the nth_word before the mark
+                            if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
+                                Some((new_index, new_index - get_line(new_index, text).unwrap()))
+                            } else {
+                                Some((0, 0))
+                            }
+                        }
+
+                        _ => {
+                            print!("Unhandled word anchor: {:?} ", anchor);
+                            None
+                        },
+                    }
+                } else {
+                    None
+                }
+            }
+
+            // FIXME
+            Offset::Absolute(word_number) => {
+                match anchor {
+                    Anchor::Start => {
+                        let new_index = get_words(0, word_number - 1, edger, text).unwrap();
+
+                        Some((new_index, new_index - get_line(new_index, text).unwrap()))
+                    }
+
+                    _ => {
+                        print!("Unhandled word anchor: {:?} ", anchor);
+                        None
+                    },
+                }
+            }
+        }
+    }
+
     /// Returns the status text for this buffer.
     pub fn status_text(&self) -> String {
         match self.file_path {
             Some(ref path)  =>  format!("{} ", path.display()),
             None            =>  format!("untitled "),
+        }
+    }
+
+    /// Sets the mark to the location of a given TextObject, if it exists.
+    /// Adds a new mark or overwrites an existing mark.
+    pub fn set_mark_to_object(&mut self, mark: Mark, obj: TextObject) {
+        if let Some(tuple) = self.get_object_index(obj) {
+            self.marks.insert(mark, tuple);
         }
     }
 
@@ -175,97 +452,46 @@ impl Buffer {
         }
     }
 
-    /// Shift a mark relative to its position according to the direction given.
-    pub fn shift_mark(&mut self, mark: Mark, direction: Direction, amount: usize) {
-        let last = self.len() - 1;
-        let text = &self.text;
-        if let Some(tuple) = self.marks.get_mut(&mark) {
-            let (idx, line_idx) = *tuple;
-            if let (Some(line), Some(line_end)) = (get_line(idx, text), get_line_end(idx, text)) {
-                *tuple = match direction {
-                    //For every relative motion of a mark, should return this tuple:
-                    //  value 0:    the absolute index of the mark in the file
-                    //  value 1:    the index of the mark in its line (unchanged by direct verticle
-                    //              traversals)
-                    Direction::Left =>  {
-                        let n = amount;
-                        if idx >= n { (idx - n, idx - n - get_line(idx - n, text).unwrap()) }
-                        else { (0, 0) }
-                    }
-                    Direction::Right =>  {
-                        let n = amount;
-                        if idx + n < last { (idx + n, idx + n - get_line(idx + n, text).unwrap()) }
-                        else { (last, last - get_line(last, text).unwrap()) }
-                    }
-                    Direction::Up =>  {
-                        let n = amount;
-                        let nlines = range(0, idx).rev().filter(|i| text[*i] == b'\n')
-                                                        .take(n + 1)
-                                                        .collect::<Vec<usize>>();
-                        if n == nlines.len() { (cmp::min(line_idx, nlines[0]), line_idx) }
-                        else if n > nlines.len() { (0, 0) }
-                        else { (cmp::min(line_idx + nlines[n] + 1, nlines[n-1]), line_idx) }
-                    }
-                    Direction::Down =>  {
-                        let n = amount;
-                        let nlines = range(idx, text.len()).filter(|i| text[*i] == b'\n')
-                                                           .take(n + 1)
-                                                           .collect::<Vec<usize>>();
-                        if n > nlines.len() { (last, last - get_line(last, text).unwrap())
-                        } else if n == nlines.len() {
-                            (cmp::min(line_idx + nlines[n-1] + 1, last), line_idx)
-                        } else { (cmp::min(line_idx + nlines[n-1] + 1, nlines[n]), line_idx) }
-                    }
-                    Direction::RightWord(edger) =>  {
-                        let n_words = amount;
-                        if let Some(new_idx) = get_words(idx, n_words, edger, text) {
-                            if new_idx < last { (new_idx, new_idx - get_line(new_idx, text).unwrap()) }
-                            else { (last, last - get_line(last, text).unwrap()) }
-                        } else { (last, last - get_line(last, text).unwrap()) }
-                    }
-                    Direction::LeftWord(edger)     =>  {
-                        let n_words = amount;
-                        if let Some(new_idx) = get_words_rev(idx, n_words, edger, text) {
-                            if new_idx > 0 { (new_idx, new_idx - get_line(new_idx, text).unwrap()) }
-                            else { (0, 0) }
-                        } else { (0, 0) }
-                    }
-                    Direction::LineStart    =>  { (line, 0) }
-                    Direction::LineEnd      =>  { (line_end, line_end - line) }
-                    Direction::FirstLine    =>  { (0, 0) }
-                    Direction::LastLine     =>  { (last, 0) }
+    // Remove the chars in the range from start to end
+    pub fn remove_range(&mut self, start: usize, end: usize) -> Option<Vec<u8>> {
+        let text = &mut self.text;
+        let mut transaction = self.log.start(start);
+        let mut vec = range(start, end)
+            .rev()
+            .filter_map(|idx| text.remove(idx).map(|ch| (idx, ch)))
+            .inspect(|&(idx, ch)| transaction.log(Change::Remove(idx, ch), idx))
+            .map(|(_, ch)| ch)
+            .collect::<Vec<u8>>();
+        vec.reverse();
+        Some(vec)
+    }
+
+    // Remove the chars between mark and object
+    pub fn remove_from_mark_to_object(&mut self, mark: Mark, object: TextObject) -> Option<Vec<u8>> {
+        if let Some(&(mark_idx, _)) = self.marks.get(&mark) {
+            let object_index = self.get_object_index(object);
+
+            if let Some((obj_idx, _)) = object_index {
+                if mark_idx != obj_idx {
+                    let (start, end) = if mark_idx < obj_idx { (mark_idx, obj_idx) } else { (obj_idx, mark_idx) };
+                    return self.remove_range(start, end);
                 }
             }
         }
+        None
     }
 
-    /// Remove the chars at the mark.
-    pub fn remove_chars(&mut self, mark: Mark, direction: Direction, num_chars: usize) -> Option<Vec<u8>> {
-        let text = &mut self.text;
-        if let Some(&(idx, _)) = self.marks.get(&mark) {
-            let range = match direction {
-                Direction::Left => range(cmp::max(0, idx - num_chars), idx),
-                Direction::Right => range(idx, cmp::min(idx + num_chars, text.len())),
-                Direction::RightWord(edger) => {
-                    let num_words = num_chars;
-                    range(idx, get_words(idx, num_words, edger, text).unwrap_or(text.len()))
-                }
-                Direction::LeftWord(edger) => {
-                    let num_words = num_chars;
-                    range(get_words_rev(idx, num_words, edger, text).unwrap_or(0), idx)
-                }
-                _ => unimplemented!()
-            };
-            let mut transaction = self.log.start(idx);
-            let mut vec = range
-                .rev()
-                .filter_map(|idx| text.remove(idx).map(|ch| (idx, ch)))
-                .inspect(|&(idx, ch)| transaction.log(Change::Remove(idx, ch), idx))
-                .map(|(_, ch)| ch)
-                .collect::<Vec<u8>>();
-            vec.reverse();
-            Some(vec)
-        } else { None }
+    pub fn remove_object(&mut self, object: TextObject) -> Option<Vec<u8>> {
+        let object_start = TextObject { kind: object.kind.with_anchor(Anchor::Start), offset: object.offset };
+        let object_end = TextObject { kind: object.kind.with_anchor(Anchor::End), offset: object.offset };
+
+        let start = self.get_object_index(object_start);
+        let end = self.get_object_index(object_end);
+
+        if let (Some((start_index, _)), Some((end_index, _))) = (start, end) {
+            return self.remove_range(start_index, end_index);
+        }
+        None
     }
 
     /// Insert a char at the mark.
@@ -315,7 +541,7 @@ fn get_words(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer
     range(mark + 1, text.len() - 1)
         .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
         .take(n_words)
-        .next()
+        .last()
 }
 
 fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
@@ -323,7 +549,7 @@ fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBu
         .rev()
         .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
         .take(n_words)
-        .next()
+        .last()
 }
 
 /// Returns the index of the first character of the line the mark is in.
@@ -358,165 +584,338 @@ fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
     }
 }
 
-pub struct Lines<'a> {
-    buffer: &'a GapBuffer<u8>,
-    tail: usize,
-    head: usize,
-}
-
-impl<'a> Iterator for Lines<'a> {
-    type Item = Vec<u8>;
-
-    fn next(&mut self) -> Option<Vec<u8>> {
-        if self.tail != self.head {
-            let old_tail = self.tail;
-            //update tail to either the first char after the next \n or to self.head
-            self.tail = range(old_tail, self.head).filter(|i| { *i + 1 == self.head
-                                                                || self.buffer[*i] == b'\n' })
-                                                  .take(1)
-                                                  .next()
-                                                  .unwrap() + 1;
-            Some(range(old_tail, if self.tail == self.head { self.tail - 1 } else { self.tail })
-                .map( |i| self.buffer[i] ).collect())
-        } else { None }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        //TODO: this is technically correct but a better estimate could be implemented
-        (1, Some(self.head))
-    }
-
-}
-
-/// Iterator traversing GapBuffer as chars
-/// Can be made to traverse forwards or backwards with the methods
-/// `rev()` `forward()` and `backward()`
-pub struct Chars<'a> {
-    buffer: &'a GapBuffer<u8>,
-    idx: usize,
-    forward: bool,
-}
-
-// helper macros/constants
-// u8 -> char code is mostly copied from core::str::Chars
-const CONT_MASK:   u8 = 0b0011_1111u8;
-const TAG_CONT_U8: u8 = 0b1000_0000u8;
-
-// Return the initial codepoint accumulator for the first byte.
-// The first byte is special, only want bottom 5 bits for width 2, 4 bits
-// for width 3, and 3 bits for width 4
-macro_rules! utf8_first_byte {
-    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as u32)
-}
-
-// return the value of $ch updated with continuation byte $byte
-macro_rules! utf8_acc_cont_byte {
-    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & CONT_MASK) as u32)
-}
-
-macro_rules! utf8_is_cont_byte {
-    ($byte:expr) => (($byte & !CONT_MASK) == TAG_CONT_U8)
-}
-
-
-impl<'a> Chars<'a> {
-    pub fn rev(mut self) -> Chars<'a> {
-        self.forward = !self.forward;
-        self
-    }
-    pub fn forward(mut self) -> Chars<'a> {
-        self.forward = true;
-        self
-    }
-    pub fn backward(mut self) -> Chars<'a> {
-        self.forward = false;
-        self
-    }
-
-    fn next_u8(&mut self) -> Option<u8> {
-        let n = if self.idx < self.buffer.len() {
-            Some(self.buffer[self.idx])
-        } else { None };
-        self.idx += if self.forward { 1 } else { -1 };
-        n
-    }
-}
-
-impl<'a> Iterator for Chars<'a> {
-    type Item = char;
-
-    #[inline]
-    fn next(&mut self) -> Option<char> {
-        if self.forward {
-            // read u8s forwards into char (largely copied from core::str::Chars)
-            let x = match self.next_u8() {
-                None => return None,
-                Some(next_byte) if next_byte < 128 => return Some(next_byte as char),
-                Some(next_byte) => next_byte
-            };
-
-            // Multibyte case follows
-            // Decode from a byte combination out of: [[[x y] z] w]
-            let init = utf8_first_byte!(x, 2);
-            let y = self.next_u8().unwrap_or(0);
-            let mut ch = utf8_acc_cont_byte!(init, y);
-            if x >= 0xE0 {
-                // [[x y z] w] case
-                // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
-                let z = self.next_u8().unwrap_or(0);
-                let y_z = utf8_acc_cont_byte!((y & CONT_MASK) as u32, z);
-                ch = init << 12 | y_z;
-                if x >= 0xF0 {
-                    // [x y z w] case
-                    // use only the lower 3 bits of `init`
-                    let w = self.next_u8().unwrap_or(0);
-                    ch = (init & 7) << 18 | utf8_acc_cont_byte!(y_z, w);
-                }
-            }
-
-            // str invariant says `ch` is a valid Unicode Scalar Value
-            return unsafe { Some(mem::transmute(ch)) };
-        } else {
-            // read u8s backwards into char (largely copied from core::str::Chars)
-            let w = match self.next_u8() {
-                None => return None,
-                Some(back_byte) if back_byte < 128 => return Some(back_byte as char),
-                Some(back_byte) => back_byte,
-            };
-
-            // Multibyte case follows
-            // Decode from a byte combination out of: [x [y [z w]]]
-            let mut ch;
-            let z = self.next_u8().unwrap_or(0);
-            ch = utf8_first_byte!(z, 2);
-            if utf8_is_cont_byte!(z) {
-                let y = self.next_u8().unwrap_or(0);
-                ch = utf8_first_byte!(y, 3);
-                if utf8_is_cont_byte!(y) {
-                    let x = self.next_u8().unwrap_or(0);
-                    ch = utf8_first_byte!(x, 4);
-                    ch = utf8_acc_cont_byte!(ch, y);
-                }
-                ch = utf8_acc_cont_byte!(ch, z);
-            }
-            ch = utf8_acc_cont_byte!(ch, w);
-
-            // str invariant says `ch` is a valid Unicode Scalar Value
-            return unsafe { Some(mem::transmute(ch)) };
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
 
-    use buffer::{Buffer, Direction, Mark};
+    use buffer::{Buffer, Mark};
+    use textobject::{TextObject, Offset, Kind, Anchor};
 
     fn setup_buffer(testcase: &'static str) -> Buffer {
         let mut buffer = Buffer::new();
         buffer.text.extend(testcase.bytes());
         buffer.set_mark(Mark::Cursor(0), 0);
         buffer
+    }
+
+    #[test]
+    fn move_mark_char_right() {
+        let mut buffer = setup_buffer("Some test content");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Char,
+            offset: Offset::Forward(1, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+        
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(1, 1));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (1, 0));
+    }
+
+    #[test]
+    fn move_mark_char_left() {
+        let mut buffer = setup_buffer("Some test content");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Char,
+            offset: Offset::Backward(1, mark),
+        };
+
+        buffer.set_mark(mark, 3);
+        buffer.set_mark_to_object(mark, obj);
+        
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(2, 2));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (2, 0));
+    }
+    
+    #[test]
+    fn move_mark_five_chars_right() {
+        let mut buffer = setup_buffer("Some test content");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Char,
+            offset: Offset::Forward(5, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+        
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 5));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 0));
+    }
+
+    #[test]
+    fn move_mark_line_down() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Forward(1, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+        
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+    }
+
+    #[test]
+    fn move_mark_line_up() {
+        let mut buffer = setup_buffer("Some test content\nnew lines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Backward(1, mark),
+        };
+
+        buffer.set_mark(mark, 18);
+        buffer.set_mark_to_object(mark, obj);
+        
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(0, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 0));
+    }
+
+    #[test]
+    fn move_mark_two_lines_down() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Forward(2, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+        
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(27, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 2));
+    }
+
+    #[test]
+    fn move_mark_line_down_to_shorter_line() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Forward(1, mark),
+        };
+
+        buffer.set_mark(mark, 15);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(26, 15));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (8, 1));
+
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Backward(1, mark),
+        };
+        buffer.set_mark_to_object(mark, obj);
+        
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(15, 15));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (15, 0));
+    }
+
+    #[test]
+    fn move_mark_two_words_right() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Word(Anchor::Start),
+            offset: Offset::Forward(2, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(10, 10));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (10, 0));
+    }
+
+    #[test]
+    fn move_mark_two_words_left() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Word(Anchor::Start),
+            offset: Offset::Backward(2, mark),
+        };
+
+        buffer.set_mark(mark, 18);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 5));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 0));
+    }
+
+    #[test]
+    fn move_mark_move_word_left_at_start_of_buffer() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Word(Anchor::Start),
+            offset: Offset::Backward(1, mark),
+        };
+
+        buffer.set_mark(mark, 5);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(0, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 0));
+    }
+
+    #[test]
+    fn move_mark_move_word_right_past_end_of_buffer() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Word(Anchor::Start),
+            offset: Offset::Forward(8, mark),
+        };
+
+        buffer.set_mark(mark, 28);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(33, 6));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (6, 2));
+    }
+
+    #[test]
+    fn move_mark_second_word_in_buffer() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Word(Anchor::Start),
+            offset: Offset::Absolute(2),
+        };
+
+        buffer.set_mark(mark, 18);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 5));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 0));
+    }
+
+    #[test]
+    fn move_mark_fifth_word_in_buffer() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Word(Anchor::Start),
+            offset: Offset::Absolute(5),
+        };
+
+        buffer.set_mark(mark, 18);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(23, 5));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 1));
+    }
+
+    #[test]
+    fn move_mark_second_line_in_buffer() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Start),
+            offset: Offset::Absolute(2),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+    }
+
+    #[test]
+    fn move_mark_second_char_in_buffer() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Char,
+            offset: Offset::Absolute(2),
+        };
+
+        buffer.set_mark(mark, 18);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(2, 2));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (2, 0));
+    }
+
+    #[test]
+    fn move_mark_end_of_line() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::End),
+            offset: Offset::Forward(0, mark),
+        };
+
+        buffer.set_mark(mark, 19);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(26, 8));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (8, 1));
+    }
+
+    #[test]
+    fn move_mark_start_of_line() {
+        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Start),
+            offset: Offset::Backward(0, mark),
+        };
+
+        buffer.set_mark(mark, 19);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+    }
+
+    #[test]
+    fn move_mark_past_last_line() {
+        let mut buffer = setup_buffer("Some test content\n");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Forward(6, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+    }
+
+    #[test]
+    fn move_mark_line_up_middle_of_file() {
+        let mut buffer = setup_buffer("Some\ntest\ncontent");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Backward(1, mark),
+        };
+
+        buffer.set_mark(mark, 10);
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+    }
+
+    #[test]
+    fn move_mark_line_up_past_first_line() {
+        let mut buffer = setup_buffer("Some\ntest\ncontent");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Backward(1, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(buffer.marks.get(&mark).unwrap(), &(0, 0));
+        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 0));
     }
 
     #[test]
@@ -530,7 +929,12 @@ mod test {
     #[test]
     fn test_remove() {
         let mut buffer = setup_buffer("ABCD");
-        buffer.remove_chars(Mark::Cursor(0), Direction::Right, 1);
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Char,
+            offset: Offset::Forward(1, mark)
+        };
+        buffer.remove_from_mark_to_object(mark, obj);
 
         assert_eq!(buffer.len(), 4);
         assert_eq!(buffer.lines().next().unwrap(), [b'B', b'C', b'D']);
@@ -542,58 +946,6 @@ mod test {
         buffer.set_mark(Mark::Cursor(0), 2);
 
         assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 2);
-    }
-
-    #[test]
-    fn test_shift_down() {
-        let mut buffer = setup_buffer("Test\nA\nTest");
-        buffer.set_mark(Mark::Cursor(0), 2);
-        buffer.shift_mark(Mark::Cursor(0), Direction::Down, 2);
-
-        assert_eq!(buffer.get_mark_coords(Mark::Cursor(0)).unwrap(), (2, 2));
-    }
-
-    #[test]
-    fn test_shift_right() {
-        let mut buffer = setup_buffer("Test");
-        buffer.shift_mark(Mark::Cursor(0), Direction::Right, 1);
-
-        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 1);
-    }
-
-    #[test]
-    fn test_shift_up() {
-        let mut buffer = setup_buffer("Test\nA\nTest");
-        buffer.set_mark(Mark::Cursor(0), 10);
-        buffer.shift_mark(Mark::Cursor(0), Direction::Up, 1);
-
-        assert_eq!(buffer.get_mark_coords(Mark::Cursor(0)).unwrap(), (1, 1));
-    }
-
-    #[test]
-    fn test_shift_left() {
-        let mut buffer = setup_buffer("Test");
-        buffer.set_mark(Mark::Cursor(0), 2);
-        buffer.shift_mark(Mark::Cursor(0), Direction::Left, 1);
-
-        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 1);
-    }
-
-    #[test]
-    fn test_shift_linestart() {
-        let mut buffer = setup_buffer("Test");
-        buffer.set_mark(Mark::Cursor(0), 2);
-        buffer.shift_mark(Mark::Cursor(0), Direction::LineStart, 0);
-
-        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 0);
-    }
-
-    #[test]
-    fn test_shift_lineend() {
-        let mut buffer = setup_buffer("Test");
-        buffer.shift_mark(Mark::Cursor(0), Direction::LineEnd, 0);
-
-        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 4);
     }
 
     #[test]
@@ -644,19 +996,10 @@ mod test {
         // 𐍈 encodes as utf8 in 4 bytes... we need a solution for buffer offsets by byte/char
         let mut buffer = setup_buffer("Test𐍈Test");
         buffer.set_mark(Mark::Cursor(0), 8);
-        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap().rev();
+        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap().reverse();
         assert!(chars.next().unwrap() == 'T');
         assert!(chars.next().unwrap() == '𐍈');
         assert!(chars.next().unwrap() == 't');
-    }
-
-    #[test]
-    fn move_from_final_position() {
-        let mut buffer = setup_buffer("Test");
-        buffer.set_mark(Mark::Cursor(0), 4);
-        buffer.shift_mark(Mark::Cursor(0), Direction::Left, 1);
-
-        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 3);
     }
 
 }

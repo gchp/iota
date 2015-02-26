@@ -1,9 +1,11 @@
+use keyboard::Key;
+use keymap::{KeyMap, KeyMapState};
+use buffer::Mark;
+use command::{BuilderEvent, Operation, Command, Action};
+use textobject::{Anchor, Kind, TextObject, Offset};
+
 use super::Mode;
-use super::KeyMap;
-use super::Key;
-use super::Command;
-use super::KeyMapState;
-use super::Direction;
+
 
 
 /// Standard mode is Iota's default mode.
@@ -32,35 +34,62 @@ impl StandardMode {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
-        keymap.bind_key(Key::Ctrl('q'), Command::ExitEditor);
-        keymap.bind_key(Key::Ctrl('s'), Command::SaveBuffer);
-        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('c')].as_slice(), Command::ExitEditor);
-        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('s')].as_slice(), Command::SaveBuffer);
+        keymap.bind_key(Key::Ctrl('q'), Command::exit_editor());
+        keymap.bind_key(Key::Ctrl('s'), Command::save_buffer());
+        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('c')].as_slice(), Command::exit_editor());
+        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('s')].as_slice(), Command::save_buffer());
 
-        // Navigation
-        keymap.bind_key(Key::Up, Command::MoveCursor(Direction::Up, 1));
-        keymap.bind_key(Key::Down, Command::MoveCursor(Direction::Down, 1));
-        keymap.bind_key(Key::Left, Command::MoveCursor(Direction::Left, 1));
-        keymap.bind_key(Key::Right, Command::MoveCursor(Direction::Right, 1));
-
-        keymap.bind_key(Key::Ctrl('p'), Command::MoveCursor(Direction::Up, 1));
-        keymap.bind_key(Key::Ctrl('n'), Command::MoveCursor(Direction::Down, 1));
-        keymap.bind_key(Key::Ctrl('b'), Command::MoveCursor(Direction::Left, 1));
-        keymap.bind_key(Key::Ctrl('f'), Command::MoveCursor(Direction::Right, 1));
-        keymap.bind_key(Key::Ctrl('e'), Command::LineEnd);
-        keymap.bind_key(Key::Ctrl('a'), Command::LineStart);
+        // Cursor movement
+        keymap.bind_key(Key::Up, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Down, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Left, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
+        keymap.bind_key(Key::Right, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
+        keymap.bind_key(Key::Ctrl('p'), Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::End)));
+        keymap.bind_key(Key::Ctrl('n'), Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::End)));
+        keymap.bind_key(Key::Ctrl('b'), Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
+        keymap.bind_key(Key::Ctrl('f'), Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
+        keymap.bind_key(Key::Ctrl('e'), Command::movement(Offset::Forward(0, Mark::Cursor(0)), Kind::Line(Anchor::End)));
+        keymap.bind_key(Key::Ctrl('a'), Command::movement(Offset::Backward(0, Mark::Cursor(0)), Kind::Line(Anchor::Start)));
 
         // Editing
-        keymap.bind_key(Key::Tab, Command::InsertTab);
-        keymap.bind_key(Key::Enter, Command::InsertChar('\n'));
-        keymap.bind_key(Key::Backspace, Command::Delete(Direction::Left, 1));
-        keymap.bind_key(Key::Ctrl('h'), Command::Delete(Direction::Left, 1));
-        keymap.bind_key(Key::Delete, Command::Delete(Direction::Right, 1));
-        keymap.bind_key(Key::Ctrl('d'), Command::Delete(Direction::Right, 1));
+        keymap.bind_key(Key::Tab, Command::insert_tab());
+        keymap.bind_key(Key::Enter, Command::insert_char('\n'));
+        keymap.bind_key(Key::Backspace, Command {
+            number: 1,
+            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Char,
+                offset: Offset::Backward(1, Mark::Cursor(0))
+            })
+        });
+        keymap.bind_key(Key::Delete, Command {
+            number: 1,
+            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Char,
+                offset: Offset::Forward(1, Mark::Cursor(0))
+            })
+        });
+        keymap.bind_key(Key::Ctrl('h'), Command {
+            number: 1,
+            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Char,
+                offset: Offset::Backward(1, Mark::Cursor(0))
+            })
+        });
+        keymap.bind_key(Key::Ctrl('d'), Command {
+            number: 1,
+            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Char,
+                offset: Offset::Forward(1, Mark::Cursor(0))
+            })
+        });
 
         // History
-        keymap.bind_key(Key::Ctrl('y'), Command::Redo);
-        keymap.bind_key(Key::Ctrl('z'), Command::Undo);
+        keymap.bind_key(Key::Ctrl('z'), Command::undo());
+        keymap.bind_key(Key::Ctrl('y'), Command::redo());
 
         keymap
     }
@@ -70,15 +99,16 @@ impl StandardMode {
 impl Mode for StandardMode {
     /// Given a key, pass it through the StandardMode KeyMap and return the associated Command, if any.
     /// If no match is found, treat it as an InsertChar command.
-    fn handle_key_event(&mut self, key: Key) -> Command {
-        if let KeyMapState::Match(command) = self.keymap.check_key(key) {
-            return command
-        }
+    fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
 
         if let Key::Char(c) = key {
-            Command::InsertChar(c)
+            BuilderEvent::Complete(Command::insert_char(c))
         } else {
-            Command::None
+            if let KeyMapState::Match(c) = self.keymap.check_key(key) {
+                BuilderEvent::Complete(c)
+            } else {
+                BuilderEvent::Incomplete
+            }
         }
     }
 }

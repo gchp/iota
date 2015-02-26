@@ -1,10 +1,5 @@
-pub use super::keyboard::Key;
-pub use super::keymap::KeyMap;
-pub use super::editor::Command;
-pub use super::keymap::KeyMapState;
-pub use super::buffer::Direction;
-pub use super::buffer::WordEdgeMatch;
-pub use super::overlay::{Overlay, OverlayType, OverlayEvent};
+use keyboard::Key;
+use command::BuilderEvent;
 
 pub use self::standard::StandardMode;
 pub use self::normal::NormalMode;
@@ -18,6 +13,6 @@ mod normal;
 /// A mode is a mechanism for interpreting key events and converting them into
 /// commands which the Editor will interpret.
 pub trait Mode {
-    /// Given a Key, return a Command for the Editor to interpret
-    fn handle_key_event(&mut self, key: Key) -> Command;
+    /// Given a Key, return a Command wrapped in a BuilderEvent for the Editor to interpret
+    fn handle_key_event(&mut self, key: Key) -> BuilderEvent;
 }
