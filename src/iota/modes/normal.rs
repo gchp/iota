@@ -31,6 +31,14 @@ impl NormalMode {
         keymap
     }
 
+    fn check_keymap(&mut self, key: Key) -> BuilderEvent {
+        if let KeyMapState::Match(c) = self.keymap.check_key(key) {
+            BuilderEvent::Complete(c)
+        } else {
+            BuilderEvent::Incomplete
+        }
+    }
+
 }
 
 impl Mode for NormalMode {
@@ -40,16 +48,19 @@ impl Mode for NormalMode {
             BuilderEvent::Complete(cmd) => BuilderEvent::Complete(cmd),
 
             // no command from the builder, check the internal keymap
-            BuilderEvent::Incomplete => {
-                if let KeyMapState::Match(c) = self.keymap.check_key(key) {
-                    BuilderEvent::Complete(c)
+            BuilderEvent::Incomplete => { self.check_keymap(key) }
+
+            // invalid result from builder, return invalid if the internal
+            // keymap doesn't give a match
+            BuilderEvent::Invalid => {
+                let val = self.check_keymap(key);
+
+                if let BuilderEvent::Incomplete = val {
+                    BuilderEvent::Invalid 
                 } else {
-                    BuilderEvent::Incomplete
+                    val
                 }
             }
-
-            // invalid result from builder, return invalid
-            BuilderEvent::Invalid => { BuilderEvent::Invalid }
         }
     }
 }
