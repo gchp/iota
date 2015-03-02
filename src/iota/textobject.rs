@@ -3,7 +3,6 @@ use std::default::Default;
 use buffer::Mark;
 
 #[derive(Copy, Debug)]
-#[allow(dead_code)]
 pub enum Kind {
     Char,
     Line(Anchor),
@@ -40,7 +39,6 @@ impl Default for Kind {
 }
 
 #[derive(Copy, Debug)]
-#[allow(dead_code)]
 pub enum Anchor {
     Before,     // Index just prior to TextObject
     Start,      // First index within TextObject
@@ -57,7 +55,6 @@ impl Default for Anchor {
 }
 
 #[derive(Copy, Debug)]
-#[allow(dead_code)]
 pub enum Offset {
     Absolute(usize),
     Backward(usize, Mark),

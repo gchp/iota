@@ -8,7 +8,6 @@ pub fn char_width(c: char, is_cjk: bool, tab_width: usize, position: usize) -> O
     }
 }
 
-#[allow(dead_code)]
 pub fn str_width(s: &str, is_cjk: bool, tab_width: usize) -> usize {
     s.chars().fold(0, |acc, c|
         acc + char_width(c, is_cjk, tab_width, acc).unwrap_or(0)

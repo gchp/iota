@@ -9,7 +9,6 @@ pub enum OverlayEvent {
     Ok,
 }
 
-#[allow(dead_code)]
 #[derive(Copy, Debug, PartialEq, Eq)]
 pub enum OverlayType {
     Prompt,
