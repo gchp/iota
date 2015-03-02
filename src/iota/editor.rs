@@ -91,7 +91,13 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     // FIXME: this is just a temporary fix
                     Overlay::Prompt { ref data, .. } => {
                         match &**data {
+                            // FIXME: need to find a better system for these commands
+                            //        They should be chainable
+                            //          ie: wq - save & quit
+                            //        They should also take arguments
+                            //          ie w file.txt - write buffer to file.txt
                             "q" | "quit" => BuilderEvent::Complete(Command::exit_editor()),
+                            "w" | "write" => BuilderEvent::Complete(Command::save_buffer()),
 
                             _ => BuilderEvent::Incomplete
                         }
