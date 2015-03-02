@@ -3,6 +3,7 @@ use keymap::{ KeyMap, KeyMapState };
 use buffer::Mark;
 use textobject::{ TextObject, Offset, Kind, Anchor };
 use overlay::OverlayType;
+use modes::ModeType;
 
 /// Instructions for the Editor.
 /// These do NOT alter the text, but may change editor/view state
@@ -14,7 +15,7 @@ pub enum Instruction {
 
     SetMark(Mark),
     SetOverlay(OverlayType),
-    // SetMode(...)
+    SetMode(ModeType)
 }
 
 /// Operations on the Buffer.
@@ -70,6 +71,15 @@ impl Command {
     pub fn save_buffer() -> Command {
         Command {
             action: Action::Instruction(Instruction::SaveBuffer),
+            number: 0,
+            object: None,
+        }
+    }
+
+    /// Shortcut to create SetMode command
+    pub fn set_mode(mode: ModeType) -> Command {
+        Command {
+            action: Action::Instruction(Instruction::SetMode(mode)),
             number: 0,
             object: None,
         }

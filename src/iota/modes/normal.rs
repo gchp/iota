@@ -2,7 +2,7 @@ use keyboard::Key;
 use keymap::{KeyMap, KeyMapState};
 use command::{Builder, BuilderEvent, Command};
 
-use super::Mode;
+use super::{Mode, ModeType};
 
 
 /// NormalMode mimics Vi's Normal mode.
@@ -27,6 +27,7 @@ impl NormalMode {
 
         keymap.bind_key(Key::Char('u'), Command::undo());
         keymap.bind_key(Key::Ctrl('r'), Command::redo());
+        keymap.bind_key(Key::Char('i'), Command::set_mode(ModeType::Insert));
 
         keymap
     }

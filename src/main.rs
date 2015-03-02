@@ -46,7 +46,7 @@ fn main() {
     // initialise rustbox
     let rb = match RustBox::init(InitOptions{
         buffer_stderr: stdio::stderr_raw().isatty(),
-        input_mode: InputMode::Alt,
+        input_mode: InputMode::Esc,
     }) {
         Result::Ok(v) => v,
         Result::Err(e) => panic!("{}", e),

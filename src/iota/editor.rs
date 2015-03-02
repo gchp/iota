@@ -2,7 +2,7 @@ use input::Input;
 use keyboard::Key;
 use view::View;
 use frontends::{Frontend, EditorEvent};
-use modes::Mode;
+use modes::{Mode, ModeType, InsertMode, NormalMode};
 use overlay::{Overlay, OverlayEvent};
 
 use command::Command;
@@ -146,6 +146,12 @@ impl<'e, T: Frontend> Editor<'e, T> {
             }
             Instruction::SetOverlay(overlay_type) => {
                 self.view.set_overlay(overlay_type) 
+            }
+            Instruction::SetMode(mode) => {
+                match mode {
+                    ModeType::Insert => { self.mode = Box::new(InsertMode::new()) }
+                    ModeType::Normal => { self.mode = Box::new(NormalMode::new()) }
+                }
             }
         }
     }
