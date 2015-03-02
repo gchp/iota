@@ -271,6 +271,8 @@ impl View {
                 //
                 // If this runs, it probably means save_buffer has been called
                 // directly, rather than try_save_buffer.
+                //
+                // TODO: ask the user to submit a bug report on how they hit this.
                 Cow::Owned(Path::new("untitled"))
             },
         };
