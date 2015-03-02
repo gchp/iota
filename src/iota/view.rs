@@ -102,16 +102,21 @@ impl View {
 
     // FIXME: should probably use draw_line here...
     pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
-        let height = self.get_height() - 1;
+        let height = self.get_height() - 2;
         let width = self.get_width();
         let mut line = 0;
         let mut col = 0;
         for c in self.buffer.chars_from(self.top_line).unwrap() {
             if c == '\n' {
-                if line == height { break; }
+                // clear everything after the end of the line content
                 for i in range(col, width) {
                     self.uibuf.update_cell_content(i, line, ' ');
                 }
+
+                if line == height {
+                    break;
+                }
+
                 col = 0;
                 line += 1;
             } else {
