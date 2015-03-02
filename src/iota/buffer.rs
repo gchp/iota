@@ -363,73 +363,86 @@ impl Buffer {
     }
 
     fn get_word_index(&self, offset: Offset, anchor: Anchor) -> Option<(usize, usize)> {
-        let last = self.len() - 1;
-        let text = &self.text;
+        match offset {
+            Offset::Forward(nth_word, from_mark)  => { self.get_word_index_forward(anchor, nth_word, from_mark) }
+            Offset::Backward(nth_word, from_mark) => { self.get_word_index_backward(anchor, nth_word, from_mark) }
+            Offset::Absolute(word_number)         => { self.get_word_index_absolute(anchor, word_number) }
+        }
+    }
 
+    fn get_word_index_forward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
+        let text = &self.text;
+        let last = self.len() - 1;
         // TODO: use anchor to determine this
         let edger = WordEdgeMatch::Whitespace;
 
-        match offset {
-            Offset::Forward(nth_word, from_mark) => {
-                if let Some(tuple) = self.marks.get(&from_mark) {
-                    let (index, _) = *tuple;
-                    match anchor {
-                        Anchor::Start => {
-                            // move to the start of nth_word from the mark
-                            if let Some(new_index) = get_words(index, nth_word, edger, text) {
-                                Some((new_index, new_index - get_line(new_index, text).unwrap()))
-                            } else {
-                                Some((last, last - get_line(last, text).unwrap()))
-                            }
-                        }
 
-                        _ => {
-                            print!("Unhandled word anchor: {:?} ", anchor);
-                            Some((last, last - get_line(last, text).unwrap()))
-                        }
-                    }
-                } else {
-                    None
-                }
-            }
-
-            Offset::Backward(nth_word, from_mark) => {
-                if let Some(tuple) = self.marks.get(&from_mark) {
-                    let (index, _) = *tuple;
-                    match anchor {
-                        Anchor::Start => {
-                            // move to the start of the nth_word before the mark
-                            if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
-                                Some((new_index, new_index - get_line(new_index, text).unwrap()))
-                            } else {
-                                Some((0, 0))
-                            }
-                        }
-
-                        _ => {
-                            print!("Unhandled word anchor: {:?} ", anchor);
-                            None
-                        },
-                    }
-                } else {
-                    None
-                }
-            }
-
-            // FIXME
-            Offset::Absolute(word_number) => {
-                match anchor {
-                    Anchor::Start => {
-                        let new_index = get_words(0, word_number - 1, edger, text).unwrap();
-
+        if let Some(tuple) = self.marks.get(&from_mark) {
+            let (index, _) = *tuple;
+            match anchor {
+                Anchor::Start => {
+                    // move to the start of nth_word from the mark
+                    if let Some(new_index) = get_words(index, nth_word, edger, text) {
                         Some((new_index, new_index - get_line(new_index, text).unwrap()))
+                    } else {
+                        Some((last, last - get_line(last, text).unwrap()))
                     }
-
-                    _ => {
-                        print!("Unhandled word anchor: {:?} ", anchor);
-                        None
-                    },
                 }
+
+                _ => {
+                    print!("Unhandled word anchor: {:?} ", anchor);
+                    Some((last, last - get_line(last, text).unwrap()))
+                }
+            }
+        } else {
+            None
+        }
+    }
+
+    fn get_word_index_backward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
+        let text = &self.text;
+        // TODO: use anchor to determine this
+        let edger = WordEdgeMatch::Whitespace;
+
+
+        if let Some(tuple) = self.marks.get(&from_mark) {
+            let (index, _) = *tuple;
+            match anchor {
+                Anchor::Start => {
+                    // move to the start of the nth_word before the mark
+                    if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
+                        Some((new_index, new_index - get_line(new_index, text).unwrap()))
+                    } else {
+                        Some((0, 0))
+                    }
+                }
+
+                _ => {
+                    print!("Unhandled word anchor: {:?} ", anchor);
+                    None
+                },
+            }
+        } else {
+            None
+        }
+    }
+
+    fn get_word_index_absolute(&self, anchor: Anchor, word_number: usize) -> Option<(usize, usize)> {
+        let text = &self.text;
+        // TODO: use anchor to determine this
+        let edger = WordEdgeMatch::Whitespace;
+
+
+        match anchor {
+            Anchor::Start => {
+                let new_index = get_words(0, word_number - 1, edger, text).unwrap();
+
+                Some((new_index, new_index - get_line(new_index, text).unwrap()))
+            }
+
+            _ => {
+                print!("Unhandled word anchor: {:?} ", anchor);
+                None
             }
         }
     }
