@@ -102,7 +102,7 @@ impl View {
 
     // FIXME: should probably use draw_line here...
     pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
-        let height = self.get_height() - 2;
+        let height = self.get_height() - 1;
         let width = self.get_width();
         let mut line = 0;
         let mut col = 0;
