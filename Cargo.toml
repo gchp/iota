@@ -4,9 +4,9 @@ version = "0.1.0"
 authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
 [dependencies]
-docopt = "0.6.40"
+docopt = "0.6.44"
 rustbox = "0.3.2"
-rustc-serialize = "0.2.15"
+rustc-serialize = "0.3.1"
 gapbuffer = "0.1.0"
 
 [lib]
