@@ -238,189 +238,211 @@ impl Buffer {
     /// ie: get the index of the middle of the 7th line after the cursor
     /// or: get the index of the start of the 130th line from the start of the buffer
     fn get_line_index(&self, offset: Offset, anchor: Anchor) -> Option<(usize, usize)> {
+        match offset {
+            Offset::Forward(offset, from_mark)  => { self.get_line_index_forward(anchor, offset, from_mark) }
+            Offset::Backward(offset, from_mark) => { self.get_line_index_backward(anchor, offset, from_mark) }
+            Offset::Absolute(line_number)       => { self.get_line_index_absolute(anchor, line_number) }
+        }
+    }
+
+    /// Get the index of the line identified by line_number
+    ///
+    /// ie. Get the index of Anchor inside the 23th line in the buffer
+    /// or: Get the index of the start of the 23th line
+    fn get_line_index_absolute(&self, anchor: Anchor, line_number: usize) -> Option<(usize, usize)> {
         let text = &self.text;
         let last = self.len() - 1;
 
-        match offset {
-            // The desired line is below the current line - ie moving down
-            Offset::Forward(offset, from_mark) => {
-                if let Some(tuple) = self.marks.get(&from_mark) {
-                    let (index, line_index) = *tuple;
-                    let nlines = range(index, text.len()).filter(|i| text[*i] == b'\n')
-                                                       .take(offset + 1)
-                                                       .collect::<Vec<usize>>();
+        let nlines = range(0, text.len()).filter(|i| text[*i] == b'\n')
+                                         .take(line_number + 1)
+                                         .collect::<Vec<usize>>();
+        match anchor {
+            Anchor::Start => {
+                let end_offset = nlines[line_number - 1];
+                let start = get_line(end_offset, text).unwrap();
+                Some((start, 0))
+            }
 
-                    match anchor {
-                        // Get the same index as the current line_index
-                        //
-                        // ie. If the current line_index is 5, then the line_index
-                        // returned will be the fifth index from the start of the
-                        // desired line.
-                        Anchor::Same => {
-                            if offset == nlines.len() {
-                                Some((cmp::min(line_index + nlines[offset-1] + 1, last), line_index))
-                            } else {
-                                if offset > nlines.len() {
-                                    Some((last, last - get_line(last, text).unwrap()))
-                                } else {
-                                    Some((cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index))
-                                }
-                            }
-                        }
+            Anchor::End => {
+                let end_offset = nlines[line_number - 1];
+                Some((end_offset, end_offset))
+            }
 
-                        // Get the index of the end of the desired line
-                        Anchor::End => {
-                            let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-                            Some((end_offset, end_offset - get_line(end_offset, text).unwrap()))
-                        }
+            _ => {
+                print!("Unhandled line anchor: {:?} ", anchor);
+                None
+            },
+        }
+    }
 
-                        _ => {
-                            print!("Unhandled line anchor: {:?} ", anchor);
-                            None
-                        },
+
+    fn get_line_index_backward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<(usize, usize)> {
+        let text = &self.text;
+        let last = self.len() - 1;
+
+        if let Some(tuple) = self.marks.get(&from_mark) {
+            let (index, line_index) = *tuple;
+            let nlines = range(0, index).rev().filter(|i| text[*i] == b'\n')
+                                            .take(offset + 1)
+                                            .collect::<Vec<usize>>();
+
+            match anchor {
+                // Get the index of the start of the desired line
+                Anchor::Start => {
+                    let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
+                    Some((start_offset + 1, 0))
+                }
+
+                // ie. If the current line_index is 5, then the line_index
+                // returned will be the fifth index from the start of the
+                // desired line.
+                Anchor::Same => {
+                    if offset == 0 {
+                        Some((0, 0)) // going to start of the first line
+                    } else if offset == nlines.len() {
+                        Some((cmp::min(line_index, nlines[0]), line_index))
+                    } else if offset > nlines.len() {
+                        Some((0, 0)) // trying to move up from the first line
+                    } else {
+                        Some((cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index))
                     }
-                } else {
+                }
+
+                _ => {
+                    print!("Unhandled line anchor: {:?} ", anchor);
                     None
-                }
+                },
             }
+        } else {
+            None
+        }
+    }
 
-            // The desired line is above the current line - ie moving up
-            Offset::Backward(offset, from_mark) => {
-                if let Some(tuple) = self.marks.get(&from_mark) {
-                    let (index, line_index) = *tuple;
-                    let nlines = range(0, index).rev().filter(|i| text[*i] == b'\n')
-                                                    .take(offset + 1)
-                                                    .collect::<Vec<usize>>();
+    fn get_line_index_forward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<(usize, usize)> {
+        let text = &self.text;
+        let last = self.len() - 1;
 
-                    match anchor {
-                        // Get the index of the start of the desired line
-                        Anchor::Start => {
-                            let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-                            Some((start_offset + 1, 0))
+        if let Some(tuple) = self.marks.get(&from_mark) {
+            let (index, line_index) = *tuple;
+            let nlines = range(index, text.len()).filter(|i| text[*i] == b'\n')
+                                               .take(offset + 1)
+                                               .collect::<Vec<usize>>();
+
+            match anchor {
+                // Get the same index as the current line_index
+                //
+                // ie. If the current line_index is 5, then the line_index
+                // returned will be the fifth index from the start of the
+                // desired line.
+                Anchor::Same => {
+                    if offset == nlines.len() {
+                        Some((cmp::min(line_index + nlines[offset-1] + 1, last), line_index))
+                    } else {
+                        if offset > nlines.len() {
+                            Some((last, last - get_line(last, text).unwrap()))
+                        } else {
+                            Some((cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index))
                         }
-
-                        // ie. If the current line_index is 5, then the line_index
-                        // returned will be the fifth index from the start of the
-                        // desired line.
-                        Anchor::Same => {
-                            if offset == 0 {
-                                Some((0, 0)) // going to start of the first line
-                            } else if offset == nlines.len() {
-                                Some((cmp::min(line_index, nlines[0]), line_index))
-                            } else if offset > nlines.len() {
-                                Some((0, 0)) // trying to move up from the first line
-                            } else {
-                                Some((cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index))
-                            }
-                        }
-
-                        _ => {
-                            print!("Unhandled line anchor: {:?} ", anchor);
-                            None
-                        },
                     }
-                } else {
+                }
+
+                // Get the index of the end of the desired line
+                Anchor::End => {
+                    let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
+                    Some((end_offset, end_offset - get_line(end_offset, text).unwrap()))
+                }
+
+                _ => {
+                    print!("Unhandled line anchor: {:?} ", anchor);
                     None
-                }
+                },
             }
-
-            // The desired line is identified by line_number
-            //
-            // ie. Get the index of Anchor inside the 23th line in the buffer
-            // or: Get the index of the start of the 23th line
-            Offset::Absolute(line_number) => {
-                let nlines = range(0, text.len()).filter(|i| text[*i] == b'\n')
-                                                 .take(line_number + 1)
-                                                 .collect::<Vec<usize>>();
-                match anchor {
-                    Anchor::Start => {
-                        let end_offset = nlines[line_number - 1];
-                        let start = get_line(end_offset, text).unwrap();
-                        Some((start, 0))
-                    }
-
-                    Anchor::End => {
-                        let end_offset = nlines[line_number - 1];
-                        Some((end_offset, end_offset))
-                    }
-
-                    _ => {
-                        print!("Unhandled line anchor: {:?} ", anchor);
-                        None
-                    },
-                }
-            }
+        } else {
+            None
         }
     }
 
     fn get_word_index(&self, offset: Offset, anchor: Anchor) -> Option<(usize, usize)> {
-        let last = self.len() - 1;
-        let text = &self.text;
+        match offset {
+            Offset::Forward(nth_word, from_mark)  => { self.get_word_index_forward(anchor, nth_word, from_mark) }
+            Offset::Backward(nth_word, from_mark) => { self.get_word_index_backward(anchor, nth_word, from_mark) }
+            Offset::Absolute(word_number)         => { self.get_word_index_absolute(anchor, word_number) }
+        }
+    }
 
+    fn get_word_index_forward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
+        let text = &self.text;
+        let last = self.len() - 1;
         // TODO: use anchor to determine this
         let edger = WordEdgeMatch::Whitespace;
 
-        match offset {
-            Offset::Forward(nth_word, from_mark) => {
-                if let Some(tuple) = self.marks.get(&from_mark) {
-                    let (index, _) = *tuple;
-                    match anchor {
-                        Anchor::Start => {
-                            // move to the start of nth_word from the mark
-                            if let Some(new_index) = get_words(index, nth_word, edger, text) {
-                                Some((new_index, new_index - get_line(new_index, text).unwrap()))
-                            } else {
-                                Some((last, last - get_line(last, text).unwrap()))
-                            }
-                        }
 
-                        _ => {
-                            print!("Unhandled word anchor: {:?} ", anchor);
-                            Some((last, last - get_line(last, text).unwrap()))
-                        }
-                    }
-                } else {
-                    None
-                }
-            }
-
-            Offset::Backward(nth_word, from_mark) => {
-                if let Some(tuple) = self.marks.get(&from_mark) {
-                    let (index, _) = *tuple;
-                    match anchor {
-                        Anchor::Start => {
-                            // move to the start of the nth_word before the mark
-                            if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
-                                Some((new_index, new_index - get_line(new_index, text).unwrap()))
-                            } else {
-                                Some((0, 0))
-                            }
-                        }
-
-                        _ => {
-                            print!("Unhandled word anchor: {:?} ", anchor);
-                            None
-                        },
-                    }
-                } else {
-                    None
-                }
-            }
-
-            // FIXME
-            Offset::Absolute(word_number) => {
-                match anchor {
-                    Anchor::Start => {
-                        let new_index = get_words(0, word_number - 1, edger, text).unwrap();
-
+        if let Some(tuple) = self.marks.get(&from_mark) {
+            let (index, _) = *tuple;
+            match anchor {
+                Anchor::Start => {
+                    // move to the start of nth_word from the mark
+                    if let Some(new_index) = get_words(index, nth_word, edger, text) {
                         Some((new_index, new_index - get_line(new_index, text).unwrap()))
+                    } else {
+                        Some((last, last - get_line(last, text).unwrap()))
                     }
-
-                    _ => {
-                        print!("Unhandled word anchor: {:?} ", anchor);
-                        None
-                    },
                 }
+
+                _ => {
+                    print!("Unhandled word anchor: {:?} ", anchor);
+                    Some((last, last - get_line(last, text).unwrap()))
+                }
+            }
+        } else {
+            None
+        }
+    }
+
+    fn get_word_index_backward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
+        let text = &self.text;
+        // TODO: use anchor to determine this
+        let edger = WordEdgeMatch::Whitespace;
+
+
+        if let Some(tuple) = self.marks.get(&from_mark) {
+            let (index, _) = *tuple;
+            match anchor {
+                Anchor::Start => {
+                    // move to the start of the nth_word before the mark
+                    if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
+                        Some((new_index, new_index - get_line(new_index, text).unwrap()))
+                    } else {
+                        Some((0, 0))
+                    }
+                }
+
+                _ => {
+                    print!("Unhandled word anchor: {:?} ", anchor);
+                    None
+                },
+            }
+        } else {
+            None
+        }
+    }
+
+    fn get_word_index_absolute(&self, anchor: Anchor, word_number: usize) -> Option<(usize, usize)> {
+        let text = &self.text;
+        // TODO: use anchor to determine this
+        let edger = WordEdgeMatch::Whitespace;
+
+
+        match anchor {
+            Anchor::Start => {
+                let new_index = get_words(0, word_number - 1, edger, text).unwrap();
+
+                Some((new_index, new_index - get_line(new_index, text).unwrap()))
+            }
+
+            _ => {
+                print!("Unhandled word anchor: {:?} ", anchor);
+                None
             }
         }
     }
