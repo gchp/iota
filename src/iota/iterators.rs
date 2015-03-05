@@ -94,7 +94,12 @@ impl<'a> Chars<'a> {
         let n = if self.idx < self.buffer.len() {
             Some(self.buffer[self.idx])
         } else { None };
-        self.idx += if self.forward { 1 } else { -1 };
+
+        if self.forward {
+            self.idx += 1;
+        } else {
+            self.idx -= 1;
+        }
         n
     }
 }
