@@ -58,8 +58,8 @@ impl UIBuffer {
 
     /// Set all cells to `ch`.
     pub fn fill(&mut self, ch: char) {
-        for row in range(0, self.height) {
-            for col in range(0, self.width) {
+        for row in 0..self.height {
+            for col in 0..self.width {
                 self.update_cell_content(col, row, ch);
             }
         }
@@ -121,9 +121,9 @@ impl Cell {
 
     pub fn create_grid(width: usize, height: usize, ch: char) -> Vec<Vec<Cell>> {
         let mut rows = Vec::new();
-        for voffset in range(0, height) {
+        for voffset in 0..height {
             let mut cells = Vec::new();
-            for boffset in range(0, width) {
+            for boffset in 0..width {
                 let mut cell = Cell::new();
                 cell.x = boffset;
                 cell.y = voffset;

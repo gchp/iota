@@ -36,8 +36,8 @@ impl StandardMode {
         // Editor Commands
         keymap.bind_key(Key::Ctrl('q'), Command::exit_editor());
         keymap.bind_key(Key::Ctrl('s'), Command::save_buffer());
-        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('c')].as_slice(), Command::exit_editor());
-        keymap.bind_keys(vec![Key::Ctrl('x'), Key::Ctrl('s')].as_slice(), Command::save_buffer());
+        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], Command::exit_editor());
+        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('s')], Command::save_buffer());
 
         // Cursor movement
         keymap.bind_key(Key::Up, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));

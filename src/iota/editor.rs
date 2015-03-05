@@ -132,7 +132,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
         let repeat = if command.number > 0 {
             command.number
         } else { 1 };
-        for _ in range(0, repeat) {
+        for _ in 0..repeat {
             match command.action {
                 Action::Instruction(i) => self.handle_instruction(i, command),
                 Action::Operation(o) => self.handle_operation(o, command),

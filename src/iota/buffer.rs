@@ -86,7 +86,7 @@ impl Buffer {
     pub fn get_mark_coords(&self, mark: Mark) -> Option<(usize, usize)> {
         if let Some(idx) = self.get_mark_idx(mark) {
             if let Some(line) = get_line(idx, &self.text) {
-                Some((idx - line, range(0, idx).filter(|i| -> bool { self.text[*i] == b'\n' })
+                Some((idx - line, (0..idx).filter(|i| -> bool { self.text[*i] == b'\n' })
                                                .count()))
             } else { None }
         } else { None }
@@ -253,9 +253,9 @@ impl Buffer {
         let text = &self.text;
         let last = self.len() - 1;
 
-        let nlines = range(0, text.len()).filter(|i| text[*i] == b'\n')
-                                         .take(line_number + 1)
-                                         .collect::<Vec<usize>>();
+        let nlines = (0..text.len()).filter(|i| text[*i] == b'\n')
+                                    .take(line_number + 1)
+                                    .collect::<Vec<usize>>();
         match anchor {
             Anchor::Start => {
                 let end_offset = nlines[line_number - 1];
@@ -282,9 +282,9 @@ impl Buffer {
 
         if let Some(tuple) = self.marks.get(&from_mark) {
             let (index, line_index) = *tuple;
-            let nlines = range(0, index).rev().filter(|i| text[*i] == b'\n')
-                                            .take(offset + 1)
-                                            .collect::<Vec<usize>>();
+            let nlines = (0..index).rev().filter(|i| text[*i] == b'\n')
+                                         .take(offset + 1)
+                                         .collect::<Vec<usize>>();
 
             match anchor {
                 // Get the index of the start of the desired line
@@ -324,9 +324,9 @@ impl Buffer {
 
         if let Some(tuple) = self.marks.get(&from_mark) {
             let (index, line_index) = *tuple;
-            let nlines = range(index, text.len()).filter(|i| text[*i] == b'\n')
-                                               .take(offset + 1)
-                                               .collect::<Vec<usize>>();
+            let nlines = (index..text.len()).filter(|i| text[*i] == b'\n')
+                                            .take(offset + 1)
+                                            .collect::<Vec<usize>>();
 
             match anchor {
                 // Get the same index as the current line_index
@@ -478,7 +478,7 @@ impl Buffer {
     pub fn remove_range(&mut self, start: usize, end: usize) -> Option<Vec<u8>> {
         let text = &mut self.text;
         let mut transaction = self.log.start(start);
-        let mut vec = range(start, end)
+        let mut vec = (start..end)
             .rev()
             .filter_map(|idx| text.remove(idx).map(|ch| (idx, ch)))
             .inspect(|&(idx, ch)| transaction.log(Change::Remove(idx, ch), idx))
@@ -560,14 +560,14 @@ impl WordEdgeMatch {
 }
 
 fn get_words(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
-    range(mark + 1, text.len() - 1)
+    (mark + 1..text.len() - 1)
         .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
         .take(n_words)
         .last()
 }
 
 fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
-    range(1, mark)
+    (1..mark)
         .rev()
         .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
         .take(n_words)
@@ -578,7 +578,7 @@ fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBu
 /// Newline prior to mark (EXCLUSIVE) + 1.
 fn get_line(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
     let val = cmp::min(mark, text.len());
-    range(0, val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
+    (0..val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
                            .take(1)
                            .next()
 }
@@ -587,7 +587,7 @@ fn get_line(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
 /// Newline after mark (INCLUSIVE).
 fn get_line_end(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
     let val = cmp::min(mark, text.len());
-    range(val, text.len()+1).filter(|idx| *idx == text.len() || text[*idx] == b'\n')
+    (val..text.len()+1).filter(|idx| *idx == text.len() || text[*idx] == b'\n')
                             .take(1)
                             .next()
 }

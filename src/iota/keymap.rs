@@ -95,7 +95,7 @@ impl<T: Copy> KeyMap<T> {
     /// Eat one keypress, return the new state
     pub fn check_key(&mut self, key: Key) -> KeyMapState<T> {
         self.path.push(key);
-        self.state = match self.root.lookup_keys(self.path.as_slice()) {
+        self.state = match self.root.lookup_keys(&*self.path) {
             Some(n) => {
                 match *n {
                     Trie::Leaf(value) => KeyMapState::Match(value),
@@ -116,7 +116,7 @@ impl<T: Copy> KeyMap<T> {
 
     /// Insert or overwrite a key-sequence binding
     pub fn bind_keys(&mut self, keys: &[Key], value: T) {
-        self.root.bind_keys(keys.as_slice(), value);
+        self.root.bind_keys(&*keys, value);
     }
 
     /// Insert or overwrite a key binding

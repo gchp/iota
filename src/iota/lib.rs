@@ -4,13 +4,11 @@
 //!
 //! This module contains all you need to create an `iota` executable.
 
-#![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 #![feature(collections)]
 #![feature(old_path)]
 #![feature(unicode)]
 #![feature(old_io)]
-#![feature(core)]
 
 #![warn(missing_docs)]
 

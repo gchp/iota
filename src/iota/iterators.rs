@@ -14,12 +14,12 @@ impl<'a> Iterator for Lines<'a> {
         if self.tail != self.head {
             let old_tail = self.tail;
             //update tail to either the first char after the next \n or to self.head
-            self.tail = range(old_tail, self.head).filter(|i| { *i + 1 == self.head
-                                                                || self.buffer[*i] == b'\n' })
-                                                  .take(1)
-                                                  .next()
-                                                  .unwrap() + 1;
-            Some(range(old_tail, if self.tail == self.head { self.tail - 1 } else { self.tail })
+            self.tail = (old_tail..self.head).filter(|i| { *i + 1 == self.head
+                                                           || self.buffer[*i] == b'\n' })
+                                             .take(1)
+                                             .next()
+                                             .unwrap() + 1;
+            Some((old_tail..if self.tail == self.head { self.tail - 1 } else { self.tail })
                 .map( |i| self.buffer[i] ).collect())
         } else { None }
     }

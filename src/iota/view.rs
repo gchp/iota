@@ -109,7 +109,7 @@ impl View {
         for c in self.buffer.chars_from(self.top_line).unwrap() {
             if c == '\n' {
                 // clear everything after the end of the line content
-                for i in range(col, width) {
+                for i in col..width {
                     self.uibuf.update_cell_content(i, line, ' ');
                 }
 
@@ -146,7 +146,7 @@ impl View {
         let height = self.get_height() - 1;
 
 
-        for index in range(0, width) {
+        for index in 0..width {
             let mut ch: char = ' ';
             if index < status_text_len {
                 ch = status_text[index] as char;
@@ -326,13 +326,13 @@ impl View {
 pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
     let width = buf.get_width() - 1;
     let mut wide_chars = 0;
-    for line_idx in range(left, left + width) {
+    for line_idx in left..(left + width) {
         if line_idx < line.len() {
             let special_char = line[line_idx] as char;
             match special_char {
                 '\t'   => {
                     let w = 4 - line_idx % 4;
-                    for _ in range(0, w) {
+                    for _ in 0..w {
                         buf.update_cell_content(line_idx + wide_chars - left, idx, ' ');
                     }
                 }
