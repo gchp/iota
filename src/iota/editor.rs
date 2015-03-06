@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use input::Input;
 use keyboard::Key;
 use view::View;
@@ -15,7 +13,7 @@ use command::{Action, BuilderEvent, Operation, Instruction};
 ///
 /// This is the top-most structure in Iota.
 pub struct Editor<'e, T: Frontend> {
-    view: View<'e>,
+    view: View,
     running: bool,
     frontend: T,
     mode: Box<Mode + 'e>,

@@ -1,8 +1,9 @@
 use std::cmp;
 use std::borrow::Cow;
 use std::path::Path;
+use std::path::PathBuf;
 use std::io::Write;
-use std::fs::{TempDir, File, OpenOptions, rename};
+use std::fs::{TempDir, OpenOptions, rename};
 
 use buffer::{Buffer, Mark};
 use input::Input;
@@ -18,8 +19,8 @@ use textobject::{Anchor, TextObject, Kind, Offset};
 /// screen. It maintains the status bar for the current view, the "dirty status"
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
-pub struct View<'v> {
-    pub buffer: Buffer<'v>,
+pub struct View {
+    pub buffer: Buffer,
     pub overlay: Overlay,
 
     /// First character of the top line to be displayed
@@ -39,13 +40,16 @@ pub struct View<'v> {
     threshold: usize,
 }
 
-impl<'v> View<'v> {
+impl View {
 
-    pub fn new(source: Input, width: usize, height: usize) -> View<'v> {
+    pub fn new(source: Input, width: usize, height: usize) -> View {
         let mut buffer = match source {
             Input::Filename(path) => {
                 match path {
-                    Some(s) => Buffer::new_from_file(&Path::new(s)),
+                    Some(s) => {
+                        let file_name = &*s;
+                        Buffer::new_from_file(PathBuf::new(file_name))
+                    },
                     None    => Buffer::new(),
                 }
             },
@@ -280,7 +284,7 @@ impl<'v> View<'v> {
                 // directly, rather than try_save_buffer.
                 //
                 // TODO: ask the user to submit a bug report on how they hit this.
-                Cow::Owned(Path::new("untitled"))
+                Cow::Owned(PathBuf::new("untitled"))
             },
         };
         let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {

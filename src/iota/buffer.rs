@@ -2,7 +2,7 @@
 // stdlib dependencies
 use std::cmp;
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::PathBuf;
 use std::fs::File;
 use std::io::Read;
 
@@ -31,7 +31,7 @@ pub enum WordEdgeMatch {
     Whitespace,
 }
 
-pub struct Buffer<'b> {
+pub struct Buffer {
     /// Current buffers text
     text: GapBuffer<u8>,
 
@@ -46,13 +46,13 @@ pub struct Buffer<'b> {
     pub log: Log,
 
     /// Location on disk where the current buffer should be written
-    pub file_path: Option<&'b Path>,
+    pub file_path: Option<PathBuf>,
 }
 
-impl<'b> Buffer<'b> {
+impl Buffer {
 
     /// Constructor for empty buffer.
-    pub fn new() -> Buffer<'b> {
+    pub fn new() -> Buffer {
         Buffer {
             file_path: None,
             text: GapBuffer::new(),
@@ -62,7 +62,7 @@ impl<'b> Buffer<'b> {
     }
 
     /// Constructor for buffer from reader.
-    pub fn new_from_reader<R: Read>(mut reader: R) -> Buffer<'b> {
+    pub fn new_from_reader<R: Read>(mut reader: R) -> Buffer {
         let mut buff = Buffer::new();
         let mut contents = String::new();
         if let Ok(_) = reader.read_to_string(&mut contents) {
@@ -72,10 +72,10 @@ impl<'b> Buffer<'b> {
     }
 
     /// Constructor for buffer from file.
-    pub fn new_from_file(path: &'b Path) -> Buffer<'b> {
+    pub fn new_from_file(path: PathBuf) -> Buffer {
         if let Ok(file) = File::open(&path) {
             let mut buff = Buffer::new_from_reader(file);
-            buff.file_path = Some(&path);
+            buff.file_path = Some(path);
             buff
         } else { Buffer::new() }
     }

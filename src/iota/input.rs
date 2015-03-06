@@ -6,7 +6,7 @@ use std::io;
 /// start Iota with data from stdin.
 pub enum Input {
     /// A Filename
-    Filename(Option<&'static str>),
+    Filename(Option<String>),
 
     /// The stdin reader
     Stdin(io::Stdin),

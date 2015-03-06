@@ -1,13 +1,14 @@
-#![feature(old_io)]
+#![feature(libc)]
+#![feature(io)]
 #![cfg(not(test))]
 
+extern crate libc;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate rustbox;
 extern crate docopt;
 extern crate iota;
 
-use std::os::unix::AsRawFd;
-use std::io::{stdio, stdin};
+use std::io::stdin;
 use docopt::Docopt;
 use iota::{
     Editor, Input,
@@ -27,7 +28,7 @@ Options:
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
-    arg_filename: Option<&'static str>,
+    arg_filename: Option<String>,
     flag_vi: bool,
     flag_help: bool,
 }
@@ -38,15 +39,15 @@ fn main() {
                             .unwrap_or_else(|e| e.exit());
 
     // editor source - either a filename or stdin
-    let source = if stdio::stdin_raw().isatty() {
+    let source = if unsafe { libc::isatty(libc::STDIN_FILENO) == 0 } {
         Input::Filename(args.arg_filename)
     } else {
-        Input::Stdin(stdio::stdin())
+        Input::Stdin(stdin())
     };
 
     // initialise rustbox
     let rb = match RustBox::init(InitOptions{
-        buffer_stderr: stdio::stderr_raw().isatty(),
+        buffer_stderr: unsafe { libc::isatty(libc::STDERR_FILENO) == 0 },
         input_mode: InputMode::Esc,
     }) {
         Result::Ok(v) => v,
