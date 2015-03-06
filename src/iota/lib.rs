@@ -6,9 +6,7 @@
 
 #![feature(unsafe_destructor)]
 #![feature(collections)]
-#![feature(old_path)]
 #![feature(unicode)]
-#![feature(old_io)]
 
 #![warn(missing_docs)]
 

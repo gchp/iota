@@ -1,4 +1,4 @@
-use std::old_io::stdio;
+use std::io;
 
 /// A source of Input for the Editor.
 ///
@@ -6,8 +6,8 @@ use std::old_io::stdio;
 /// start Iota with data from stdin.
 pub enum Input {
     /// A Filename
-    Filename(Option<String>),
+    Filename(Option<&'static str>),
 
     /// The stdin reader
-    Stdin(stdio::StdinReader),
+    Stdin(io::Stdin),
 }

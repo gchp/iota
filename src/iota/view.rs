@@ -1,6 +1,8 @@
 use std::cmp;
 use std::borrow::Cow;
-use std::old_io::{fs, File, FileMode, FileAccess, TempDir};
+use std::path::Path;
+use std::io::Write;
+use std::fs::{TempDir, File, OpenOptions, rename};
 
 use buffer::{Buffer, Mark};
 use input::Input;
@@ -16,8 +18,8 @@ use textobject::{Anchor, TextObject, Kind, Offset};
 /// screen. It maintains the status bar for the current view, the "dirty status"
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
-pub struct View {
-    pub buffer: Buffer,
+pub struct View<'v> {
+    pub buffer: Buffer<'v>,
     pub overlay: Overlay,
 
     /// First character of the top line to be displayed
@@ -37,13 +39,13 @@ pub struct View {
     threshold: usize,
 }
 
-impl View {
+impl<'v> View<'v> {
 
-    pub fn new(source: Input, width: usize, height: usize) -> View {
+    pub fn new(source: Input, width: usize, height: usize) -> View<'v> {
         let mut buffer = match source {
             Input::Filename(path) => {
                 match path {
-                    Some(s) => Buffer::new_from_file(Path::new(s)),
+                    Some(s) => Buffer::new_from_file(&Path::new(s)),
                     None    => Buffer::new(),
                 }
             },
@@ -287,7 +289,7 @@ impl View {
         };
 
         let tmppath = tmpdir.path().join(Path::new("tmpfile"));
-        let mut file = match File::open_mode(&tmppath, FileMode::Open, FileAccess::Write) {
+        let mut file = match OpenOptions::new().write(true).open(&tmppath) {
             Ok(f) => f,
             Err(e) => panic!("file error: {}", e)
         };
@@ -302,7 +304,7 @@ impl View {
             }
         }
 
-        if let Err(e) = fs::rename(&tmppath, &*path) {
+        if let Err(e) = rename(&tmppath, &*path) {
             panic!("file error: {}", e);
         }
     }

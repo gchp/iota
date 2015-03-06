@@ -6,7 +6,8 @@ extern crate rustbox;
 extern crate docopt;
 extern crate iota;
 
-use std::old_io::stdio;
+use std::os::unix::AsRawFd;
+use std::io::{stdio, stdin};
 use docopt::Docopt;
 use iota::{
     Editor, Input,
@@ -26,7 +27,7 @@ Options:
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
-    arg_filename: Option<String>,
+    arg_filename: Option<&'static str>,
     flag_vi: bool,
     flag_help: bool,
 }
