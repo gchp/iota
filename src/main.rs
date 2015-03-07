@@ -39,6 +39,8 @@ fn main() {
                             .unwrap_or_else(|e| e.exit());
 
     // editor source - either a filename or stdin
+    // FIXME: find a way to do this without unsafe
+    //        std::io doesn't allow for this, currently
     let source = if unsafe { libc::isatty(libc::STDIN_FILENO) == 0 } {
         Input::Filename(args.arg_filename)
     } else {
@@ -47,6 +49,8 @@ fn main() {
 
     // initialise rustbox
     let rb = match RustBox::init(InitOptions{
+        // FIXME: find a way to do this without unsafe
+        //        std::io doesn't allow for this, currently
         buffer_stderr: unsafe { libc::isatty(libc::STDERR_FILENO) == 0 },
         input_mode: InputMode::Esc,
     }) {
