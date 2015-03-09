@@ -57,8 +57,6 @@ fn main() {
 
     // initialise rustbox
     let rb = match RustBox::init(InitOptions{
-        // FIXME: find a way to do this without unsafe
-        //        std::io doesn't allow for this, currently
         buffer_stderr: stderr_is_raw,
         input_mode: InputMode::Esc,
     }) {
