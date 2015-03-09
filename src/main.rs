@@ -33,25 +33,33 @@ struct Args {
     flag_help: bool,
 }
 
+fn is_raw(fileno: libc::c_int) -> bool {
+    // FIXME: find a way to do this without unsafe
+    //        std::io doesn't allow for this, currently
+    unsafe { libc::isatty(fileno) == 1 }
+}
+
 fn main() {
     let args: Args = Docopt::new(USAGE)
                             .and_then(|d| d.decode())
                             .unwrap_or_else(|e| e.exit());
 
+    let stdin_is_raw = is_raw(libc::STDIN_FILENO);
+    let stderr_is_raw = is_raw(libc::STDERR_FILENO);
+
     // editor source - either a filename or stdin
-    // FIXME: find a way to do this without unsafe
-    //        std::io doesn't allow for this, currently
-    let source = if unsafe { libc::isatty(libc::STDIN_FILENO) == 1 } {
+    let source = if stdin_is_raw {
         Input::Filename(args.arg_filename)
     } else {
         Input::Stdin(stdin())
     };
 
+
     // initialise rustbox
     let rb = match RustBox::init(InitOptions{
         // FIXME: find a way to do this without unsafe
         //        std::io doesn't allow for this, currently
-        buffer_stderr: unsafe { libc::isatty(libc::STDERR_FILENO) == 1 },
+        buffer_stderr: stderr_is_raw,
         input_mode: InputMode::Esc,
     }) {
         Result::Ok(v) => v,
