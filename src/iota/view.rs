@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::path::Path;
 use std::path::PathBuf;
 use std::io::Write;
-use std::fs::{TempDir, OpenOptions, rename};
+use std::fs::{TempDir, File, rename};
 
 use buffer::{Buffer, Mark};
 use input::Input;
@@ -293,9 +293,11 @@ impl View {
         };
 
         let tmppath = tmpdir.path().join(Path::new("tmpfile"));
-        let mut file = match OpenOptions::new().write(true).open(&tmppath) {
+        let mut file = match File::create(&tmppath) {
             Ok(f) => f,
-            Err(e) => panic!("file error: {}", e)
+            Err(e) => {
+                panic!("file error: {}", e)
+            }
         };
 
         //TODO (lee): Is iteration still necessary in this format?
