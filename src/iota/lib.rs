@@ -9,7 +9,6 @@
 #![feature(unicode)]
 #![feature(tempdir)]
 #![feature(path)]
-#![feature(fs)]
 #![feature(io)]
 
 #![warn(missing_docs)]
