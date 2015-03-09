@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use input::Input;
 use keyboard::Key;
 use view::View;
@@ -83,40 +85,36 @@ impl<'e, T: Frontend> Editor<'e, T> {
     /// a Command, however in some cases we will want to perform other actions
     /// first, such as in the case of Overlay::SavePrompt.
     fn handle_overlay_response(&mut self, response: Option<String>) -> BuilderEvent {
-        if let Some(response_data) = response {
-            panic!(response_data);
-        }
-        BuilderEvent::Incomplete
         // FIXME: This entire method neext to be updated
-        // match response {
-        //     Some(data) => {
-        //         match self.view.overlay {
+        match response {
+            Some(data) => {
+                match self.view.overlay {
 
-        //             // FIXME: this is just a temporary fix
-        //             Overlay::Prompt { ref data, .. } => {
-        //                 match &**data {
-        //                     // FIXME: need to find a better system for these commands
-        //                     //        They should be chainable
-        //                     //          ie: wq - save & quit
-        //                     //        They should also take arguments
-        //                     //          ie w file.txt - write buffer to file.txt
-        //                     "q" | "quit" => BuilderEvent::Complete(Command::exit_editor()),
-        //                     "w" | "write" => BuilderEvent::Complete(Command::save_buffer()),
+                    // FIXME: this is just a temporary fix
+                    Overlay::Prompt { ref data, .. } => {
+                        match &**data {
+                            // FIXME: need to find a better system for these commands
+                            //        They should be chainable
+                            //          ie: wq - save & quit
+                            //        They should also take arguments
+                            //          ie w file.txt - write buffer to file.txt
+                            "q" | "quit" => BuilderEvent::Complete(Command::exit_editor()),
+                            "w" | "write" => BuilderEvent::Complete(Command::save_buffer()),
 
-        //                     _ => BuilderEvent::Incomplete
-        //                 }
-        //             }
+                            _ => BuilderEvent::Incomplete
+                        }
+                    }
 
-        //             Overlay::SavePrompt { .. } => {
-        //                 let path = Path::new(&*data);
-        //                 self.view.buffer.file_path = Some(path);
-        //                 BuilderEvent::Complete(Command::save_buffer())
-        //             }
-        //             _ => BuilderEvent::Incomplete,
-        //         }
-        //     }
-        //     None => BuilderEvent::Incomplete
-        // }
+                    Overlay::SavePrompt { .. } => {
+                        let path = PathBuf::new(&*data);
+                        self.view.buffer.file_path = Some(path);
+                        BuilderEvent::Complete(Command::save_buffer())
+                    }
+                    _ => BuilderEvent::Incomplete,
+                }
+            }
+            None => BuilderEvent::Incomplete
+        }
     }
 
     /// Handle resize events
