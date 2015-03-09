@@ -41,7 +41,7 @@ fn main() {
     // editor source - either a filename or stdin
     // FIXME: find a way to do this without unsafe
     //        std::io doesn't allow for this, currently
-    let source = if unsafe { libc::isatty(libc::STDIN_FILENO) == 0 } {
+    let source = if unsafe { libc::isatty(libc::STDIN_FILENO) == 1 } {
         Input::Filename(args.arg_filename)
     } else {
         Input::Stdin(stdin())
@@ -51,7 +51,7 @@ fn main() {
     let rb = match RustBox::init(InitOptions{
         // FIXME: find a way to do this without unsafe
         //        std::io doesn't allow for this, currently
-        buffer_stderr: unsafe { libc::isatty(libc::STDERR_FILENO) == 0 },
+        buffer_stderr: unsafe { libc::isatty(libc::STDERR_FILENO) == 1 },
         input_mode: InputMode::Esc,
     }) {
         Result::Ok(v) => v,
