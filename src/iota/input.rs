@@ -1,4 +1,4 @@
-use std::old_io::stdio;
+use std::io;
 
 /// A source of Input for the Editor.
 ///
@@ -9,5 +9,5 @@ pub enum Input {
     Filename(Option<String>),
 
     /// The stdin reader
-    Stdin(stdio::StdinReader),
+    Stdin(io::Stdin),
 }

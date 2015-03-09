@@ -1,12 +1,14 @@
-#![feature(old_io)]
+#![feature(libc)]
+#![feature(io)]
 #![cfg(not(test))]
 
+extern crate libc;
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate rustbox;
 extern crate docopt;
 extern crate iota;
 
-use std::old_io::stdio;
+use std::io::stdin;
 use docopt::Docopt;
 use iota::{
     Editor, Input,
@@ -31,21 +33,31 @@ struct Args {
     flag_help: bool,
 }
 
+fn is_raw(fileno: libc::c_int) -> bool {
+    // FIXME: find a way to do this without unsafe
+    //        std::io doesn't allow for this, currently
+    unsafe { libc::isatty(fileno) == 1 }
+}
+
 fn main() {
     let args: Args = Docopt::new(USAGE)
                             .and_then(|d| d.decode())
                             .unwrap_or_else(|e| e.exit());
 
+    let stdin_is_raw = is_raw(libc::STDIN_FILENO);
+    let stderr_is_raw = is_raw(libc::STDERR_FILENO);
+
     // editor source - either a filename or stdin
-    let source = if stdio::stdin_raw().isatty() {
+    let source = if stdin_is_raw {
         Input::Filename(args.arg_filename)
     } else {
-        Input::Stdin(stdio::stdin())
+        Input::Stdin(stdin())
     };
+
 
     // initialise rustbox
     let rb = match RustBox::init(InitOptions{
-        buffer_stderr: stdio::stderr_raw().isatty(),
+        buffer_stderr: stderr_is_raw,
         input_mode: InputMode::Esc,
     }) {
         Result::Ok(v) => v,

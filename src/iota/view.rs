@@ -1,6 +1,9 @@
 use std::cmp;
 use std::borrow::Cow;
-use std::old_io::{fs, File, FileMode, FileAccess, TempDir};
+use std::path::Path;
+use std::path::PathBuf;
+use std::io::Write;
+use std::fs::{TempDir, OpenOptions, rename};
 
 use buffer::{Buffer, Mark};
 use input::Input;
@@ -43,7 +46,10 @@ impl View {
         let mut buffer = match source {
             Input::Filename(path) => {
                 match path {
-                    Some(s) => Buffer::new_from_file(Path::new(s)),
+                    Some(s) => {
+                        let file_name = &*s;
+                        Buffer::new_from_file(PathBuf::new(file_name))
+                    },
                     None    => Buffer::new(),
                 }
             },
@@ -278,7 +284,7 @@ impl View {
                 // directly, rather than try_save_buffer.
                 //
                 // TODO: ask the user to submit a bug report on how they hit this.
-                Cow::Owned(Path::new("untitled"))
+                Cow::Owned(PathBuf::new("untitled"))
             },
         };
         let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {
@@ -287,7 +293,7 @@ impl View {
         };
 
         let tmppath = tmpdir.path().join(Path::new("tmpfile"));
-        let mut file = match File::open_mode(&tmppath, FileMode::Open, FileAccess::Write) {
+        let mut file = match OpenOptions::new().write(true).open(&tmppath) {
             Ok(f) => f,
             Err(e) => panic!("file error: {}", e)
         };
@@ -302,7 +308,7 @@ impl View {
             }
         }
 
-        if let Err(e) = fs::rename(&tmppath, &*path) {
+        if let Err(e) = rename(&tmppath, &*path) {
             panic!("file error: {}", e);
         }
     }

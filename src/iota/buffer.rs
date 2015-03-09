@@ -2,7 +2,9 @@
 // stdlib dependencies
 use std::cmp;
 use std::collections::HashMap;
-use std::old_io::{File, Reader, BufferedReader};
+use std::path::PathBuf;
+use std::fs::File;
+use std::io::Read;
 
 // external dependencies
 use gapbuffer::GapBuffer;
@@ -44,7 +46,7 @@ pub struct Buffer {
     pub log: Log,
 
     /// Location on disk where the current buffer should be written
-    pub file_path: Option<Path>,
+    pub file_path: Option<PathBuf>,
 }
 
 impl Buffer {
@@ -60,16 +62,17 @@ impl Buffer {
     }
 
     /// Constructor for buffer from reader.
-    pub fn new_from_reader<R: Reader>(reader: R) -> Buffer {
+    pub fn new_from_reader<R: Read>(mut reader: R) -> Buffer {
         let mut buff = Buffer::new();
-        if let Ok(contents) = BufferedReader::new(reader).read_to_string() {
+        let mut contents = String::new();
+        if let Ok(_) = reader.read_to_string(&mut contents) {
             buff.text.extend(contents.bytes());
         }
         buff
     }
 
     /// Constructor for buffer from file.
-    pub fn new_from_file(path: Path) -> Buffer {
+    pub fn new_from_file(path: PathBuf) -> Buffer {
         if let Ok(file) = File::open(&path) {
             let mut buff = Buffer::new_from_reader(file);
             buff.file_path = Some(path);

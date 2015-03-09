@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use input::Input;
 use keyboard::Key;
 use view::View;
@@ -104,7 +106,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     }
 
                     Overlay::SavePrompt { .. } => {
-                        let path = Path::new(&*data);
+                        let path = PathBuf::new(&*data);
                         self.view.buffer.file_path = Some(path);
                         BuilderEvent::Complete(Command::save_buffer())
                     }
