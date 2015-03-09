@@ -254,7 +254,6 @@ impl Buffer {
     /// or: Get the index of the start of the 23th line
     fn get_line_index_absolute(&self, anchor: Anchor, line_number: usize) -> Option<(usize, usize)> {
         let text = &self.text;
-        let last = self.len() - 1;
 
         let nlines = (0..text.len()).filter(|i| text[*i] == b'\n')
                                     .take(line_number + 1)
@@ -281,7 +280,6 @@ impl Buffer {
 
     fn get_line_index_backward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<(usize, usize)> {
         let text = &self.text;
-        let last = self.len() - 1;
 
         if let Some(tuple) = self.marks.get(&from_mark) {
             let (index, line_index) = *tuple;

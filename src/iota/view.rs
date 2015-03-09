@@ -3,7 +3,9 @@ use std::borrow::Cow;
 use std::path::Path;
 use std::path::PathBuf;
 use std::io::Write;
-use std::fs::{TempDir, File, rename};
+use std::fs::{File, rename};
+
+use tempdir::TempDir;
 
 use buffer::{Buffer, Mark};
 use input::Input;

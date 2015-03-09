@@ -7,7 +7,6 @@
 #![feature(unsafe_destructor)]
 #![feature(collections)]
 #![feature(unicode)]
-#![feature(tempdir)]
 #![feature(path)]
 #![feature(io)]
 
@@ -15,6 +14,7 @@
 
 extern crate rustbox;
 extern crate gapbuffer;
+extern crate tempdir;
 
 pub use editor::Editor;
 pub use input::Input;
