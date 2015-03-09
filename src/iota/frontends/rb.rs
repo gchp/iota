@@ -26,8 +26,8 @@ impl<'f> RustboxFrontend<'f> {
 impl<'f> Frontend for RustboxFrontend<'f> {
     /// Poll Rustbox for events & translate them into an EditorEvent
     fn poll_event(&self) -> EditorEvent {
-        match self.rb.poll_event().unwrap() {
-            Event::KeyEvent(_, key, ch) => {
+        match self.rb.poll_event(true).unwrap() {
+            Event::KeyEventRaw(_, key, ch) => {
                 let k = match key {
                     0 => char::from_u32(ch).map(|c| Key::Char(c)),
                     a => Key::from_special_code(a),
