@@ -45,16 +45,16 @@ integration with Rust tooling. This could also be applied to other languages too
 
 ## Usage
 
-Clone the project and run `cargo build`.
+Clone the project and run `make` or `cargo build --release`.
 
-Then to start the editor run `./target/iota /path/to/file.txt`. Or simply `./target/iota`
-to open an empty buffer.
+Then to start the editor run `./target/release/iota /path/to/file.txt`. Or
+simply `./target/release/iota` to open an empty buffer.
 
 You can also create buffers from `stdin`.
 
 ```bash
 # open a buffer with the output of `ifconfig`
-ifconfig | ./target/iota
+ifconfig | ./target/release/iota
 ```
 
 You can move the cursor around with the arrow keys.
