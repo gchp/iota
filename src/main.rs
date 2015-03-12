@@ -33,10 +33,10 @@ struct Args {
     flag_help: bool,
 }
 
-fn is_raw(fileno: libc::c_int) -> bool {
+fn is_atty(fileno: libc::c_int) -> bool {
     // FIXME: find a way to do this without unsafe
     //        std::io doesn't allow for this, currently
-    unsafe { libc::isatty(fileno) == 1 }
+    unsafe { libc::isatty(fileno) != 0 }
 }
 
 fn main() {
@@ -44,11 +44,11 @@ fn main() {
                             .and_then(|d| d.decode())
                             .unwrap_or_else(|e| e.exit());
 
-    let stdin_is_raw = is_raw(libc::STDIN_FILENO);
-    let stderr_is_raw = is_raw(libc::STDERR_FILENO);
+    let stdin_is_atty = is_atty(libc::STDIN_FILENO);
+    let stderr_is_atty = is_atty(libc::STDERR_FILENO);
 
     // editor source - either a filename or stdin
-    let source = if stdin_is_raw {
+    let source = if stdin_is_atty {
         Input::Filename(args.arg_filename)
     } else {
         Input::Stdin(stdin())
@@ -57,7 +57,7 @@ fn main() {
 
     // initialise rustbox
     let rb = match RustBox::init(InitOptions{
-        buffer_stderr: stderr_is_raw,
+        buffer_stderr: stderr_is_atty,
         input_mode: InputMode::Esc,
     }) {
         Result::Ok(v) => v,
