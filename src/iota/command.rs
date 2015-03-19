@@ -363,6 +363,14 @@ fn default_keymap() -> KeyMap<Partial> {
         kind: Kind::Char,
         offset: Offset::Backward(1, Mark::Cursor(0))
     }));
+    keymap.bind_key(Key::Right, Partial::Object(TextObject {
+        kind: Kind::Char,
+        offset: Offset::Forward(1, Mark::Cursor(0))
+    }));
+    keymap.bind_key(Key::Left, Partial::Object(TextObject {
+        kind: Kind::Char,
+        offset: Offset::Backward(1, Mark::Cursor(0))
+    }));
 
     // next/previous line
     keymap.bind_key(Key::Char('j'), Partial::Object(TextObject {
@@ -370,6 +378,14 @@ fn default_keymap() -> KeyMap<Partial> {
         offset: Offset::Forward(1, Mark::Cursor(0))
     }));
     keymap.bind_key(Key::Char('k'), Partial::Object(TextObject {
+        kind: Kind::Line(Anchor::Same),
+        offset: Offset::Backward(1, Mark::Cursor(0))
+    }));
+    keymap.bind_key(Key::Down, Partial::Object(TextObject {
+        kind: Kind::Line(Anchor::Same),
+        offset: Offset::Forward(1, Mark::Cursor(0))
+    }));
+    keymap.bind_key(Key::Up, Partial::Object(TextObject {
         kind: Kind::Line(Anchor::Same),
         offset: Offset::Backward(1, Mark::Cursor(0))
     }));
