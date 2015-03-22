@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::{Mutex, Arc};
 
 use input::Input;
 use keyboard::Key;
@@ -6,7 +7,7 @@ use view::View;
 use frontends::{Frontend, EditorEvent};
 use modes::{Mode, ModeType, InsertMode, NormalMode};
 use overlay::{Overlay, OverlayEvent};
-
+use buffer::Buffer;
 use command::Command;
 use command::{Action, BuilderEvent, Operation, Instruction};
 
@@ -15,6 +16,7 @@ use command::{Action, BuilderEvent, Operation, Instruction};
 ///
 /// This is the top-most structure in Iota.
 pub struct Editor<'e, T: Frontend> {
+    pub buffers: Vec<Arc<Mutex<Buffer>>>,
     view: View,
     running: bool,
     frontend: T,
@@ -26,9 +28,28 @@ impl<'e, T: Frontend> Editor<'e, T> {
     pub fn new(source: Input, mode: Box<Mode + 'e>, frontend: T) -> Editor<'e, T> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
-        let view = View::new(source, width, height);
 
+        let mut buffers = Vec::new();
+        let mut buffer = match source {
+            Input::Filename(path) => {
+                match path {
+                    Some(s) => {
+                        let file_name = &*s;
+                        Buffer::new_from_file(PathBuf::new(file_name))
+                    },
+                    None    => Buffer::new(),
+                }
+            },
+            Input::Stdin(reader) => {
+                Buffer::new_from_reader(reader)
+            },
+        };
+
+        buffers.push(Arc::new(Mutex::new(buffer)));
+
+        let view = View::new(buffers[0].clone(), width, height);
         Editor {
+            buffers: buffers,
             view: view,
             running: true,
             frontend: frontend,
@@ -107,7 +128,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
                     Overlay::SavePrompt { .. } => {
                         let path = PathBuf::new(&*data);
-                        self.view.buffer.file_path = Some(path);
+                        self.view.buffer.lock().unwrap().file_path = Some(path);
                         BuilderEvent::Complete(Command::save_buffer())
                     }
                     _ => BuilderEvent::Incomplete,
