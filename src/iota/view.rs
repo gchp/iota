@@ -412,15 +412,21 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
 #[cfg(test)]
 mod tests {
 
+    use std::sync::{Arc, Mutex};
+
     use view::View;
     use input::Input;
+    use buffer::Buffer;
 
     fn setup_view(testcase: &'static str) -> View {
-        let mut view = View::new(Input::Filename(None), 50, 50);
+        let mut buffer = Arc::new(Mutex::new(Buffer::new()));
+        let mut view = View::new(buffer.clone(), 50, 50);
         for ch in testcase.chars() {
             view.insert_char(ch);
         }
-        view.buffer.set_mark(view.cursor, 0);
+
+        let mut buffer = buffer.lock().unwrap();
+        buffer.set_mark(view.cursor, 0);
         view
     }
 
@@ -429,6 +435,9 @@ mod tests {
         let mut view = setup_view("test\nsecond");
         view.insert_char('t');
 
-        assert_eq!(view.buffer.lines().next().unwrap(), b"ttest\n");
+        {
+            let mut buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), b"ttest\n");
+        }
     }
 }
