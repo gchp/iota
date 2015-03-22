@@ -16,7 +16,7 @@ use command::{Action, BuilderEvent, Operation, Instruction};
 ///
 /// This is the top-most structure in Iota.
 pub struct Editor<'e, T: Frontend> {
-    pub buffers: Vec<Arc<Mutex<Buffer>>>,
+    buffers: Vec<Arc<Mutex<Buffer>>>,
     view: View,
     running: bool,
     frontend: T,
