@@ -15,7 +15,9 @@ pub enum Instruction {
 
     SetMark(Mark),
     SetOverlay(OverlayType),
-    SetMode(ModeType)
+    SetMode(ModeType),
+    SwitchToLastBuffer,
+    None,
 }
 
 /// Operations on the Buffer.
@@ -131,7 +133,14 @@ impl Command {
                 offset: offset
             })
         }
+    }
 
+    pub fn noop() -> Command {
+        Command {
+            number: 0,
+            action: Action::Instruction(Instruction::None),
+            object: None,
+        }
     }
 }
 

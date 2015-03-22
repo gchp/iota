@@ -24,6 +24,7 @@ use textobject::{Anchor, TextObject, Kind, Offset};
 /// pieces of information.
 pub struct View {
     pub buffer: Arc<Mutex<Buffer>>,
+    pub last_buffer: Option<Arc<Mutex<Buffer>>>,
     pub overlay: Overlay,
 
     /// First character of the top line to be displayed
@@ -58,6 +59,7 @@ impl View {
 
         View {
             buffer: buffer,
+            last_buffer: None,
             top_line: top_line,
             left_col: 0,
             cursor: cursor,
@@ -65,6 +67,30 @@ impl View {
             overlay: Overlay::None,
             threshold: 5,
         }
+    }
+
+    pub fn set_buffer(&mut self, buffer: Arc<Mutex<Buffer>>) {
+        self.last_buffer = Some(self.buffer.clone());
+
+        {
+            let mut b = buffer.lock().unwrap();
+
+            b.set_mark(self.cursor, 0);
+            b.set_mark(self.top_line, 0);
+        }
+
+        self.buffer = buffer;
+    }
+
+    pub fn switch_last_buffer(&mut self) {
+        let buffer = self.buffer.clone();
+        let last_buffer = match self.last_buffer.clone() {
+            Some(buf) => buf,
+            None => return
+        };
+
+        self.buffer = last_buffer;
+        self.last_buffer = Some(buffer);
     }
 
     /// Get the height of the View.
@@ -106,6 +132,10 @@ impl View {
             let width = self.get_width();
             let mut line = 0;
             let mut col = 0;
+
+            // FIXME: don't use unwrap here
+            //        This will fail if for some reason the buffer doesnt have
+            //        the top_line mark
             for c in buffer.chars_from(self.top_line).unwrap() {
                 if c == '\n' {
                     // clear everything after the end of the line content
@@ -126,13 +156,13 @@ impl View {
             }
 
         }
-            match self.overlay {
-                Overlay::None => self.draw_cursor(frontend),
-                _ => {
-                    self.overlay.draw(frontend, &mut self.uibuf);
-                    self.overlay.draw_cursor(frontend);
-                }
+        match self.overlay {
+            Overlay::None => self.draw_cursor(frontend),
+            _ => {
+                self.overlay.draw(frontend, &mut self.uibuf);
+                self.overlay.draw_cursor(frontend);
             }
+        }
         self.draw_status(frontend);
         self.uibuf.draw_everything(frontend);
     }
@@ -174,6 +204,16 @@ impl View {
                 self.overlay = Overlay::Prompt {
                     cursor_x: 1,
                     prefix: ":",
+                    data: String::new(),
+                };
+            }
+
+            OverlayType::SelectFile => {
+                let prefix = "Enter file path:";
+
+                self.overlay = Overlay::SelectFile {
+                    cursor_x: prefix.len(),
+                    prefix: prefix,
                     data: String::new(),
                 };
             }

@@ -131,6 +131,16 @@ impl<'e, T: Frontend> Editor<'e, T> {
                         self.view.buffer.lock().unwrap().file_path = Some(path);
                         BuilderEvent::Complete(Command::save_buffer())
                     }
+
+                    Overlay::SelectFile { .. } => {
+                        let path = PathBuf::new(data);
+                        let buffer = Arc::new(Mutex::new(Buffer::new_from_file(path)));
+                        self.buffers.push(buffer.clone());
+                        self.view.set_buffer(buffer.clone());
+                        self.view.clear(&mut self.frontend);
+                        BuilderEvent::Complete(Command::noop())
+                    }
+
                     _ => BuilderEvent::Incomplete,
                 }
             }
@@ -182,6 +192,12 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     ModeType::Normal => { self.mode = Box::new(NormalMode::new()) }
                 }
             }
+            Instruction::SwitchToLastBuffer => {
+                self.view.switch_last_buffer();
+                self.view.clear(&mut self.frontend);
+            }
+
+            _ => {}
         }
     }
 

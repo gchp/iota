@@ -13,6 +13,7 @@ pub enum OverlayEvent {
 pub enum OverlayType {
     Prompt,
     SavePrompt,
+    SelectFile,
 }
 
 
@@ -33,14 +34,21 @@ pub enum Overlay {
         prefix: &'static str,
     },
 
+    SelectFile {
+        cursor_x: usize,
+        data: String,
+        prefix: &'static str,
+    },
+
     None,
 }
 
 impl Overlay {
     pub fn draw<F: Frontend>(&self, frontend: &mut F, uibuf: &mut UIBuffer) {
         match self {
-            &Overlay::Prompt     {prefix, ref data, ..} |
-            &Overlay::SavePrompt {prefix, ref data, ..} => {
+            &Overlay::SelectFile     {prefix, ref data, ..} |
+            &Overlay::Prompt         {prefix, ref data, ..} |
+            &Overlay::SavePrompt     {prefix, ref data, ..} => {
                 let height = frontend.get_window_height() - 1;
                 let offset = prefix.len();
 
@@ -63,8 +71,9 @@ impl Overlay {
 
     pub fn draw_cursor<F: Frontend>(&mut self, frontend: &mut F) {
         match self {
-            &mut Overlay::Prompt     {cursor_x, ..} |
-            &mut Overlay::SavePrompt {cursor_x, ..} => {
+            &mut Overlay::SelectFile     {cursor_x, ..} |
+            &mut Overlay::Prompt         {cursor_x, ..} |
+            &mut Overlay::SavePrompt     {cursor_x, ..} => {
                 // Prompt is always on the bottom, so we can use the
                 // height given by the frontend here
                 let height = frontend.get_window_height() - 1;
@@ -77,6 +86,7 @@ impl Overlay {
 
     pub fn handle_key_event(&mut self, key: Key) -> OverlayEvent {
         match self {
+            &mut Overlay::SelectFile {ref mut cursor_x, ref mut data, ..} |
             &mut Overlay::Prompt     {ref mut cursor_x, ref mut data, ..} |
             &mut Overlay::SavePrompt {ref mut cursor_x, ref mut data, ..} => {
                 match key {
