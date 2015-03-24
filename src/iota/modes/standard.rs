@@ -19,6 +19,7 @@ use super::Mode;
 /// editors like emacs or sublime.
 pub struct StandardMode {
     keymap: KeyMap<Command>,
+    match_in_progress: bool,
 }
 
 impl StandardMode {
@@ -27,6 +28,7 @@ impl StandardMode {
     pub fn new() -> StandardMode {
         StandardMode {
             keymap: StandardMode::key_defaults(),
+            match_in_progress: false,
         }
     }
 
@@ -105,21 +107,47 @@ impl StandardMode {
         keymap
     }
 
+    /// Checks a Key against the internal keymap
+    ///
+    /// - If there is a direct match, return the completed BuilderEvent
+    /// - If there is a partial match, set match_in_progress to true which
+    ///   indicates that the next key should check against the keymap too,
+    ///   rather than possibly being inserted into the buffer. This allows
+    ///   for non-prefixed keys to be used in keybindings. ie: C-x s rather
+    ///   than C-x C-s.
+    /// - If there is no match of any kind, return Incomplete
+    fn check_key(&mut self, key: Key) -> BuilderEvent {
+        match self.keymap.check_key(key) {
+            KeyMapState::Match(c) => {
+                self.match_in_progress = false;
+                BuilderEvent::Complete(c)
+            },
+            KeyMapState::Continue => {
+                self.match_in_progress = true;
+                BuilderEvent::Incomplete
+            }
+            KeyMapState::None => {
+                self.match_in_progress = false;
+                BuilderEvent::Incomplete
+            }
+        }
+    }
+
 }
 
 impl Mode for StandardMode {
     /// Given a key, pass it through the StandardMode KeyMap and return the associated Command, if any.
     /// If no match is found, treat it as an InsertChar command.
     fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
+        if self.match_in_progress {
+            return self.check_key(key)
+        }
 
         if let Key::Char(c) = key {
             BuilderEvent::Complete(Command::insert_char(c))
         } else {
-            if let KeyMapState::Match(c) = self.keymap.check_key(key) {
-                BuilderEvent::Complete(c)
-            } else {
-                BuilderEvent::Incomplete
-            }
+            self.check_key(key)
         }
+
     }
 }
