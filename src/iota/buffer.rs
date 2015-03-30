@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::Read;
+use std::convert::From;
 
 // external dependencies
 use gapbuffer::GapBuffer;
@@ -12,6 +13,7 @@ use gapbuffer::GapBuffer;
 // local dependencies
 use log::{Log, Change, LogEntry};
 use utils::is_alpha_or_;
+use input::Input;
 use iterators::{Lines, Chars};
 use textobject::{TextObject, Kind, Offset, Anchor};
 
@@ -50,7 +52,6 @@ pub struct Buffer {
 }
 
 impl Buffer {
-
     /// Constructor for empty buffer.
     pub fn new() -> Buffer {
         Buffer {
@@ -59,25 +60,6 @@ impl Buffer {
             marks: HashMap::new(),
             log: Log::new(),
         }
-    }
-
-    /// Constructor for buffer from reader.
-    pub fn new_from_reader<R: Read>(mut reader: R) -> Buffer {
-        let mut buff = Buffer::new();
-        let mut contents = String::new();
-        if let Ok(_) = reader.read_to_string(&mut contents) {
-            buff.text.extend(contents.bytes());
-        }
-        buff
-    }
-
-    /// Constructor for buffer from file.
-    pub fn new_from_file(path: PathBuf) -> Buffer {
-        if let Ok(file) = File::open(&path) {
-            let mut buff = Buffer::new_from_reader(file);
-            buff.file_path = Some(path);
-            buff
-        } else { Buffer::new() }
     }
 
     /// Length of the text stored in this buffer.
@@ -543,6 +525,44 @@ impl Buffer {
     }
 
 }
+
+impl From<PathBuf> for Buffer {
+    fn from(path: PathBuf) -> Buffer {
+        if let Ok(file) = File::open(&path) {
+            let mut buff = Buffer::from(file);
+            buff.file_path = Some(path);
+            buff
+        } else { Buffer::new() }
+    }
+}
+
+impl<R: Read> From<R> for Buffer {
+    fn from(mut reader: R) -> Buffer {
+        let mut buff = Buffer::new();
+        let mut contents = String::new();
+        if let Ok(_) = reader.read_to_string(&mut contents) {
+            buff.text.extend(contents.bytes());
+        }
+        buff
+    }
+}
+
+impl From<Input> for Buffer {
+    fn from(input: Input) -> Buffer {
+        match input {
+            Input::Filename(path) => {
+                match path {
+                    Some(path) => Buffer::from(PathBuf::from(path)),
+                    None       => Buffer::new(),
+                }
+            },
+            Input::Stdin(reader) => {
+                Buffer::from(reader)
+            }
+        }
+    }
+}
+
 
 impl WordEdgeMatch {
     /// If c1 -> c2 is the start of a word.

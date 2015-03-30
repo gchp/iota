@@ -30,20 +30,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
         let width = frontend.get_window_width();
 
         let mut buffers = Vec::new();
-        let mut buffer = match source {
-            Input::Filename(path) => {
-                match path {
-                    Some(s) => {
-                        let file_name = &*s;
-                        Buffer::new_from_file(PathBuf::from(file_name))
-                    },
-                    None    => Buffer::new(),
-                }
-            },
-            Input::Stdin(reader) => {
-                Buffer::new_from_reader(reader)
-            },
-        };
+        let buffer = Buffer::from(source);
 
         buffers.push(Arc::new(Mutex::new(buffer)));
 
@@ -134,7 +121,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
                     Overlay::SelectFile { .. } => {
                         let path = PathBuf::from(data);
-                        let buffer = Arc::new(Mutex::new(Buffer::new_from_file(path)));
+                        let buffer = Arc::new(Mutex::new(Buffer::from(path)));
                         self.buffers.push(buffer.clone());
                         self.view.set_buffer(buffer.clone());
                         self.view.clear(&mut self.frontend);

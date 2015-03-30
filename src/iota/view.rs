@@ -4,12 +4,11 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::io::Write;
 use std::fs::{File, rename};
-use std::sync::{Mutex, MutexGuard, Arc};
+use std::sync::{Mutex, Arc};
 
 use tempdir::TempDir;
 
 use buffer::{Buffer, Mark};
-use input::Input;
 use uibuf::{UIBuffer, CharColor};
 use frontends::Frontend;
 use overlay::{Overlay, OverlayType};
