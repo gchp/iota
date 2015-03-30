@@ -7,6 +7,7 @@
 #![feature(unsafe_destructor)]
 #![feature(collections)]
 #![feature(unicode)]
+#![feature(convert)]
 
 #![warn(missing_docs)]
 

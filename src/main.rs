@@ -2,7 +2,7 @@
 #![cfg(not(test))]
 
 extern crate libc;
-extern crate "rustc-serialize" as rustc_serialize;
+extern crate rustc_serialize;
 extern crate rustbox;
 extern crate docopt;
 extern crate iota;

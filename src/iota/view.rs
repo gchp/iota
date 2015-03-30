@@ -329,7 +329,7 @@ impl View {
                 // directly, rather than try_save_buffer.
                 //
                 // TODO: ask the user to submit a bug report on how they hit this.
-                Cow::Owned(PathBuf::new("untitled"))
+                Cow::Owned(PathBuf::from("untitled"))
             },
         };
         let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {

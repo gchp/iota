@@ -35,7 +35,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                 match path {
                     Some(s) => {
                         let file_name = &*s;
-                        Buffer::new_from_file(PathBuf::new(file_name))
+                        Buffer::new_from_file(PathBuf::from(file_name))
                     },
                     None    => Buffer::new(),
                 }
@@ -127,13 +127,13 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     }
 
                     Overlay::SavePrompt { .. } => {
-                        let path = PathBuf::new(&*data);
+                        let path = PathBuf::from(&*data);
                         self.view.buffer.lock().unwrap().file_path = Some(path);
                         BuilderEvent::Complete(Command::save_buffer())
                     }
 
                     Overlay::SelectFile { .. } => {
-                        let path = PathBuf::new(data);
+                        let path = PathBuf::from(data);
                         let buffer = Arc::new(Mutex::new(Buffer::new_from_file(path)));
                         self.buffers.push(buffer.clone());
                         self.view.set_buffer(buffer.clone());
