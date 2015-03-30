@@ -24,7 +24,7 @@ pub struct Editor<'e, T: Frontend> {
 }
 
 impl<'e, T: Frontend> Editor<'e, T> {
-    /// Create a new Editor instance
+    /// Create a new Editor instance from the given source
     pub fn new(source: Input, mode: Box<Mode + 'e>, frontend: T) -> Editor<'e, T> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
