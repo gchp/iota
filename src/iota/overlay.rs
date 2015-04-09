@@ -9,7 +9,7 @@ pub enum OverlayEvent {
     Ok,
 }
 
-#[derive(Copy, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum OverlayType {
     Prompt,
     SavePrompt,

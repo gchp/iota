@@ -4,7 +4,7 @@ use std::cmp;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Stdin, Read};
 use std::convert::From;
 
 // external dependencies
@@ -18,7 +18,7 @@ use iterators::{Lines, Chars};
 use textobject::{TextObject, Kind, Offset, Anchor};
 
 
-#[derive(Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Mark {
     /// For keeping track of cursors.
     Cursor(usize),
@@ -27,7 +27,7 @@ pub enum Mark {
     DisplayMark(usize),
 }
 
-#[derive(Copy, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum WordEdgeMatch {
     Alphabet,
     Whitespace,
@@ -526,6 +526,18 @@ impl Buffer {
 
 }
 
+
+// This is a bit of a hack to get around an error I was getting when
+// implementing From<R: Read> for Buffer with From<PathBuf> for Buffer.
+// The compiler was telling me this was a conflicting implementation even
+// though Read is not implemented for PathBuf. Changing R: Read to
+// R: Read + BufferFrom fixes the error.
+//
+// TODO: investigate this further - possible compiler bug?
+trait BufferFrom {}
+impl BufferFrom for Stdin {}
+impl BufferFrom for File {}
+
 impl From<PathBuf> for Buffer {
     fn from(path: PathBuf) -> Buffer {
         if let Ok(file) = File::open(&path) {
@@ -536,7 +548,7 @@ impl From<PathBuf> for Buffer {
     }
 }
 
-impl<R: Read> From<R> for Buffer {
+impl<R: Read + BufferFrom> From<R> for Buffer {
     fn from(mut reader: R) -> Buffer {
         let mut buff = Buffer::new();
         let mut contents = String::new();

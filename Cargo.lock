@@ -4,7 +4,7 @@ version = "0.1.0"
 dependencies = [
  "docopt 0.6.59 (registry+https://github.com/rust-lang/crates.io-index)",
  "gapbuffer 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustbox 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustbox 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -21,6 +21,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "regex 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.12 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "gag"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tempdir 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -57,10 +66,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rustbox"
-version = "0.4.5"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gag 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "termbox-sys 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

@@ -7,7 +7,7 @@ use modes::ModeType;
 
 /// Instructions for the Editor.
 /// These do NOT alter the text, but may change editor/view state
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Instruction {
     SaveBuffer,
     //FindFile,
@@ -25,7 +25,7 @@ pub enum Instruction {
 /// Note that these differ from log::Change in that they are higher-level
 /// operations dependent on state (cursor/mark locations, etc.), as opposed
 /// to concrete operations on absolute indexes (insert 'a' at index 158, etc.)
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Operation {
     Insert(char), // insert text
     DeleteObject,         // delete some object
@@ -36,7 +36,7 @@ pub enum Operation {
 }
 
 /// Fragments that can be combined to specify a command
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Partial {
     Kind(Kind),
     Anchor(Anchor),
@@ -45,14 +45,14 @@ pub enum Partial {
     Action(Action),
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Action {
     Operation(Operation),
     Instruction(Instruction),
 }
 
 /// A complete, actionable command
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Command {
     pub number: i32,        // numeric paramter, line number, repeat count, etc.
     pub action: Action,     // what to do
@@ -159,7 +159,7 @@ pub struct Builder {
     keymap: KeyMap<Partial>,
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum BuilderEvent {
     Invalid,            // cannot find a valid interpretation
     Incomplete,         // needs more information

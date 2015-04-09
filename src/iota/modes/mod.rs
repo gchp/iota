@@ -9,7 +9,7 @@ mod standard;
 mod normal;
 mod insert;
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum ModeType {
     Normal,
     Insert,
