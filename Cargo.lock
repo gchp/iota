@@ -2,7 +2,7 @@
 name = "iota"
 version = "0.1.0"
 dependencies = [
- "docopt 0.6.63 (registry+https://github.com/rust-lang/crates.io-index)",
+ "docopt 0.6.64 (registry+https://github.com/rust-lang/crates.io-index)",
  "gapbuffer 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustbox 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -16,11 +16,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "docopt"
-version = "0.6.63"
+version = "0.6.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "regex 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "strsim 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -33,7 +34,7 @@ dependencies = [
 
 [[package]]
 name = "gag"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -79,14 +80,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "enum_primitive 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "gag 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gag 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
- "termbox-sys 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termbox-sys 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "rustc-serialize"
 version = "0.3.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "strsim"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -108,7 +114,7 @@ dependencies = [
 
 [[package]]
 name = "termbox-sys"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "libc 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
