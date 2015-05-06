@@ -66,7 +66,25 @@ Iota currently supports both Vi and Emacs style keybindings for simple movement.
 
 You can enable Vi style keybindings by using the `--vi` flag when starting Iota.
 The vi-style modes are in the early stages, and not all functionality is there
-just yet.
+just yet. The following works:
+
+- while in normal mode:
+    - `k` move up
+    - `j` move down
+    - `l` move forwards
+    - `h` move backwards
+    - `w` move one word forward
+    - `b` move one word backward
+    - `0` move to start of line
+    - `$` move to end of line
+    - `d` delete
+    - `u` undo
+    - `r` redo
+    - `i` insert mode
+    - `:q` quit
+    - `:w` save
+- while in insert mode:
+    - `ESC` normal mode
 
 Alternatively, you can use the following emacs-style keys:
 
