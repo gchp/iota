@@ -367,28 +367,35 @@ impl View {
 
 pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
     let width = buf.get_width() - 1;
-    let mut wide_chars = 0;
-    for line_idx in left..(left + width) {
-        if line_idx < line.len() {
-            let special_char = line[line_idx] as char;
-            match special_char {
-                '\t'   => {
-                    let w = 4 - line_idx % 4;
-                    for _ in 0..w {
-                        buf.update_cell_content(line_idx + wide_chars - left, idx, ' ');
-                    }
+    let mut x = 0;
+    
+    for ch in line.iter().skip(left).take(width) {
+        let ch = *ch as char;
+        match ch {
+            '\t' => {
+                let w = 4 - x % 4;
+                for _ in 0..w {
+                    buf.update_cell_content(x, idx, ' ');
+                    x += 1;
                 }
-                '\n'   => buf.update_cell_content(line_idx + wide_chars - left, idx, ' '),
-                _       => buf.update_cell_content(line_idx + wide_chars - left, idx,
-                                                   line[line_idx] as char),
             }
-            wide_chars += (line[line_idx] as char).width(false).unwrap_or(1) - 1;
-        } else { buf.update_cell_content(line_idx + wide_chars - left, idx, ' '); }
+            '\n' => {}
+            _ => {
+                buf.update_cell_content(x, idx, ch);
+                x += ch.width(false).unwrap_or(1);
+            }
+        }
     }
-    if line.len() >= width {
-        buf.update_cell_content(width + wide_chars, idx, '→');
+    
+    // Replace any cells after end of line with ' '
+    while x < width {
+        buf.update_cell_content(x, idx, ' ');
+        x += 1;
     }
-
+    
+    // If the line is too long to fit on the screen, show an indicator
+    let indicator = if line.len() > width + left { '→' } else { ' ' };
+    buf.update_cell_content(width, idx, indicator);
 }
 
 #[cfg(test)]
