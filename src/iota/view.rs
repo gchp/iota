@@ -131,8 +131,9 @@ impl View {
             // FIXME: don't use unwrap here
             //        This will fail if for some reason the buffer doesnt have
             //        the top_line mark
-            let lines = buffer.lines_from(self.top_line).unwrap().take(height);
-            for (y_position, line) in lines.enumerate() {
+            let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
+            for y_position in 0..height {
+                let line = lines.next().unwrap_or(vec![]);
                 draw_line(&mut self.uibuf, line.as_slice(), y_position, self.left_col);
             }
 
