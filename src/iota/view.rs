@@ -369,7 +369,7 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
     let width = buf.get_width() - 1;
     let mut x = 0;
     
-    for ch in line.iter().skip(left).take(width) {
+    for ch in line.iter().skip(left) {
         let ch = *ch as char;
         match ch {
             '\t' => {
