@@ -385,6 +385,9 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
                 x += ch.width(false).unwrap_or(1);
             }
         }
+        if x >= width {
+            break;
+        }
     }
     
     // Replace any cells after end of line with ' '
