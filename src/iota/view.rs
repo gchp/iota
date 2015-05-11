@@ -123,35 +123,17 @@ impl View {
         self.uibuf.draw_everything(frontend);
     }
 
-    // FIXME: should probably use draw_line here...
     pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
         {
             let buffer = self.buffer.lock().unwrap();
-            let height = self.get_height() - 2;
-            let width = self.get_width();
-            let mut line = 0;
-            let mut col = 0;
+            let height = self.get_height() - 1;
 
             // FIXME: don't use unwrap here
             //        This will fail if for some reason the buffer doesnt have
             //        the top_line mark
-            for c in buffer.chars_from(self.top_line).unwrap() {
-                if c == '\n' {
-                    // clear everything after the end of the line content
-                    for i in col..width {
-                        self.uibuf.update_cell_content(i, line, ' ');
-                    }
-
-                    if line == height {
-                        break;
-                    }
-
-                    col = 0;
-                    line += 1;
-                } else {
-                    self.uibuf.update_cell_content(col, line, c);
-                    col += 1;
-                }
+            let lines = buffer.lines_from(self.top_line).unwrap().take(height);
+            for (y_position, line) in lines.enumerate() {
+                draw_line(&mut self.uibuf, line.as_slice(), y_position, self.left_col);
             }
 
         }
