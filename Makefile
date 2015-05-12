@@ -1,4 +1,4 @@
-CARGO=/usr/local/bin/cargo
+CARGO=$(or $(shell which cargo 2> /dev/null),/usr/local/bin/cargo)
 OPTS=
 
 all: release

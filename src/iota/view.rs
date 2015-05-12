@@ -123,35 +123,18 @@ impl View {
         self.uibuf.draw_everything(frontend);
     }
 
-    // FIXME: should probably use draw_line here...
     pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
         {
             let buffer = self.buffer.lock().unwrap();
-            let height = self.get_height() - 2;
-            let width = self.get_width();
-            let mut line = 0;
-            let mut col = 0;
+            let height = self.get_height() - 1;
 
             // FIXME: don't use unwrap here
             //        This will fail if for some reason the buffer doesnt have
             //        the top_line mark
-            for c in buffer.chars_from(self.top_line).unwrap() {
-                if c == '\n' {
-                    // clear everything after the end of the line content
-                    for i in col..width {
-                        self.uibuf.update_cell_content(i, line, ' ');
-                    }
-
-                    if line == height {
-                        break;
-                    }
-
-                    col = 0;
-                    line += 1;
-                } else {
-                    self.uibuf.update_cell_content(col, line, c);
-                    col += 1;
-                }
+            let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
+            for y_position in 0..height {
+                let line = lines.next().unwrap_or(vec![]);
+                draw_line(&mut self.uibuf, line.as_slice(), y_position, self.left_col);
             }
 
         }
@@ -384,28 +367,38 @@ impl View {
 
 pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
     let width = buf.get_width() - 1;
-    let mut wide_chars = 0;
-    for line_idx in left..(left + width) {
-        if line_idx < line.len() {
-            let special_char = line[line_idx] as char;
-            match special_char {
-                '\t'   => {
-                    let w = 4 - line_idx % 4;
-                    for _ in 0..w {
-                        buf.update_cell_content(line_idx + wide_chars - left, idx, ' ');
-                    }
+    let mut x = 0;
+    
+    for ch in line.iter().skip(left) {
+        let ch = *ch as char;
+        match ch {
+            '\t' => {
+                let w = 4 - x % 4;
+                for _ in 0..w {
+                    buf.update_cell_content(x, idx, ' ');
+                    x += 1;
                 }
-                '\n'   => buf.update_cell_content(line_idx + wide_chars - left, idx, ' '),
-                _       => buf.update_cell_content(line_idx + wide_chars - left, idx,
-                                                   line[line_idx] as char),
             }
-            wide_chars += (line[line_idx] as char).width(false).unwrap_or(1) - 1;
-        } else { buf.update_cell_content(line_idx + wide_chars - left, idx, ' '); }
+            '\n' => {}
+            _ => {
+                buf.update_cell_content(x, idx, ch);
+                x += ch.width(false).unwrap_or(1);
+            }
+        }
+        if x >= width {
+            break;
+        }
     }
-    if line.len() >= width {
-        buf.update_cell_content(width + wide_chars, idx, '→');
+    
+    // Replace any cells after end of line with ' '
+    while x < width {
+        buf.update_cell_content(x, idx, ' ');
+        x += 1;
     }
-
+    
+    // If the line is too long to fit on the screen, show an indicator
+    let indicator = if line.len() > width + left { '→' } else { ' ' };
+    buf.update_cell_content(width, idx, indicator);
 }
 
 #[cfg(test)]
