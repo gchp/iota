@@ -70,7 +70,6 @@ impl<'a> Transaction<'a> {
     }
 }
 
-#[unsafe_destructor]
 impl<'a> Drop for Transaction<'a> {
     fn drop(&mut self) {
         // Check to see if there were any changes, and if not return early.
