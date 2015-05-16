@@ -47,6 +47,8 @@ integration with Rust tooling. This could also be applied to other languages too
 
 Clone the project and run `make` or `cargo build --release`.
 
+**NOTE:** Iota needs to be built using the nightly toolchain for now, not 1.0.0. [Multirust](https://github.com/rust-lang/multirust) is very useful for managing multiple rust versions.
+
 Then to start the editor run `./target/release/iota /path/to/file.txt`. Or
 simply `./target/release/iota` to open an empty buffer.
 
