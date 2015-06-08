@@ -47,8 +47,8 @@ impl StandardMode {
         keymap.bind_key(Key::Down, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
         keymap.bind_key(Key::Left, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
         keymap.bind_key(Key::Right, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Ctrl('p'), Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::End)));
-        keymap.bind_key(Key::Ctrl('n'), Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::End)));
+        keymap.bind_key(Key::Ctrl('p'), Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Ctrl('n'), Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
         keymap.bind_key(Key::Ctrl('b'), Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
         keymap.bind_key(Key::Ctrl('f'), Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
         keymap.bind_key(Key::Ctrl('e'), Command::movement(Offset::Forward(0, Mark::Cursor(0)), Kind::Line(Anchor::End)));

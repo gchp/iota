@@ -272,6 +272,10 @@ impl Buffer {
             match anchor {
                 // Get the index of the start of the desired line
                 Anchor::Start => {
+                    // if this is the first line in the buffer
+                    if nlines.len() == 0 {
+                        return Some((0, 0))
+                    }
                     let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
                     Some((start_offset + 1, 0))
                 }
@@ -331,6 +335,10 @@ impl Buffer {
 
                 // Get the index of the end of the desired line
                 Anchor::End => {
+                    // if this is the last line in the buffer
+                    if nlines.len() == 0 {
+                        return Some((last, offset))
+                    }
                     let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
                     Some((end_offset, end_offset - get_line(end_offset, text).unwrap()))
                 }
