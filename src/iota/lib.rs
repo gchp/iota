@@ -5,7 +5,7 @@
 //! This module contains all you need to create an `iota` executable.
 
 #![feature(custom_attribute)]
-#![feature(collections)]
+#![feature(map_in_place)]
 #![feature(unicode)]
 #![feature(convert)]
 
