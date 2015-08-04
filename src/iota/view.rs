@@ -135,7 +135,7 @@ impl View {
             let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
             for y_position in 0..height {
                 let line = lines.next().unwrap_or(vec![]);
-                draw_line(&mut self.uibuf, line.as_slice(), y_position, self.left_col);
+                draw_line(&mut self.uibuf, &line, y_position, self.left_col);
             }
 
         }

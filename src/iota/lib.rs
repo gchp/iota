@@ -4,9 +4,6 @@
 //!
 //! This module contains all you need to create an `iota` executable.
 
-#![feature(custom_attribute)]
-#![feature(convert)]
-
 #![warn(missing_docs)]
 
 extern crate rustbox;
