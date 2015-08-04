@@ -10,6 +10,7 @@ rustc-serialize = "0.3.14"
 gapbuffer = "0.1.1"
 tempdir = "0.3.0"
 unicode-width = "0.1.1"
+libc = "0.1"
 
 [lib]
 name = "iota"
