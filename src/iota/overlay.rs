@@ -1,7 +1,8 @@
+use unicode_width::UnicodeWidthChar;
+
 use uibuf::UIBuffer;
 use keyboard::Key;
 use frontends::Frontend;
-
 
 /// State for the overlay
 pub enum OverlayEvent {
@@ -93,7 +94,7 @@ impl Overlay {
                     Key::Esc => return OverlayEvent::Finished(None),
                     Key::Backspace => {
                         if let Some(c) = data.pop() {
-                            if let Some(width) = c.width(false) {
+                            if let Some(width) = UnicodeWidthChar::width(c) {
                                 *cursor_x -= width;
                             }
                         }
@@ -104,7 +105,7 @@ impl Overlay {
                         return OverlayEvent::Finished(Some(data))
                     }
                     Key::Char(c) => {
-                        if let Some(width) = c.width(false) {
+                        if let Some(width) = UnicodeWidthChar::width(c) {
                             data.push(c);
                             *cursor_x += width;
                         }
