@@ -379,7 +379,7 @@ mod tests {
 
     use view::View;
     use input::Input;
-    use buffer::Buffer;
+    use buffer::{Buffer, Position};
 
     fn setup_view(testcase: &'static str) -> View {
         let mut buffer = Arc::new(Mutex::new(Buffer::new()));
@@ -388,8 +388,7 @@ mod tests {
             view.insert_char(ch);
         }
 
-        let mut buffer = buffer.lock().unwrap();
-        buffer.set_mark(view.cursor, 0);
+        view.cursor = Position::origin();
         view
     }
 
@@ -400,7 +399,7 @@ mod tests {
 
         {
             let mut buffer = view.buffer.lock().unwrap();
-            assert_eq!(buffer.lines().next().unwrap(), b"ttest\n");
+            assert_eq!(buffer.to_string(), "ttest\nsecond");
         }
     }
 }

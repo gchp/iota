@@ -420,10 +420,10 @@ impl Buffer {
             }
 
             Offset::Backward(nth_word) => {
-                self.get_index(start).and_then(|start_index| {
+                self.get_index(start).map(|start_index| {
                     get_words_rev(start_index, nth_word, WordEdgeMatch::Whitespace, &self.text).and_then(|index| {
                         self.get_writable_position(index)
-                    })
+                    }).unwrap_or(Position::origin())
                 })
             }
         }
@@ -738,392 +738,276 @@ fn commit(transaction: &LogEntry, buf: &mut Buffer) {
 #[cfg(test)]
 mod test {
 
-    use buffer::{Buffer, Mark};
+    use buffer::{Buffer, Position};
     use textobject::{TextObject, Offset, Kind, Anchor};
 
     fn setup_buffer(testcase: &'static str) -> Buffer {
         let mut buffer = Buffer::new();
         buffer.text.extend(testcase.bytes());
-        buffer.set_mark(Mark::Cursor(0), 0);
         buffer
     }
 
     #[test]
-    fn move_mark_char_right() {
-        let mut buffer = setup_buffer("Some test content");
-        let mark = Mark::Cursor(0);
+    fn move_char_right() {
+        let buffer = setup_buffer("Some test content");
         let obj = TextObject {
             kind: Kind::Char,
-            offset: Offset::Forward(1, mark),
+            offset: Offset::Forward(1),
         };
 
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::origin(), obj);
         
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(1, 1));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (1, 0));
+        assert_eq!(result.unwrap(), Position::new(1, 0));
     }
 
     #[test]
-    fn move_mark_char_left() {
-        let mut buffer = setup_buffer("Some test content");
-        let mark = Mark::Cursor(0);
+    fn move_char_left() {
+        let buffer = setup_buffer("Some test content");
         let obj = TextObject {
             kind: Kind::Char,
-            offset: Offset::Backward(1, mark),
+            offset: Offset::Backward(1),
         };
 
-        buffer.set_mark(mark, 3);
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::new(3, 0), obj);
         
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(2, 2));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (2, 0));
+        assert_eq!(result.unwrap(), Position::new(2, 0));
     }
     
     #[test]
-    fn move_mark_five_chars_right() {
-        let mut buffer = setup_buffer("Some test content");
-        let mark = Mark::Cursor(0);
+    fn move_five_chars_right() {
+        let buffer = setup_buffer("Some test content");
         let obj = TextObject {
             kind: Kind::Char,
-            offset: Offset::Forward(5, mark),
+            offset: Offset::Forward(5),
         };
 
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::origin(), obj);
         
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 5));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 0));
+        assert_eq!(result.unwrap(), Position::new(5, 0));
     }
 
     #[test]
-    fn move_mark_line_down() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
+    fn move_line_down() {
+        let buffer = setup_buffer("Some test content\nwith new\nlines!");
         let obj = TextObject {
             kind: Kind::Line(Anchor::Same),
-            offset: Offset::Forward(1, mark),
+            offset: Offset::Forward(1),
         };
 
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::origin(), obj);
         
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+        assert_eq!(result.unwrap(), Position::new(0, 1));
     }
 
     #[test]
-    fn move_mark_line_up() {
-        let mut buffer = setup_buffer("Some test content\nnew lines!");
-        let mark = Mark::Cursor(0);
+    fn move_line_up() {
+        let buffer = setup_buffer("Some test content\nnew lines!");
         let obj = TextObject {
             kind: Kind::Line(Anchor::Same),
-            offset: Offset::Backward(1, mark),
+            offset: Offset::Backward(1),
         };
 
-        buffer.set_mark(mark, 18);
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::new(1, 1), obj);
         
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(0, 0));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 0));
+        assert_eq!(result.unwrap(), Position::new(1, 0));
     }
 
     #[test]
-    fn move_mark_two_lines_down() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
+    fn move_two_lines_down() {
+        let buffer = setup_buffer("Some test content\nwith new\nlines!");
         let obj = TextObject {
             kind: Kind::Line(Anchor::Same),
-            offset: Offset::Forward(2, mark),
+            offset: Offset::Forward(2),
         };
 
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::origin(), obj);
         
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(27, 0));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 2));
+        assert_eq!(result.unwrap(), Position::new(0, 2));
     }
 
     #[test]
-    fn move_mark_line_down_to_shorter_line() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
+    fn move_line_down_to_shorter_line() {
+        let buffer = setup_buffer("Some test content\nwith new\nlines!");
         let obj = TextObject {
             kind: Kind::Line(Anchor::Same),
-            offset: Offset::Forward(1, mark),
+            offset: Offset::Forward(1),
         };
 
-        buffer.set_mark(mark, 15);
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::new(15, 0), obj);
 
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(26, 15));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (8, 1));
+        assert_eq!(result.unwrap(), Position::new(8, 1));
 
         let obj = TextObject {
             kind: Kind::Line(Anchor::Same),
-            offset: Offset::Backward(1, mark),
+            offset: Offset::Backward(1),
         };
-        buffer.set_mark_to_object(mark, obj);
-        
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(15, 15));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (15, 0));
+
+        let result = buffer.get_object_position(result.unwrap(), obj);
+
+        assert_eq!(result.unwrap(), Position::new(8, 0));
     }
 
     #[test]
-    fn move_mark_two_words_right() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
+    fn move_two_words_right() {
+        let buffer = setup_buffer("Some test content\nwith new\nlines!");
         let obj = TextObject {
             kind: Kind::Word(Anchor::Start),
-            offset: Offset::Forward(2, mark),
+            offset: Offset::Forward(2),
         };
 
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::origin(), obj);
 
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(10, 10));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (10, 0));
+        assert_eq!(result.unwrap(), Position::new(10, 0));
     }
 
     #[test]
-    fn move_mark_two_words_left() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
+    fn move_two_words_left() {
+        let buffer = setup_buffer("Some test content\nwith new\nlines!");
         let obj = TextObject {
             kind: Kind::Word(Anchor::Start),
-            offset: Offset::Backward(2, mark),
+            offset: Offset::Backward(2),
         };
 
-        buffer.set_mark(mark, 18);
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::new(0, 1), obj);
 
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 5));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 0));
+        assert_eq!(result.unwrap(), Position::new(5, 0));
     }
 
     #[test]
-    fn move_mark_move_word_left_at_start_of_buffer() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
+    fn move_move_word_left_at_start_of_buffer() {
+        let buffer = setup_buffer("Some test content\nwith new\nlines!");
         let obj = TextObject {
             kind: Kind::Word(Anchor::Start),
-            offset: Offset::Backward(1, mark),
+            offset: Offset::Backward(1),
         };
 
-        buffer.set_mark(mark, 5);
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::new(5, 0), obj);
 
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(0, 0));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 0));
+        assert_eq!(result.unwrap(), Position::origin());
     }
 
     #[test]
-    fn move_mark_move_word_right_past_end_of_buffer() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
+    fn move_move_word_right_past_end_of_buffer() {
+        let buffer = setup_buffer("Some test content\nwith new\nlines!");
         let obj = TextObject {
             kind: Kind::Word(Anchor::Start),
-            offset: Offset::Forward(8, mark),
+            offset: Offset::Forward(8),
         };
 
-        buffer.set_mark(mark, 28);
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::new(0, 2), obj);
 
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(33, 6));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (6, 2));
+        assert_eq!(result.unwrap(), Position::new(6, 2));
     }
 
     #[test]
-    fn move_mark_second_word_in_buffer() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
-        let obj = TextObject {
-            kind: Kind::Word(Anchor::Start),
-            offset: Offset::Absolute(2),
-        };
-
-        buffer.set_mark(mark, 18);
-        buffer.set_mark_to_object(mark, obj);
-
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 5));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 0));
-    }
-
-    #[test]
-    fn move_mark_fifth_word_in_buffer() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
-        let obj = TextObject {
-            kind: Kind::Word(Anchor::Start),
-            offset: Offset::Absolute(5),
-        };
-
-        buffer.set_mark(mark, 18);
-        buffer.set_mark_to_object(mark, obj);
-
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(23, 5));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 1));
-    }
-
-    #[test]
-    fn move_mark_second_line_in_buffer() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
-        let obj = TextObject {
-            kind: Kind::Line(Anchor::Start),
-            offset: Offset::Absolute(2),
-        };
-
-        buffer.set_mark_to_object(mark, obj);
-
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
-    }
-
-    #[test]
-    fn move_mark_second_char_in_buffer() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
-        let obj = TextObject {
-            kind: Kind::Char,
-            offset: Offset::Absolute(2),
-        };
-
-        buffer.set_mark(mark, 18);
-        buffer.set_mark_to_object(mark, obj);
-
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(2, 2));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (2, 0));
-    }
-
-    #[test]
-    fn move_mark_end_of_line() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
+    fn move_end_of_line() {
+        let buffer = setup_buffer("Some test content\nwith new\nlines!");
         let obj = TextObject {
             kind: Kind::Line(Anchor::End),
-            offset: Offset::Forward(0, mark),
+            offset: Offset::Forward(0),
         };
 
-        buffer.set_mark(mark, 19);
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::new(0, 1), obj);
 
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(26, 8));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (8, 1));
+        assert_eq!(result.unwrap(), Position::new(8, 1));
     }
 
     #[test]
-    fn move_mark_start_of_line() {
-        let mut buffer = setup_buffer("Some test content\nwith new\nlines!");
-        let mark = Mark::Cursor(0);
+    fn move_start_of_line() {
+        let buffer = setup_buffer("Some test content\nwith new\nlines!");
         let obj = TextObject {
             kind: Kind::Line(Anchor::Start),
-            offset: Offset::Backward(0, mark),
+            offset: Offset::Backward(0),
         };
 
-        buffer.set_mark(mark, 19);
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::new(1, 1), obj);
 
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+        assert_eq!(result.unwrap(), Position::new(0, 1));
     }
 
     #[test]
-    fn move_mark_past_last_line() {
-        let mut buffer = setup_buffer("Some test content\n");
-        let mark = Mark::Cursor(0);
+    fn move_past_last_line() {
+        let buffer = setup_buffer("Some test content\n");
         let obj = TextObject {
             kind: Kind::Line(Anchor::Same),
-            offset: Offset::Forward(6, mark),
+            offset: Offset::Forward(6),
         };
 
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::origin(), obj);
 
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+        assert_eq!(result.unwrap(), Position::new(0, 1));
     }
 
     #[test]
-    fn move_mark_line_up_middle_of_file() {
-        let mut buffer = setup_buffer("Some\ntest\ncontent");
-        let mark = Mark::Cursor(0);
+    fn move_line_up_middle_of_file() {
+        let buffer = setup_buffer("Some\ntest\ncontent");
         let obj = TextObject {
             kind: Kind::Line(Anchor::Same),
-            offset: Offset::Backward(1, mark),
+            offset: Offset::Backward(1),
         };
 
-        buffer.set_mark(mark, 10);
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::new(0, 2), obj);
 
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 0));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
+        assert_eq!(result.unwrap(), Position::new(0, 1));
     }
 
     #[test]
-    fn move_mark_line_up_past_first_line() {
-        let mut buffer = setup_buffer("Some\ntest\ncontent");
-        let mark = Mark::Cursor(0);
+    fn move_line_up_past_first_line() {
+        let buffer = setup_buffer("Some\ntest\ncontent");
         let obj = TextObject {
             kind: Kind::Line(Anchor::Same),
-            offset: Offset::Backward(1, mark),
+            offset: Offset::Backward(1),
         };
 
-        buffer.set_mark_to_object(mark, obj);
+        let result = buffer.get_object_position(Position::origin(), obj);
 
-        assert_eq!(buffer.marks.get(&mark).unwrap(), &(0, 0));
-        assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 0));
+        assert_eq!(result.unwrap(), Position::origin());
     }
 
     #[test]
     fn test_insert() {
-        let mut buffer = setup_buffer("");
-        buffer.insert_char(Mark::Cursor(0), b'A');
-        assert_eq!(buffer.len(), 2);
-        assert_eq!(buffer.lines().next().unwrap(), [b'A']);
+        let mut buffer = setup_buffer("ABDE");
+
+        buffer.insert_char(Position::new(2, 0), 'C');
+
+        assert_eq!(buffer.num_lines(), 1);
+        assert_eq!(buffer.slice_full().lines().next().unwrap(), "ABCDE");
     }
 
     #[test]
     fn test_remove() {
         let mut buffer = setup_buffer("ABCD");
-        let mark = Mark::Cursor(0);
-        let obj = TextObject {
-            kind: Kind::Char,
-            offset: Offset::Forward(1, mark)
-        };
-        buffer.remove_from_mark_to_object(mark, obj);
 
-        assert_eq!(buffer.len(), 4);
-        assert_eq!(buffer.lines().next().unwrap(), [b'B', b'C', b'D']);
-    }
+        buffer.remove(Position::new(1, 0), Position::new(2, 0));
 
-    #[test]
-    fn test_set_mark() {
-        let mut buffer = setup_buffer("Test");
-        buffer.set_mark(Mark::Cursor(0), 2);
-
-        assert_eq!(buffer.get_mark_idx(Mark::Cursor(0)).unwrap(), 2);
+        assert_eq!(buffer.to_string(), "ACD");
     }
 
     #[test]
     fn test_to_lines() {
         let buffer = setup_buffer("Test\nA\nTest");
-        let mut lines = buffer.lines();
+        let mut lines = buffer.slice_full().lines();
 
-        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't',b'\n']);
-        assert_eq!(lines.next().unwrap(), [b'A',b'\n']);
-        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't']);
+        assert_eq!(lines.next().unwrap(), "Test\n");
+        assert_eq!(lines.next().unwrap(), "A\n");
+        assert_eq!(lines.next().unwrap(), "Test");
+        assert!(lines.next().is_none());
     }
 
     #[test]
     fn test_to_lines_from() {
-        let mut buffer = setup_buffer("Test\nA\nTest");
-        buffer.set_mark(Mark::Cursor(0), 6);
-        let mut lines = buffer.lines_from(Mark::Cursor(0)).unwrap();
+        let buffer = setup_buffer("Test\nA\nTest");
+        let mut lines = buffer.slice_from(Position::new(1, 1)).lines();
 
-        assert_eq!(lines.next().unwrap(), [b'\n']);
-        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't']);
+        assert_eq!(lines.next().unwrap(), "\n");
+        assert_eq!(lines.next().unwrap(), "Test");
+        assert!(lines.next().is_none());
     }
 
     #[test]
     fn test_to_chars() {
-        let mut buffer = setup_buffer("Test𐍈Test");
-        buffer.set_mark(Mark::Cursor(0), 0);
-        let mut chars = buffer.chars();
+        let buffer = setup_buffer("Test𐍈Test");
+        let mut chars = buffer.slice_full().chars();
         assert!(chars.next().unwrap() == 'T');
         assert!(chars.next().unwrap() == 'e');
         assert!(chars.next().unwrap() == 's');
@@ -1134,9 +1018,8 @@ mod test {
 
     #[test]
     fn test_to_chars_from() {
-        let mut buffer = setup_buffer("Test𐍈Test");
-        buffer.set_mark(Mark::Cursor(0), 2);
-        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap();
+        let buffer = setup_buffer("Test𐍈Test");
+        let mut chars = buffer.slice_from(Position::new(2, 0)).chars();
         assert!(chars.next().unwrap() == 's');
         assert!(chars.next().unwrap() == 't');
         assert!(chars.next().unwrap() == '𐍈');
@@ -1144,13 +1027,10 @@ mod test {
 
     #[test]
     fn test_to_chars_rev() {
-        // 𐍈 encodes as utf8 in 4 bytes... we need a solution for buffer offsets by byte/char
-        let mut buffer = setup_buffer("Test𐍈Test");
-        buffer.set_mark(Mark::Cursor(0), 8);
-        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap().reverse();
+        let buffer = setup_buffer("Test𐍈Test");
+        let mut chars = buffer.slice_to(Position::new(6, 0)).chars().rev();
         assert!(chars.next().unwrap() == 'T');
         assert!(chars.next().unwrap() == '𐍈');
         assert!(chars.next().unwrap() == 't');
     }
-
 }
