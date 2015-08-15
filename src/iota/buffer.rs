@@ -186,7 +186,7 @@ impl Buffer {
 
     /// Finds the position of a character at the given byte index. None if no
     /// such character exists.
-    fn get_position(&self, index: usize) -> Option<Position> { // cczn nonexistent chars
+    fn get_position(&self, index: usize) -> Option<Position> {
         if self.has_character_at_index(index) {
             let newlines = (0..index).filter(|&i| self.text[i] == b'\n').collect::<Vec<usize>>();
             let y = newlines.len();
