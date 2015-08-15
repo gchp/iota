@@ -1,7 +1,5 @@
 use std::default::Default;
 
-use buffer::Mark;
-
 #[derive(Copy, Clone, Debug)]
 pub enum Kind {
     Char,
@@ -56,38 +54,27 @@ impl Default for Anchor {
 
 #[derive(Copy, Clone, Debug)]
 pub enum Offset {
-    Absolute(usize),
-    Backward(usize, Mark),
-    Forward(usize, Mark),
+    Backward(usize),
+    Forward(usize),
 }
 
 impl Offset {
     pub fn with_num(&self, n: usize) -> Offset{
         match *self {
-            Offset::Absolute(_)    => Offset::Absolute(n),
-            Offset::Backward(_, m) => Offset::Backward(n, m),
-            Offset::Forward(_, m)  => Offset::Forward(n, m),
+            Offset::Backward(_) => Offset::Backward(n),
+            Offset::Forward(_)  => Offset::Forward(n),
         }
     }
 }
 
 impl Default for Offset {
     fn default() -> Offset {
-        Offset::Forward(0, Mark::Cursor(0))
+        Offset::Forward(0)
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct TextObject {
     pub kind: Kind,
     pub offset: Offset
-}
-
-impl Default for TextObject {
-    fn default() -> TextObject {
-        TextObject {
-            kind: Default::default(),
-            offset: Default::default()
-        }
-    }
 }

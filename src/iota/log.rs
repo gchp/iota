@@ -4,25 +4,27 @@
 use std::mem;
 
 /// Represents a modification of data.
+#[derive(Copy, Clone)]
 pub enum Change {
     ///Character insertion.
-    Insert(usize, u8),
+    Insert(usize, char),
     ///Character removal.
-    Remove(usize, u8),
+    Remove(usize, char),
 }
 
 impl Change {
     /// Reverses a change, consuming it in the process
     pub fn reverse(self) -> Change {
         match self {
-            Change::Insert(usize, u8) => Change::Remove(usize, u8),
-            Change::Remove(usize, u8) => Change::Insert(usize, u8),
+            Change::Insert(usize, char) => Change::Remove(usize, char),
+            Change::Remove(usize, char) => Change::Insert(usize, char),
         }
     }
 }
 
 /// Log entry
 /// Entries may only be played linearly--they don't make sense out of order.
+#[derive(Clone)]
 pub struct LogEntry {
     /// The initial point position associated with this log entry.
     ///
@@ -118,28 +120,28 @@ impl Log {
         }
     }
 
-    /// This reverses the most recent change on the undo stack, places the new change on the redo
-    /// stack, and then returns a reference to it.  It is the caller's responsibility to actually
-    /// perform the change.
-    pub fn undo(&mut self) -> Option<&LogEntry> {
+    /// This reverses the most recent change on the undo stack, places the new
+    /// change on the redo stack, and then returns it.  It is the caller's
+    /// responsibility to actually perform the change.
+    pub fn undo(&mut self) -> Option<LogEntry> {
         match self.undo.pop() {
             Some(change) => {
                 let last = self.redo.len();
                 self.redo.push(change.reverse());
-                Some(&self.redo[last])
+                Some(self.redo[last].clone())
             },
             None => None
         }
     }
-    /// This reverses the most recent change on the redo stack, places the new change on the undo
-    /// stack, and then returns a reference to it.  It is the caller's responsibility to actually
-    /// perform the change.
-    pub fn redo(&mut self) -> Option<&LogEntry> {
+    /// This reverses the most recent change on the redo stack, places the new
+    /// change on the undo stack, and then returns it.  It is the caller's
+    /// responsibility to actually perform the change.
+    pub fn redo(&mut self) -> Option<LogEntry> {
         match self.redo.pop() {
             Some(change) => {
                 let last = self.undo.len();
                 self.undo.push(change.reverse());
-                Some(&self.undo[last])
+                Some(self.undo[last].clone())
             },
             None => None
         }

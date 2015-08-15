@@ -1,31 +1,22 @@
 //FIXME: Check unicode support
 // stdlib dependencies
 use std::cmp;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::{Stdin, Read};
 use std::convert::From;
+use std::fmt;
+use std::str;
 
 // external dependencies
 use gapbuffer::GapBuffer;
 
 // local dependencies
 use log::{Log, Change, LogEntry};
+use utils;
 use utils::is_alpha_or_;
 use input::Input;
-use iterators::{Lines, Chars};
 use textobject::{TextObject, Kind, Offset, Anchor};
-
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Mark {
-    /// For keeping track of cursors.
-    Cursor(usize),
-    
-    /// For using in determining some display of characters
-    DisplayMark(usize),
-}
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum WordEdgeMatch {
@@ -36,13 +27,6 @@ pub enum WordEdgeMatch {
 pub struct Buffer {
     /// Current buffers text
     text: GapBuffer<u8>,
-
-    /// Table of marked indices in the text
-    /// KEY: mark id => VALUE : (absolute index, line index)
-    ///
-    /// - absolute index is the offset from the start of the buffer
-    /// - line index is the offset from the start of the current line
-    marks: HashMap<Mark, (usize, usize)>,
 
     /// Transaction history (used for undo/redo)
     pub log: Log,
@@ -57,383 +41,390 @@ impl Buffer {
         Buffer {
             file_path: None,
             text: GapBuffer::new(),
-            marks: HashMap::new(),
             log: Log::new(),
         }
     }
 
-    /// Length of the text stored in this buffer.
-    pub fn len(&self) -> usize {
-        self.text.len() + 1
+    /// The number of lines in the buffer. At least 1.
+    pub fn num_lines(&self) -> usize {
+        (0..self.text.len()).filter(|&i| self.text[i] == b'\n').count() + 1
     }
 
-    /// The x,y coordinates of a mark within the file. None if not a valid mark.
-    pub fn get_mark_coords(&self, mark: Mark) -> Option<(usize, usize)> {
-        if let Some(idx) = self.get_mark_idx(mark) {
-            if let Some(line) = get_line(idx, &self.text) {
-                Some((idx - line, (0..idx).filter(|i| -> bool { self.text[*i] == b'\n' })
-                                               .count()))
-            } else { None }
-        } else { None }
+    /// Returns true if the buffer contains no characters.
+    pub fn is_empty(&self) -> bool {
+        self.text.len() == 0
     }
 
-    /// The absolute index of a mark within the file. None if not a valid mark.
-    pub fn get_mark_idx(&self, mark: Mark) -> Option<usize> {
-        if let Some(&(idx, _)) = self.marks.get(&mark) {
-            if idx < self.len() {
-                Some(idx)
-            } else { None }
-        } else { None }
+    /// Retrieves the character at a given position.
+    pub fn char_at(&self, pos: Position) -> Option<char> {
+        self.get_index(pos).map(|index| {
+            self.char_at_index(index)
+        })
     }
 
-    /// Creates an iterator on the text by chars.
-    pub fn chars(&self) -> Chars {
-        Chars {
-            buffer: &self.text,
-            idx: 0,
-            forward: true,
+    /// Insert a char at the position.
+    pub fn insert_char(&mut self, pos: Position, ch: char) {
+        let idx = self.get_writable_index(pos).unwrap_or_else(|| {
+            panic!("can't insert character into invalid position {:?}", pos);
+        });
+        self.insert_char_at_index(idx, ch);
+        let mut transaction = self.log.start(idx);
+        transaction.log(Change::Insert(idx, ch), idx);
+    }
+
+    /// Removes the characters between the two positions.
+    pub fn remove(&mut self, start: Position, end: Position) {
+        let a = self.get_index(start);
+        let b = self.get_writable_index(end);
+        match (a, b) {
+            (Some(a), Some(b)) => self.remove_range(a, b),
+            _ => panic!("can't remove text between invalid positions: {:?} to {:?}", start, end),
         }
     }
 
-    /// Creates an iterator on the text by chars that begins at the specified index.
-    pub fn chars_from_idx(&self, idx: usize) -> Option<Chars> {
-        if idx < self.len() {
-            Some(Chars {
-                buffer: &self.text,
-                idx: idx,
-                forward: true,
-            })
-        } else { None }
+    /// Retrieves the character at the given byte index.
+    fn char_at_index(&self, index: usize) -> char {
+        let bytes = index..(index + utils::char_length(self.text[index]));
+        let bytes: Vec<u8> = bytes.map(|i| self.text[i]).collect();
+        str::from_utf8(&bytes).unwrap().chars().next().unwrap()
     }
 
-    /// Creates an iterator on the text by chars that begins at the specified mark.
-    pub fn chars_from(&self, mark: Mark) -> Option<Chars> {
-        if let Some(&(idx, _)) = self.marks.get(&mark) {
-            self.chars_from_idx(idx)
-        } else { None }
+    /// Returns the text in the byte-index range as a String.
+    fn slice_bytes(&self, start: usize, end: usize) -> String {
+        let bytes: Vec<u8> = (start..end).map(|i| self.text[i]).collect();
+        String::from(str::from_utf8(&bytes).unwrap())
     }
 
-    /// Creates an iterator on the text by lines.
-    pub fn lines(&self) -> Lines {
-        Lines {
-            buffer: &self.text,
-            tail: 0,
-            head: self.len()
+    /// Inserts a character at the given byte index.
+    fn insert_char_at_index(&mut self, index: usize, ch: char) {
+        let bytes = ch.to_string().into_bytes();
+        for &byte in bytes.iter().rev() {
+            self.text.insert(index, byte);
         }
     }
 
-    /// Creates an iterator on the text by lines that begins at the specified mark.
-    pub fn lines_from(&self, mark: Mark) -> Option<Lines> {
-        if let Some(&(idx, _)) = self.marks.get(&mark) {
-            if idx < self.len() {
-                Some(Lines {
-                    buffer: &self.text,
-                    tail: idx,
-                    head: self.len(),
-                })
-            } else { None }
-        } else { None }
+    /// Remove the chars in the byte-index range
+    fn remove_range(&mut self, start: usize, mut end: usize) {
+        debug_assert!(self.has_character_at_index(start));
+        let mut removed_chars = Vec::new();
+        while end > start {
+            let idx = self.prev_char_index(end).unwrap();
+            let ch = self.remove_char_at_index(idx);
+            removed_chars.push((idx, ch));
+            end = idx;
+        }
+        let mut transaction = self.log.start(start);
+        for (idx, ch) in removed_chars {
+            transaction.log(Change::Remove(idx, ch), idx);
+        }
     }
 
-    /// Return the buffer index of a TextObject
-    pub fn get_object_index(&self, obj: TextObject) -> Option<(usize, usize)> {
+    /// Remove the char at the given byte index and return it
+    fn remove_char_at_index(&mut self, index: usize) -> char {
+        let c = self.char_at_index(index);
+        let len = utils::char_length(self.text[index]);
+        for _ in 0..len {
+            self.text.remove(index);
+        }
+        c
+    }
+
+    /// The index of a Position within the file in bytes. None if the argument
+    /// represents a position that doesn't have a corresponding character. If
+    /// Some(x) is returned, then x is a valid index for reading into the
+    /// backing GapBuffer.
+    fn get_index(&self, pos: Position) -> Option<usize> {
+        match self.get_writable_index(pos) {
+            Some(index) if index < self.text.len() => Some(index),
+            _ => None
+        }
+    }
+
+    /// The index of a Position within the file in bytes. Unlike get_index,
+    /// this function can return indices which are valid for writing to but
+    /// not for reading from. If Some(x) is returned, then x is a valid index
+    /// for inserting a character into the backing GapBuffer.
+    fn get_writable_index(&self, pos: Position) -> Option<usize> {
+        self.get_writable_index_of_line(pos.y).and_then(|line_start| {
+            let mut index = line_start;
+            for _ in 0..pos.x {
+                if index >= self.text.len() {
+                    return None;
+                }
+                match self.text[index] {
+                    b'\n' => { return None },
+                    b => { index += utils::char_length(b) },
+                }
+            }
+            Some(index)
+        })
+    }
+
+    /// The byte index of the first character on line `lineno`. None if the
+    /// buffer doesn't have enough lines. If Some(x) is returned, then x is a
+    /// valid index for reading into the backing GapBuffer.
+    fn get_index_of_line(&self, lineno: usize) -> Option<usize> {
+        match self.get_writable_index_of_line(lineno) {
+            Some(idx) if idx < self.text.len() => Some(idx),
+            _ => None,
+        }
+    }
+
+    /// The byte index of the first character on line `lineno`. None if the
+    /// buffer doesn't have enough lines. If Some(x) is returned, then x is a
+    /// valid index for writing into the backing GapBuffer.
+    fn get_writable_index_of_line(&self, lineno: usize) -> Option<usize> {
+        if lineno == 0 {
+            Some(0)
+        } else {
+            (0..self.text.len())
+                .filter(|&i| self.text[i] == b'\n')
+                .nth(lineno - 1)
+                .map(|i| i + 1)
+        }
+    }
+
+    /// Finds the position of a character at the given byte index. None if no
+    /// such character exists.
+    fn get_position(&self, index: usize) -> Option<Position> { // cczn nonexistent chars
+        if self.has_character_at_index(index) {
+            let newlines = (0..index).filter(|&i| self.text[i] == b'\n').collect::<Vec<usize>>();
+            let y = newlines.len();
+            let mut cur_index = newlines.last().map(|i| i + 1).unwrap_or(0);
+            let mut x = 0;
+            while cur_index < index {
+                cur_index += utils::char_length(self.text[cur_index]);
+                x += 1;
+            }
+            Some(Position::new(x, y))
+        } else {
+            None
+        }
+    }
+
+    fn get_writable_position(&self, index: usize) -> Option<Position> {
+        if index == self.text.len() {
+            Some(self.last_writable_position())
+        } else {
+            self.get_position(index)
+        }
+    }
+
+    /// Finds the position of the last character in the buffer. Returns None
+    /// if the buffer is empty.
+    fn last_readable_position(&self) -> Option<Position> {
+        // find the last u8 which is the first u8 of a character.
+        (0..self.text.len()).rev()
+                            .find(|&i| utils::is_start_of_char(self.text[i]))
+                            .and_then(|i| self.get_position(i))
+
+    }
+
+    /// Finds the position after the last character in the buffer, or (0, 0)
+    /// if the buffer is empty.
+    fn last_writable_position(&self) -> Position {
+        // find the last u8 which is the first u8 of a character.
+        let index = (0..self.text.len()).rev()
+                                        .find(|&i| utils::is_start_of_char(self.text[i]));
+        if let Some(index) = index {
+            let pos = self.get_position(index).unwrap();
+            match self.text[index] {
+                b'\n' => Position::new(0, pos.y + 1),
+                _ => Position::new(pos.x + 1, pos.y),
+            }
+        } else {
+            Position::origin()
+        }
+    }
+
+    /// Finds the next position after the given position in the buffer.
+    /// Returns None if the given position doesn't correspond to a character.
+    /// The returned position will either correspond to a character or be the
+    /// next position after the last character in the buffer.
+    pub fn next_position(&self, pos: Position) -> Option<Position> {
+        self.get_index(pos).map(|index| {
+            if self.text[index] == b'\n' {
+                Position::new(0, pos.y + 1)
+            } else {
+                Position::new(pos.x + 1, pos.y)
+            }
+        })
+    }
+
+    /// Finds the previous readable position before the given position in the
+    /// buffer. Returns None if the position is (0, 0) or the buffer is empty.
+    /// The returned position will correspond to a character.
+    pub fn prev_position(&self, pos: Position) -> Option<Position> {
+        if pos == Position::origin() {
+            None
+        } else if let Some(index) = self.get_index(pos) {
+            let prev_index = self.prev_char_index(index).unwrap();
+            self.get_position(prev_index)
+        } else {
+            self.last_readable_position()
+        }
+    }
+
+    /// Returns true if the given byte index points to a character in the
+    /// buffer.
+    fn has_character_at_index(&self, index: usize) -> bool {
+        index < self.text.len() && utils::is_start_of_char(self.text[index])
+    }
+
+    /// Finds the byte index of the character immediately before the character
+    /// specified by the given byte index. None if the given index is zero.
+    fn prev_char_index(&self, start: usize) -> Option<usize> {
+        debug_assert!(start == self.text.len() || self.has_character_at_index(start));
+        (0..start).rev().find(|&i| utils::is_start_of_char(self.text[i]))
+    }
+
+    /// Finds the "closest" position less than or equal to the given position
+    /// that can be written to.
+    fn closest_writable_position(&self, pos: Position) -> Position {
+        if let Some(line_index) = self.get_writable_index_of_line(pos.y) {
+            // step through the line until the char is found or the end of the
+            // buffer or \n is reached
+            let mut index = line_index;
+            let mut x = 0;
+            while x < pos.x && index < self.text.len() && self.text[index] != b'\n' {
+                index += utils::char_length(self.text[index]);
+                x += 1;
+            }
+            Position::new(x, pos.y)
+        } else {
+            // not enough lines
+            self.last_writable_position()
+        }
+    }
+
+    /// Returns true if the given position can be written to.
+    fn position_is_writable(&self, pos: Position) -> bool {
+        self.get_writable_index(pos).is_some()
+    }
+
+    /// Creates a BufferSlice representing the text between the two positions.
+    pub fn slice(&self, start: Position, end: Position) -> BufferSlice {
+        // make sure that the positions are valid for the buffer
+        // to satify the assumptions of BufferSlice
+        debug_assert!(self.position_is_writable(start));
+        debug_assert!(self.position_is_writable(end));
+        debug_assert!(start <= end);
+        BufferSlice {
+            buffer: self,
+            start: start,
+            end: end,
+        }
+    }
+
+    /// Creates a BufferSlice representing the text up to (but not including)
+    /// the specified position.
+    pub fn slice_to(&self, end: Position) -> BufferSlice {
+        self.slice(Position::origin(), end)
+    }
+
+    /// Creates a BufferSlice representing the text from the specified
+    /// position until the end of the buffer.
+    pub fn slice_from(&self, start: Position) -> BufferSlice {
+        self.slice(start, self.last_writable_position())
+    }
+
+    /// Creates a BufferSlice representing the full text in the buffer.
+    pub fn slice_full(&self) -> BufferSlice {
+        self.slice(Position::origin(), self.last_writable_position())
+    }
+
+    /// Return the position of a TextObject relative to a given position. If
+    /// Some(pos) is returned, pos will be a writable position for the buffer.
+    pub fn get_object_position(&self, start: Position, obj: TextObject) -> Option<Position> {
+        debug_assert!(self.get_writable_index(start).is_some());
         match obj.kind {
-            Kind::Char => self.get_char_index(obj.offset),
-            Kind::Line(anchor) => self.get_line_index(obj.offset, anchor),
-            Kind::Word(anchor) => self.get_word_index(obj.offset, anchor),
+            Kind::Char => self.get_char_object_position(start, obj.offset),
+            Kind::Line(anchor) => self.get_line_object_position(start, obj.offset, anchor),
+            Kind::Word(anchor) => self.get_word_object_position(start, obj.offset, anchor),
         }
     }
 
-    /// Get the absolute index of a specific character in the buffer
-    ///
-    /// This character can be at an absolute position, or a postion relative
-    /// to a given mark.
-    ///
-    /// The absolute offset is in the form (index, line_index) where:
-    ///     index = the offset from the start of the buffer
-    ///     line_index = the offset from the start of the current line
-    ///
-    /// ie: get the index of the 7th character after the cursor
-    /// or: get the index of the 130th character from the start of the buffer
-    fn get_char_index(&self, offset: Offset) -> Option<(usize, usize)> {
-        let text = &self.text;
-
+    fn get_char_object_position(&self, start: Position, offset: Offset) -> Option<Position> {
         match offset {
-            // get the index of the char `offset` chars in front of `mark`
-            //
-            // ie: get the index of the char which is X chars in front of the MARK
-            // or: get the index of the char which is 5 chars in front of the Cursor
-            Offset::Forward(offset, from_mark) => {
-                let last = self.len() - 1;
-                if let Some(tuple)= self.marks.get(&from_mark) {
-                    let (index, _) = *tuple;
-                    let absolute_index = index + offset;
-                    if absolute_index < last {
-                        Some((absolute_index, absolute_index - get_line(absolute_index, text).unwrap()))
-                    } else {
-                        Some((last, last - get_line(last, text).unwrap()))
-                    }
-                } else {
-                    None
-                }
+            // the char `offset` chars after `start`
+            Offset::Forward(offset) => {
+                self.slice_from(start).positions().nth(offset)
+                    .or_else(|| Some(self.last_writable_position()))
             }
 
-            // get the index of the char `offset` chars before of `mark`
-            //
-            // ie: get the index of the char which is X chars before the MARK
-            // or: get the index of the char which is 5 chars before the Cursor
-            Offset::Backward(offset, from_mark) => {
-                if let Some(tuple)= self.marks.get(&from_mark) {
-                    let (index, _) = *tuple;
-                    if index >= offset {
-                        let absolute_index = index - offset;
-                        Some((absolute_index, absolute_index - get_line(absolute_index, text).unwrap()))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+            Offset::Backward(0) => Some(start),
+
+            // the char `offset` chars before `start`
+            Offset::Backward(offset) => {
+                self.slice_to(start).positions().rev().nth(offset - 1)
+                    .or_else(|| Some(Position::origin()))
             }
-
-            // get the index of the char at position `offset` in the buffer
-            //
-            // ie: get the index of the 5th char in the buffer
-            Offset::Absolute(absolute_char_offset) => {
-                Some((absolute_char_offset, absolute_char_offset - get_line(absolute_char_offset, text).unwrap()))
-            },
         }
     }
 
-    /// Get the absolute index of a specific line in the buffer
-    ///
-    /// This line can be at an absolute position, or a postion relative
-    /// to a given mark.
-    ///
-    /// The absolute offset is in the form (index, line_index) where:
-    ///     index = the offset from the start of the buffer
-    ///     line_index = the offset from the start of the current line
-    ///
-    /// The index is calculated based on a given Anchor. This Anchor determines
-    /// where in the line the index is calculated. For instance, if you want
-    /// the index of the start of the line, you would use Anchor::Start. If you
-    /// are on the 5th char in a line, and want to get the index of the 5th char
-    /// in another line, you can use Anchor::Same.
-    ///
-    /// ie: get the index of the middle of the 7th line after the cursor
-    /// or: get the index of the start of the 130th line from the start of the buffer
-    fn get_line_index(&self, offset: Offset, anchor: Anchor) -> Option<(usize, usize)> {
-        match offset {
-            Offset::Forward(offset, from_mark)  => { self.get_line_index_forward(anchor, offset, from_mark) }
-            Offset::Backward(offset, from_mark) => { self.get_line_index_backward(anchor, offset, from_mark) }
-            Offset::Absolute(line_number)       => { self.get_line_index_absolute(anchor, line_number) }
-        }
-    }
-
-    /// Get the index of the line identified by line_number
-    ///
-    /// ie. Get the index of Anchor inside the 23th line in the buffer
-    /// or: Get the index of the start of the 23th line
-    fn get_line_index_absolute(&self, anchor: Anchor, line_number: usize) -> Option<(usize, usize)> {
-        let text = &self.text;
-
-        let nlines = (0..text.len()).filter(|i| text[*i] == b'\n')
-                                    .take(line_number + 1)
-                                    .collect::<Vec<usize>>();
+    /// Get the position of a specific line in the buffer relative to a given
+    /// position based on a given Anchor.
+    fn get_line_object_position(&self, start: Position, offset: Offset, anchor: Anchor) -> Option<Position> {
+        let lineno = match offset {
+            Offset::Forward(offset)  => { start.y + offset }
+            Offset::Backward(offset) => { start.y - cmp::min(start.y, offset) }
+        };
         match anchor {
             Anchor::Start => {
-                let end_offset = nlines[line_number - 1];
-                let start = get_line(end_offset, text).unwrap();
-                Some((start, 0))
+                let start = Position::new(0, lineno);
+                match self.position_is_writable(start) {
+                    true => Some(start),
+                    false => None,
+                }
             }
 
             Anchor::End => {
-                let end_offset = nlines[line_number - 1];
-                Some((end_offset, end_offset))
+                let next_line = Position::new(0, lineno + 1);
+                match self.position_is_writable(next_line) {
+                    true => self.prev_position(next_line),
+                    false => Some(self.closest_writable_position(next_line)),
+                }
+            }
+
+            Anchor::Same => {
+                let same = Position::new(start.x, lineno);
+                match self.position_is_writable(same) {
+                    true => Some(same),
+                    false => Some(self.closest_writable_position(same)),
+                }
             }
 
             _ => {
                 print!("Unhandled line anchor: {:?} ", anchor);
-                None
-            },
-        }
-    }
-
-
-    fn get_line_index_backward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<(usize, usize)> {
-        let text = &self.text;
-
-        if let Some(tuple) = self.marks.get(&from_mark) {
-            let (index, line_index) = *tuple;
-            let nlines = (0..index).rev().filter(|i| text[*i] == b'\n')
-                                         .take(offset + 1)
-                                         .collect::<Vec<usize>>();
-
-            match anchor {
-                // Get the index of the start of the desired line
-                Anchor::Start => {
-                    // if this is the first line in the buffer
-                    if nlines.len() == 0 {
-                        return Some((0, 0))
-                    }
-                    let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-                    Some((start_offset + 1, 0))
-                }
-
-                // ie. If the current line_index is 5, then the line_index
-                // returned will be the fifth index from the start of the
-                // desired line.
-                Anchor::Same => {
-                    if offset == 0 {
-                        Some((0, 0)) // going to start of the first line
-                    } else if offset == nlines.len() {
-                        Some((cmp::min(line_index, nlines[0]), line_index))
-                    } else if offset > nlines.len() {
-                        Some((0, 0)) // trying to move up from the first line
-                    } else {
-                        Some((cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index))
-                    }
-                }
-
-                _ => {
-                    print!("Unhandled line anchor: {:?} ", anchor);
-                    None
-                },
+                Some(start)
             }
-        } else {
-            None
         }
     }
 
-    fn get_line_index_forward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<(usize, usize)> {
-        let text = &self.text;
-        let last = self.len() - 1;
-
-        if let Some(tuple) = self.marks.get(&from_mark) {
-            let (index, line_index) = *tuple;
-            let nlines = (index..text.len()).filter(|i| text[*i] == b'\n')
-                                            .take(offset + 1)
-                                            .collect::<Vec<usize>>();
-
-            match anchor {
-                // Get the same index as the current line_index
-                //
-                // ie. If the current line_index is 5, then the line_index
-                // returned will be the fifth index from the start of the
-                // desired line.
-                Anchor::Same => {
-                    if offset == nlines.len() {
-                        Some((cmp::min(line_index + nlines[offset-1] + 1, last), line_index))
-                    } else {
-                        if offset > nlines.len() {
-                            Some((last, last - get_line(last, text).unwrap()))
-                        } else {
-                            Some((cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index))
-                        }
-                    }
-                }
-
-                // Get the index of the end of the desired line
-                Anchor::End => {
-                    // if this is the last line in the buffer
-                    if nlines.len() == 0 {
-                        return Some((last, offset))
-                    }
-                    let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-                    Some((end_offset, end_offset - get_line(end_offset, text).unwrap()))
-                }
-
-                _ => {
-                    print!("Unhandled line anchor: {:?} ", anchor);
-                    None
-                },
-            }
-        } else {
-            None
-        }
-    }
-
-    fn get_word_index(&self, offset: Offset, anchor: Anchor) -> Option<(usize, usize)> {
-        match offset {
-            Offset::Forward(nth_word, from_mark)  => { self.get_word_index_forward(anchor, nth_word, from_mark) }
-            Offset::Backward(nth_word, from_mark) => { self.get_word_index_backward(anchor, nth_word, from_mark) }
-            Offset::Absolute(word_number)         => { self.get_word_index_absolute(anchor, word_number) }
-        }
-    }
-
-    fn get_word_index_forward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
-        let text = &self.text;
-        let last = self.len() - 1;
-        // TODO: use anchor to determine this
-        let edger = WordEdgeMatch::Whitespace;
-
-
-        if let Some(tuple) = self.marks.get(&from_mark) {
-            let (index, _) = *tuple;
-            match anchor {
-                Anchor::Start => {
-                    // move to the start of nth_word from the mark
-                    if let Some(new_index) = get_words(index, nth_word, edger, text) {
-                        Some((new_index, new_index - get_line(new_index, text).unwrap()))
-                    } else {
-                        Some((last, last - get_line(last, text).unwrap()))
-                    }
-                }
-
-                _ => {
-                    print!("Unhandled word anchor: {:?} ", anchor);
-                    Some((last, last - get_line(last, text).unwrap()))
-                }
-            }
-        } else {
-            None
-        }
-    }
-
-    fn get_word_index_backward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
-        let text = &self.text;
-        // TODO: use anchor to determine this
-        let edger = WordEdgeMatch::Whitespace;
-
-
-        if let Some(tuple) = self.marks.get(&from_mark) {
-            let (index, _) = *tuple;
-            match anchor {
-                Anchor::Start => {
-                    // move to the start of the nth_word before the mark
-                    if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
-                        Some((new_index, new_index - get_line(new_index, text).unwrap()))
-                    } else {
-                        Some((0, 0))
-                    }
-                }
-
-                _ => {
-                    print!("Unhandled word anchor: {:?} ", anchor);
-                    None
-                },
-            }
-        } else {
-            None
-        }
-    }
-
-    fn get_word_index_absolute(&self, anchor: Anchor, word_number: usize) -> Option<(usize, usize)> {
-        let text = &self.text;
-        // TODO: use anchor to determine this
-        let edger = WordEdgeMatch::Whitespace;
-
-
+    fn get_word_object_position(&self, start: Position, offset: Offset, anchor: Anchor) -> Option<Position> {
         match anchor {
-            Anchor::Start => {
-                let new_index = get_words(0, word_number - 1, edger, text).unwrap();
-
-                Some((new_index, new_index - get_line(new_index, text).unwrap()))
-            }
-
+            Anchor::Start => {}
             _ => {
                 print!("Unhandled word anchor: {:?} ", anchor);
-                None
+                return Some(start);
+            }
+        }
+
+        match offset {
+            Offset::Forward(nth_word)  => {
+                self.get_index(start).map(|start_index| {
+                    get_words(start_index, nth_word, WordEdgeMatch::Whitespace, &self.text).and_then(|index| {
+                        self.get_writable_position(index)
+                    }).unwrap_or_else(|| self.last_writable_position())
+                })
+            }
+
+            Offset::Backward(nth_word) => {
+                self.get_index(start).and_then(|start_index| {
+                    get_words_rev(start_index, nth_word, WordEdgeMatch::Whitespace, &self.text).and_then(|index| {
+                        self.get_writable_position(index)
+                    })
+                })
             }
         }
     }
@@ -446,94 +437,208 @@ impl Buffer {
         }
     }
 
-    /// Sets the mark to the location of a given TextObject, if it exists.
-    /// Adds a new mark or overwrites an existing mark.
-    pub fn set_mark_to_object(&mut self, mark: Mark, obj: TextObject) {
-        if let Some(tuple) = self.get_object_index(obj) {
-            self.marks.insert(mark, tuple);
-        }
-    }
-
-    /// Sets the mark to a given absolute index. Adds a new mark or overwrites an existing mark.
-    pub fn set_mark(&mut self, mark: Mark, idx: usize) {
-        if let Some(line) = get_line(idx, &self.text) {
-            if let Some(tuple) = self.marks.get_mut(&mark) {
-                *tuple = (idx, idx - line);
-                return;
-            }
-            self.marks.insert(mark, (idx, idx - line));
-        }
-    }
-
-    // Remove the chars in the range from start to end
-    pub fn remove_range(&mut self, start: usize, end: usize) -> Option<Vec<u8>> {
-        let text = &mut self.text;
-        let mut transaction = self.log.start(start);
-        let mut vec = (start..end)
-            .rev()
-            .filter_map(|idx| text.remove(idx).map(|ch| (idx, ch)))
-            .inspect(|&(idx, ch)| transaction.log(Change::Remove(idx, ch), idx))
-            .map(|(_, ch)| ch)
-            .collect::<Vec<u8>>();
-        vec.reverse();
-        Some(vec)
-    }
-
-    // Remove the chars between mark and object
-    pub fn remove_from_mark_to_object(&mut self, mark: Mark, object: TextObject) -> Option<Vec<u8>> {
-        if let Some(&(mark_idx, _)) = self.marks.get(&mark) {
-            let object_index = self.get_object_index(object);
-
-            if let Some((obj_idx, _)) = object_index {
-                if mark_idx != obj_idx {
-                    let (start, end) = if mark_idx < obj_idx { (mark_idx, obj_idx) } else { (obj_idx, mark_idx) };
-                    return self.remove_range(start, end);
-                }
-            }
-        }
-        None
-    }
-
-    pub fn remove_object(&mut self, object: TextObject) -> Option<Vec<u8>> {
+    pub fn remove_object(&mut self, pos: Position, object: TextObject) {
         let object_start = TextObject { kind: object.kind.with_anchor(Anchor::Start), offset: object.offset };
         let object_end = TextObject { kind: object.kind.with_anchor(Anchor::End), offset: object.offset };
 
-        let start = self.get_object_index(object_start);
-        let end = self.get_object_index(object_end);
+        let start = self.get_object_position(pos, object_start);
+        let end = self.get_object_position(pos, object_end);
 
-        if let (Some((start_index, _)), Some((end_index, _))) = (start, end) {
-            return self.remove_range(start_index, end_index);
-        }
-        None
-    }
-
-    /// Insert a char at the mark.
-    pub fn insert_char(&mut self, mark: Mark, ch: u8) {
-        if let Some(&(idx, _)) = self.marks.get(&mark) {
-            self.text.insert(idx, ch);
-            let mut transaction = self.log.start(idx);
-            transaction.log(Change::Insert(idx, ch), idx);
+        if let (Some(a), Some(b)) = (start, end) {
+            self.remove(a, b);
         }
     }
+
+    // FIXME once unicode support is implemented for Log, redo() and undo()
+    // can be changed to return Option<LogEntry>
 
     /// Redo most recently undone action.
-    pub fn redo(&mut self) -> Option<&LogEntry> {
+    pub fn redo(&mut self) -> Option<Position> {
         if let Some(transaction) = self.log.redo() {
-            commit(transaction, &mut self.text);
-            Some(transaction)
+            commit(&transaction, self);
+            self.get_position(transaction.end_point)
         } else { None }
     }
 
     /// Undo most recently performed action.
-    pub fn undo(&mut self) -> Option<&LogEntry> {
+    pub fn undo(&mut self) -> Option<Position> {
         if let Some(transaction) = self.log.undo() {
-            commit(transaction, &mut self.text);
-            Some(transaction)
+            commit(&transaction, self);
+            self.get_position(transaction.end_point)
         } else { None }
     }
-
 }
 
+impl ToString for Buffer {
+    fn to_string(&self) -> String {
+        let bytes: Vec<u8> = self.text.iter().map(|&b| b).collect();
+        str::from_utf8(&bytes).unwrap().to_string()
+    }
+}
+
+/// An (x, y) position in a buffer, where x is in units of characters, and y
+/// is in units of lines.
+/// 
+/// It is important to note that this doesn't represent a position in screen
+/// coordinates because of multi-codepoint graphemes and graphemes with a
+/// width greater than 1.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Position {
+    /// The vertical distance, in lines, from the first line in a buffer.
+    pub y: usize,
+
+    /// The horizontal distance, in characters, from the first character on a
+    /// line.
+    pub x: usize,
+}
+
+impl Position {
+    /// Returns the position at (0, 0)
+    pub fn origin() -> Position {
+        Position { x: 0, y: 0 }
+    }
+
+    /// Returns the position at (x, y)
+    pub fn new(x: usize, y: usize) -> Position {
+        Position { x: x, y: y }
+    }
+}
+
+impl fmt::Debug for Position {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
+/// A section of a buffer representing all of the text between two positions.
+/// Represents characters in the range [start, end). Both start and end must
+/// either correspond to characters in the buffer or be the next position
+/// after the last character in the buffer.
+#[derive(Copy, Clone)]
+pub struct BufferSlice<'a> {
+    buffer: &'a Buffer,
+    start: Position,
+    end: Position,
+}
+
+impl<'a> BufferSlice<'a> {
+    /// Checks to see if the slice contains any characters.
+    pub fn is_empty(&self) -> bool {
+        self.start >= self.end
+    }
+
+    pub fn positions(self) -> Positions<'a> {
+        Positions { slice: self }
+    }
+
+    pub fn chars(self) -> Chars<'a> {
+        Chars { positions: self.positions() }
+    }
+
+    pub fn lines(self) -> Lines<'a> {
+        Lines { slice: self }
+    }
+}
+
+impl<'a> ToString for BufferSlice<'a> {
+    /// Returns the text in the slice as a String.
+    fn to_string(&self) -> String {
+        let a = self.buffer.get_index(self.start).unwrap();
+        let b = self.buffer.get_writable_index(self.end).unwrap();
+        self.buffer.slice_bytes(a, b)
+    }
+}
+
+/// An iterator over the positions in a BufferSlice which have corresponding
+/// characters.
+pub struct Positions<'a> {
+    slice: BufferSlice<'a>
+}
+
+impl<'a> Iterator for Positions<'a> {
+    type Item = Position;
+
+    fn next(&mut self) -> Option<Position> {
+        if !self.slice.is_empty() {
+            let result = self.slice.start;
+            self.slice.start = self.slice.buffer.next_position(result).unwrap();
+            Some(result)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> DoubleEndedIterator for Positions<'a> {
+    fn next_back(&mut self) -> Option<Position> {
+        if !self.slice.is_empty() {
+            self.slice.end = self.slice.buffer.prev_position(self.slice.end).unwrap();
+            Some(self.slice.end)
+        } else {
+            None
+        }
+    }
+}
+
+/// An iterator over the characters in a BufferSlice
+pub struct Chars<'a> {
+    positions: Positions<'a>
+}
+
+impl<'a> Iterator for Chars<'a> {
+    type Item = char;
+
+    fn next(&mut self) -> Option<char> {
+        self.positions.next().map(|pos| {
+            self.positions.slice.buffer.char_at(pos).unwrap()
+        })
+    }
+}
+
+impl<'a> DoubleEndedIterator for Chars<'a> {
+    fn next_back(&mut self) -> Option<char> {
+        self.positions.next_back().map(|pos| {
+            self.positions.slice.buffer.char_at(pos).unwrap()
+        })
+    }
+}
+
+/// An iterator over the lines in a BufferSlice
+pub struct Lines<'a> {
+    slice: BufferSlice<'a>
+}
+
+impl<'a> Iterator for Lines<'a> {
+    type Item = String;
+
+    fn next(&mut self) -> Option<String> {
+        if !self.slice.is_empty() {
+            let start = self.slice.start;
+            let end = cmp::min(Position::new(0, start.y + 1), self.slice.end);
+            self.slice.start = end;
+            Some(self.slice.buffer.slice(start, end).to_string())
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> DoubleEndedIterator for Lines<'a> {
+    fn next_back(&mut self) -> Option<String> {
+        if !self.slice.is_empty() {
+            let end = self.slice.end;
+            let start_y = match end.x {
+                0 => end.y - 1,
+                _ => end.y
+            };
+            let start = cmp::max(Position::new(0, start_y), self.slice.start);
+            self.slice.end = start;
+            Some(self.slice.buffer.slice(start, end).to_string())
+        } else {
+            None
+        }
+    }
+}
 
 // This is a bit of a hack to get around an error I was getting when
 // implementing From<R: Read> for Buffer with From<PathBuf> for Buffer.
@@ -615,33 +720,16 @@ fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBu
         .last()
 }
 
-/// Returns the index of the first character of the line the mark is in.
-/// Newline prior to mark (EXCLUSIVE) + 1.
-fn get_line(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
-    let val = cmp::min(mark, text.len());
-    (0..val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
-                           .take(1)
-                           .next()
-}
-
-/// Returns the index of the newline character at the end of the line mark is in.
-/// Newline after mark (INCLUSIVE).
-fn get_line_end(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
-    let val = cmp::min(mark, text.len());
-    (val..text.len()+1).filter(|idx| *idx == text.len() || text[*idx] == b'\n')
-                            .take(1)
-                            .next()
-}
-
 /// Performs a transaction on the passed in buffer.
-fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
+fn commit(transaction: &LogEntry, buf: &mut Buffer) {
     for change in transaction.changes.iter() {
         match change {
             &Change::Insert(idx, ch) => {
-                text.insert(idx, ch);
+                buf.insert_char_at_index(idx, ch);
+
             }
             &Change::Remove(idx, _) => {
-                text.remove(idx);
+                buf.remove_char_at_index(idx);
             }
         }
     }

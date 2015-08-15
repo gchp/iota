@@ -1,6 +1,5 @@
 use keyboard::Key;
 use keymap::{KeyMap, KeyMapState};
-use buffer::Mark;
 use command::{BuilderEvent, Operation, Instruction, Command, Action};
 use textobject::{Anchor, Kind, TextObject, Offset};
 use overlay::OverlayType;
@@ -43,50 +42,50 @@ impl StandardMode {
         keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('s')], Command::save_buffer());
 
         // Cursor movement
-        keymap.bind_key(Key::Up, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Down, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Left, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Right, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Ctrl('p'), Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Ctrl('n'), Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Ctrl('b'), Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Ctrl('f'), Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Ctrl('e'), Command::movement(Offset::Forward(0, Mark::Cursor(0)), Kind::Line(Anchor::End)));
-        keymap.bind_key(Key::Ctrl('a'), Command::movement(Offset::Backward(0, Mark::Cursor(0)), Kind::Line(Anchor::Start)));
+        keymap.bind_key(Key::Up, Command::movement(Offset::Backward(1), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Down, Command::movement(Offset::Forward(1), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Left, Command::movement(Offset::Backward(1), Kind::Char));
+        keymap.bind_key(Key::Right, Command::movement(Offset::Forward(1), Kind::Char));
+        keymap.bind_key(Key::Ctrl('p'), Command::movement(Offset::Backward(1), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Ctrl('n'), Command::movement(Offset::Forward(1), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Ctrl('b'), Command::movement(Offset::Backward(1), Kind::Char));
+        keymap.bind_key(Key::Ctrl('f'), Command::movement(Offset::Forward(1), Kind::Char));
+        keymap.bind_key(Key::Ctrl('e'), Command::movement(Offset::Forward(0), Kind::Line(Anchor::End)));
+        keymap.bind_key(Key::Ctrl('a'), Command::movement(Offset::Backward(0), Kind::Line(Anchor::Start)));
 
         // Editing
         keymap.bind_key(Key::Tab, Command::insert_tab());
         keymap.bind_key(Key::Enter, Command::insert_char('\n'));
         keymap.bind_key(Key::Backspace, Command {
             number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
+            action: Action::Operation(Operation::DeleteFromCursor),
             object: Some(TextObject {
                 kind: Kind::Char,
-                offset: Offset::Backward(1, Mark::Cursor(0))
+                offset: Offset::Backward(1)
             })
         });
         keymap.bind_key(Key::Delete, Command {
             number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
+            action: Action::Operation(Operation::DeleteFromCursor),
             object: Some(TextObject {
                 kind: Kind::Char,
-                offset: Offset::Forward(1, Mark::Cursor(0))
+                offset: Offset::Forward(1)
             })
         });
         keymap.bind_key(Key::Ctrl('h'), Command {
             number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
+            action: Action::Operation(Operation::DeleteFromCursor),
             object: Some(TextObject {
                 kind: Kind::Char,
-                offset: Offset::Backward(1, Mark::Cursor(0))
+                offset: Offset::Backward(1)
             })
         });
         keymap.bind_key(Key::Ctrl('d'), Command {
             number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
+            action: Action::Operation(Operation::DeleteFromCursor),
             object: Some(TextObject {
                 kind: Kind::Char,
-                offset: Offset::Forward(1, Mark::Cursor(0))
+                offset: Offset::Forward(1)
             })
         });
         keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('f')], Command {
