@@ -176,10 +176,13 @@ impl View {
     }
 
     pub fn set_cursor_to_object(&mut self, object: TextObject) {
-        let buffer = self.buffer.lock().unwrap();
-        if let Some(pos) = buffer.get_object_position(self.cursor, object) {
-            self.cursor = pos;
+        {
+            let buffer = self.buffer.lock().unwrap();
+            if let Some(pos) = buffer.get_object_position(self.cursor, object) {
+                self.cursor = pos;
+            }
         }
+        self.maybe_move_screen();
     }
 
     /// Scroll (vertically and horizontally) if necessary to keep the cursor
@@ -205,7 +208,7 @@ impl View {
             }
         } else if cursor_x > left + width - threshold {
             // Scroll right
-            let amount = left + width - threshold - cursor_x;
+            let amount = cursor_x - (left + width - threshold);
             self.top_left.x += amount;
         }
 
@@ -221,7 +224,7 @@ impl View {
             }
         } else if cursor_y > top + height - threshold {
             // Scroll down
-            let amount = top + height - threshold - cursor_y;
+            let amount = cursor_y - (top + height - threshold);
             self.top_left.y += amount;
         }
     }
