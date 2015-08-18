@@ -4,16 +4,12 @@
 //!
 //! This module contains all you need to create an `iota` executable.
 
-#![feature(custom_attribute)]
-#![feature(map_in_place)]
-#![feature(unicode)]
-#![feature(convert)]
-
 #![warn(missing_docs)]
 
 extern crate rustbox;
 extern crate gapbuffer;
 extern crate tempdir;
+extern crate unicode_width;
 
 pub use editor::Editor;
 pub use input::Input;

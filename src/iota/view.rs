@@ -7,6 +7,7 @@ use std::fs::{File, rename};
 use std::sync::{Mutex, Arc};
 
 use tempdir::TempDir;
+use unicode_width::UnicodeWidthChar;
 
 use buffer::{Buffer, Mark};
 use uibuf::{UIBuffer, CharColor};
@@ -134,7 +135,7 @@ impl View {
             let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
             for y_position in 0..height {
                 let line = lines.next().unwrap_or(vec![]);
-                draw_line(&mut self.uibuf, line.as_slice(), y_position, self.left_col);
+                draw_line(&mut self.uibuf, &line, y_position, self.left_col);
             }
 
         }
@@ -382,7 +383,7 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
             '\n' => {}
             _ => {
                 buf.update_cell_content(x, idx, ch);
-                x += ch.width(false).unwrap_or(1);
+                x += UnicodeWidthChar::width(ch).unwrap_or(1);
             }
         }
         if x >= width {

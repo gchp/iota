@@ -42,7 +42,7 @@ impl LogEntry {
         LogEntry {
             init_point: self.end_point,
             end_point: self.init_point,
-            changes: self.changes.map_in_place( |change| change.reverse() ),
+            changes: self.changes.into_iter().map( |change| change.reverse() ).collect(),
         }
     }
 }

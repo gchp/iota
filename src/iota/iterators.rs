@@ -84,7 +84,7 @@ impl<'a> Chars<'a> {
     }
 
     /// Return an iterator over (byte-index, char)
-    pub fn indices(mut self) -> CharIndices<'a> {
+    pub fn indices(self) -> CharIndices<'a> {
         CharIndices {
             iter: self
         }

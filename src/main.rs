@@ -1,4 +1,3 @@
-#![feature(libc)]
 #![cfg(not(test))]
 
 extern crate libc;
