@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
+use std::collections::HashMap;
 
 use input::Input;
 use keyboard::Key;
@@ -21,6 +22,8 @@ pub struct Editor<'e, T: Frontend> {
     running: bool,
     frontend: T,
     mode: Box<Mode + 'e>,
+    events: HashMap<&'static str, Box<Fn(&mut View) -> ()>>,
+    events_queue: Vec<&'static str>,
 }
 
 impl<'e, T: Frontend> Editor<'e, T> {
@@ -41,6 +44,8 @@ impl<'e, T: Frontend> Editor<'e, T> {
             running: true,
             frontend: frontend,
             mode: mode,
+            events: HashMap::new(),
+            events_queue: Vec::new(),
         }
     }
 
@@ -61,29 +66,23 @@ impl<'e, T: Frontend> Editor<'e, T> {
             None => return
         };
 
-        let mut remove_overlay = false;
-        let command = match self.view.overlay {
-            Overlay::None => self.mode.handle_key_event(key),
-            _             => {
-                let event = self.view.overlay.handle_key_event(key);
-                match event {
-                    OverlayEvent::Finished(response) => {
-                        remove_overlay = true;
-                        self.handle_overlay_response(response)
-                    }
+        // TODO: send key to plugins for resolution
+        // let mut event = self.plugin_resolve(key);
+        let mut event = None;
 
-                    _ => { BuilderEvent::Incomplete }
-                }
+        // if None, use core resolution
+        if event.is_none() {
+            event = match key {
+                Key::Down => Some("iota.move_down"),
+                Key::Ctrl('q') => Some("iota.quit"),
+                _ => None,
             }
-        };
-
-        if remove_overlay {
-            self.view.overlay = Overlay::None;
-            self.view.clear(&mut self.frontend);
         }
 
-        if let BuilderEvent::Complete(c) = command {
-            self.handle_command(c);
+        // if we have an event, fire it
+        // otherwise just move on
+        if let Some(e) = event {
+            self.fire_event(e);
         }
     }
 
@@ -171,7 +170,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                 }
             }
             Instruction::SetOverlay(overlay_type) => {
-                self.view.set_overlay(overlay_type) 
+                self.view.set_overlay(overlay_type)
             }
             Instruction::SetMode(mode) => {
                 match mode {
@@ -210,8 +209,37 @@ impl<'e, T: Frontend> Editor<'e, T> {
         }
     }
 
+    fn register_event_listeners(&mut self) {
+        // TODO: register the event & handler
+
+        fn some_handler(e: &mut View) {
+            panic!("from the handler")
+        }
+
+        self.register_handler("iota.move_down", Box::new(some_handler));
+    }
+
+    fn register_handler(&mut self, event: &'static str, handler: Box<Fn(&mut View) -> ()>) {
+        self.events.insert(event, handler);
+    }
+
+    fn fire_event(&mut self, event: &'static str) {
+        self.events_queue.push(event);
+    }
+
+    fn process_event(&mut self, event: &'static str) {
+        // TODO: look up the events register to see if there is a callback
+        //       registered for this event
+        if self.events.contains_key(event) {
+            let callback = self.events.get(event).unwrap();
+            callback(&mut self.view);
+        }
+    }
+
     /// Start Iota!
     pub fn start(&mut self) {
+        self.register_event_listeners();
+
         while self.running {
             self.draw();
             self.frontend.present();
@@ -222,6 +250,12 @@ impl<'e, T: Frontend> Editor<'e, T> {
                 EditorEvent::Resize(width, height) => self.handle_resize_event(width, height),
 
                 _ => {}
+            }
+
+            // FIXME: is there a way to not use clone here?
+            let events = self.events_queue.clone();
+            for event in events.iter() {
+                self.process_event(event)
             }
         }
     }
