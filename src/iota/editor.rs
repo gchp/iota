@@ -11,6 +11,8 @@ use overlay::{Overlay, OverlayEvent};
 use buffer::Buffer;
 use command::Command;
 use command::{Action, BuilderEvent, Operation, Instruction};
+use keymap::KeyMap;
+use keymap::KeyMapState;
 
 
 /// The main Editor structure
@@ -22,8 +24,9 @@ pub struct Editor<'e, T: Frontend> {
     running: bool,
     frontend: T,
     mode: Box<Mode + 'e>,
-    events: HashMap<&'static str, Box<Fn(&mut View) -> ()>>,
     events_queue: Vec<&'static str>,
+
+    keymap: KeyMap<&'static str>,
 }
 
 impl<'e, T: Frontend> Editor<'e, T> {
@@ -44,8 +47,8 @@ impl<'e, T: Frontend> Editor<'e, T> {
             running: true,
             frontend: frontend,
             mode: mode,
-            events: HashMap::new(),
             events_queue: Vec::new(),
+            keymap: KeyMap::new(),
         }
     }
 
@@ -66,23 +69,18 @@ impl<'e, T: Frontend> Editor<'e, T> {
             None => return
         };
 
-        // TODO: send key to plugins for resolution
-        // let mut event = self.plugin_resolve(key);
-        let mut event = None;
-
-        // if None, use core resolution
-        if event.is_none() {
-            event = match key {
-                Key::Down => Some("iota.move_down"),
-                Key::Ctrl('q') => Some("iota.quit"),
-                _ => None,
+        // look up KeyMap
+        match self.keymap.check_key(key) {
+            KeyMapState::Match(c) => {
+                // found a match!
+                self.fire_event(c);
+            },
+            KeyMapState::Continue => {
+                // possibly the start of a match...
             }
-        }
-
-        // if we have an event, fire it
-        // otherwise just move on
-        if let Some(e) = event {
-            self.fire_event(e);
+            KeyMapState::None => {
+                // no match at all :(
+            }
         }
     }
 
@@ -209,18 +207,10 @@ impl<'e, T: Frontend> Editor<'e, T> {
         }
     }
 
-    fn register_event_listeners(&mut self) {
-        // TODO: register the event & handler
-
-        fn some_handler(e: &mut View) {
-            panic!("from the handler")
-        }
-
-        self.register_handler("iota.move_down", Box::new(some_handler));
-    }
-
-    fn register_handler(&mut self, event: &'static str, handler: Box<Fn(&mut View) -> ()>) {
-        self.events.insert(event, handler);
+    fn register_key_bindings(&mut self) {
+        self.keymap.bind_key(Key::Ctrl('q'), "iota.quit");
+        self.keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], "iota.quit");
+        self.keymap.bind_key(Key::Down, "iota.move_down");
     }
 
     fn fire_event(&mut self, event: &'static str) {
@@ -228,17 +218,29 @@ impl<'e, T: Frontend> Editor<'e, T> {
     }
 
     fn process_event(&mut self, event: &'static str) {
-        // TODO: look up the events register to see if there is a callback
-        //       registered for this event
-        if self.events.contains_key(event) {
-            let callback = self.events.get(event).unwrap();
-            callback(&mut self.view);
+        // TODO:
+        //   try process event in extensions first
+        //   fall back here as a default
+        //
+        // NOTE::
+        //   Extensions should be able to specify in their return
+        //   type whether we should also perform the default Action
+        //   for an event. For example, if the extension handles the "iota.save"
+        //   event, they should be able to tell iota to perform the save,
+        //   after whatever custom work they have done. This could be
+        //   linting the file, for example.
+
+        match event {
+            "iota.quit" => { self.running = false; }
+
+            _ => {}
         }
     }
 
     /// Start Iota!
     pub fn start(&mut self) {
-        self.register_event_listeners();
+        // self.register_extensions();
+        self.register_key_bindings();
 
         while self.running {
             self.draw();
