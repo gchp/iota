@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
-use std::collections::HashMap;
+use std::collections::VecDeque;
 
 use input::Input;
 use keyboard::Key;
@@ -24,7 +24,7 @@ pub struct Editor<'e, T: Frontend> {
     running: bool,
     frontend: T,
     mode: Box<Mode + 'e>,
-    events_queue: Vec<&'static str>,
+    events_queue: VecDeque<&'static str>,
 
     keymap: KeyMap<&'static str>,
 }
@@ -47,7 +47,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
             running: true,
             frontend: frontend,
             mode: mode,
-            events_queue: Vec::new(),
+            events_queue: VecDeque::new(),
             keymap: KeyMap::new(),
         }
     }
@@ -89,48 +89,48 @@ impl<'e, T: Frontend> Editor<'e, T> {
     /// In most cases, we will just want to convert the response directly to
     /// a Command, however in some cases we will want to perform other actions
     /// first, such as in the case of Overlay::SavePrompt.
-    fn handle_overlay_response(&mut self, response: Option<String>) -> BuilderEvent {
-        // FIXME: This entire method neext to be updated
-        match response {
-            Some(data) => {
-                match self.view.overlay {
-
-                    // FIXME: this is just a temporary fix
-                    Overlay::Prompt { ref data, .. } => {
-                        match &**data {
-                            // FIXME: need to find a better system for these commands
-                            //        They should be chainable
-                            //          ie: wq - save & quit
-                            //        They should also take arguments
-                            //          ie w file.txt - write buffer to file.txt
-                            "q" | "quit" => BuilderEvent::Complete(Command::exit_editor()),
-                            "w" | "write" => BuilderEvent::Complete(Command::save_buffer()),
-
-                            _ => BuilderEvent::Incomplete
-                        }
-                    }
-
-                    Overlay::SavePrompt { .. } => {
-                        let path = PathBuf::from(&*data);
-                        self.view.buffer.lock().unwrap().file_path = Some(path);
-                        BuilderEvent::Complete(Command::save_buffer())
-                    }
-
-                    Overlay::SelectFile { .. } => {
-                        let path = PathBuf::from(data);
-                        let buffer = Arc::new(Mutex::new(Buffer::from(path)));
-                        self.buffers.push(buffer.clone());
-                        self.view.set_buffer(buffer.clone());
-                        self.view.clear(&mut self.frontend);
-                        BuilderEvent::Complete(Command::noop())
-                    }
-
-                    _ => BuilderEvent::Incomplete,
-                }
-            }
-            None => BuilderEvent::Incomplete
-        }
-    }
+    // fn handle_overlay_response(&mut self, response: Option<String>) -> BuilderEvent {
+    //     // FIXME: This entire method neext to be updated
+    //     match response {
+    //         Some(data) => {
+    //             match self.view.overlay {
+    //
+    //                 // FIXME: this is just a temporary fix
+    //                 Overlay::Prompt { ref data, .. } => {
+    //                     match &**data {
+    //                         // FIXME: need to find a better system for these commands
+    //                         //        They should be chainable
+    //                         //          ie: wq - save & quit
+    //                         //        They should also take arguments
+    //                         //          ie w file.txt - write buffer to file.txt
+    //                         "q" | "quit" => BuilderEvent::Complete(Command::exit_editor()),
+    //                         "w" | "write" => BuilderEvent::Complete(Command::save_buffer()),
+    //
+    //                         _ => BuilderEvent::Incomplete
+    //                     }
+    //                 }
+    //
+    //                 Overlay::SavePrompt { .. } => {
+    //                     let path = PathBuf::from(&*data);
+    //                     self.view.buffer.lock().unwrap().file_path = Some(path);
+    //                     BuilderEvent::Complete(Command::save_buffer())
+    //                 }
+    //
+    //                 Overlay::SelectFile { .. } => {
+    //                     let path = PathBuf::from(data);
+    //                     let buffer = Arc::new(Mutex::new(Buffer::from(path)));
+    //                     self.buffers.push(buffer.clone());
+    //                     self.view.set_buffer(buffer.clone());
+    //                     self.view.clear(&mut self.frontend);
+    //                     BuilderEvent::Complete(Command::noop())
+    //                 }
+    //
+    //                 _ => BuilderEvent::Incomplete,
+    //             }
+    //         }
+    //         None => BuilderEvent::Incomplete
+    //     }
+    // }
 
     /// Handle resize events
     ///
@@ -145,76 +145,91 @@ impl<'e, T: Frontend> Editor<'e, T> {
     }
 
     /// Handle the given command, performing the associated action
-    fn handle_command(&mut self, command: Command) {
-        let repeat = if command.number > 0 {
-            command.number
-        } else { 1 };
-        for _ in 0..repeat {
-            match command.action {
-                Action::Instruction(i) => self.handle_instruction(i, command),
-                Action::Operation(o) => self.handle_operation(o, command),
-            }
-        }
-    }
+    // fn handle_command(&mut self, command: Command) {
+    //     let repeat = if command.number > 0 {
+    //         command.number
+    //     } else { 1 };
+    //     for _ in 0..repeat {
+    //         match command.action {
+    //             Action::Instruction(i) => self.handle_instruction(i, command),
+    //             Action::Operation(o) => self.handle_operation(o, command),
+    //         }
+    //     }
+    // }
 
 
-    fn handle_instruction(&mut self, instruction: Instruction, command: Command) {
-        match instruction {
-            Instruction::SaveBuffer => { self.view.try_save_buffer() }
-            Instruction::ExitEditor => { self.running = false; }
-            Instruction::SetMark(mark) => {
-                if let Some(object) = command.object {
-                    self.view.move_mark(mark, object)
-                }
-            }
-            Instruction::SetOverlay(overlay_type) => {
-                self.view.set_overlay(overlay_type)
-            }
-            Instruction::SetMode(mode) => {
-                match mode {
-                    ModeType::Insert => { self.mode = Box::new(InsertMode::new()) }
-                    ModeType::Normal => { self.mode = Box::new(NormalMode::new()) }
-                }
-            }
-            Instruction::SwitchToLastBuffer => {
-                self.view.switch_last_buffer();
-                self.view.clear(&mut self.frontend);
-            }
+    // fn handle_instruction(&mut self, instruction: Instruction, command: Command) {
+    //     match instruction {
+    //         Instruction::SaveBuffer => { self.view.try_save_buffer() }
+    //         Instruction::ExitEditor => { self.running = false; }
+    //         Instruction::SetMark(mark) => {
+    //             if let Some(object) = command.object {
+    //                 self.view.move_mark(mark, object)
+    //             }
+    //         }
+    //         Instruction::SetOverlay(overlay_type) => {
+    //             self.view.set_overlay(overlay_type)
+    //         }
+    //         Instruction::SetMode(mode) => {
+    //             match mode {
+    //                 ModeType::Insert => { self.mode = Box::new(InsertMode::new()) }
+    //                 ModeType::Normal => { self.mode = Box::new(NormalMode::new()) }
+    //             }
+    //         }
+    //         Instruction::SwitchToLastBuffer => {
+    //             self.view.switch_last_buffer();
+    //             self.view.clear(&mut self.frontend);
+    //         }
+    //
+    //         _ => {}
+    //     }
+    // }
 
-            _ => {}
-        }
-    }
-
-    fn handle_operation(&mut self, operation: Operation, command: Command) {
-        match operation {
-            Operation::Insert(c) => {
-                for _ in 0..command.number {
-                    self.view.insert_char(c)
-                }
-            }
-            Operation::DeleteObject => {
-                if let Some(obj) = command.object {
-                    self.view.delete_object(obj);
-                }
-            }
-            Operation::DeleteFromMark(m) => {
-                if command.object.is_some() {
-                    self.view.delete_from_mark_to_object(m, command.object.unwrap())
-                }
-            }
-            Operation::Undo => { self.view.undo() }
-            Operation::Redo => { self.view.redo() }
-        }
-    }
+    // fn handle_operation(&mut self, operation: Operation, command: Command) {
+    //     match operation {
+    //         Operation::Insert(c) => {
+    //             for _ in 0..command.number {
+    //                 self.view.insert_char(c)
+    //             }
+    //         }
+    //         Operation::DeleteObject => {
+    //             if let Some(obj) = command.object {
+    //                 self.view.delete_object(obj);
+    //             }
+    //         }
+    //         Operation::DeleteFromMark(m) => {
+    //             if command.object.is_some() {
+    //                 self.view.delete_from_mark_to_object(m, command.object.unwrap())
+    //             }
+    //         }
+    //         Operation::Undo => { self.view.undo() }
+    //         Operation::Redo => { self.view.redo() }
+    //     }
+    // }
 
     fn register_key_bindings(&mut self) {
-        self.keymap.bind_key(Key::Ctrl('q'), "iota.quit");
-        self.keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], "iota.quit");
-        self.keymap.bind_key(Key::Down, "iota.move_down");
+        self.bind_keys(&[Key::Up], "iota.move_up");
+        self.bind_keys(&[Key::Down], "iota.move_down");
+        self.bind_keys(&[Key::Left], "iota.move_left");
+        self.bind_keys(&[Key::Right], "iota.move_right");
+
+        self.bind_keys(&[Key::Ctrl('q')], "iota.quit");
+    }
+
+    pub fn bind_keys(&mut self, keys: &[Key], event: &'static str) {
+        // TODO:
+        //   it would be nice in the future to be able to store multiple events
+        //   for each key. So for instance if an extension was to override a core
+        //   keybinding, it would still store the core binding, but mark it as "inactive"
+        //   This would allow us to visualize what order event/key bindings are being
+        //   stored internally, and potentially disable/enable bindings at will.
+        //   As it is now, binding an event to an already bound key will just override
+        //   the binding.
+        self.keymap.bind_keys(keys, event);
     }
 
     fn fire_event(&mut self, event: &'static str) {
-        self.events_queue.push(event);
+        self.events_queue.push_back(event);
     }
 
     fn process_event(&mut self, event: &'static str) {
@@ -232,6 +247,10 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
         match event {
             "iota.quit" => { self.running = false; }
+            "iota.move_up" => { self.view.move_up() }
+            "iota.move_down" => { self.view.move_down() }
+            "iota.move_left" => { self.view.move_left() }
+            "iota.move_right" => { self.view.move_right() }
 
             _ => {}
         }
@@ -254,10 +273,8 @@ impl<'e, T: Frontend> Editor<'e, T> {
                 _ => {}
             }
 
-            // FIXME: is there a way to not use clone here?
-            let events = self.events_queue.clone();
-            for event in events.iter() {
-                self.process_event(event)
+            while let Some(event) = self.events_queue.pop_front() {
+                self.process_event(event);
             }
         }
     }

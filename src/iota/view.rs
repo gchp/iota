@@ -15,6 +15,7 @@ use frontends::Frontend;
 use overlay::{Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
+use command::Command;
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -204,6 +205,38 @@ impl View {
         }
     }
 
+    pub fn move_up(&mut self) {
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Backward(1, Mark::Cursor(0))
+        };
+        self.move_mark(Mark::Cursor(0), obj)
+    }
+
+    pub fn move_down(&mut self) {
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Forward(1, Mark::Cursor(0))
+        };
+        self.move_mark(Mark::Cursor(0), obj)
+    }
+
+    pub fn move_left(&mut self) {
+        let obj = TextObject {
+            kind: Kind::Char,
+            offset: Offset::Backward(1, Mark::Cursor(0))
+        };
+        self.move_mark(Mark::Cursor(0), obj)
+    }
+
+    pub fn move_right(&mut self) {
+        let obj = TextObject {
+            kind: Kind::Char,
+            offset: Offset::Forward(1, Mark::Cursor(0))
+        };
+        self.move_mark(Mark::Cursor(0), obj)
+    }
+
     pub fn move_mark(&mut self, mark: Mark, object: TextObject) {
         self.buffer.lock().unwrap().set_mark_to_object(mark, object);
         self.maybe_move_screen();
@@ -369,7 +402,7 @@ impl View {
 pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
     let width = buf.get_width() - 1;
     let mut x = 0;
-    
+
     for ch in line.iter().skip(left) {
         let ch = *ch as char;
         match ch {
@@ -390,13 +423,13 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
             break;
         }
     }
-    
+
     // Replace any cells after end of line with ' '
     while x < width {
         buf.update_cell_content(x, idx, ' ');
         x += 1;
     }
-    
+
     // If the line is too long to fit on the screen, show an indicator
     let indicator = if line.len() > width + left { '→' } else { ' ' };
     buf.update_cell_content(width, idx, indicator);
