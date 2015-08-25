@@ -3,14 +3,14 @@
 //! A highly customisable text editor built with modern hardware in mind.
 //!
 //! This module contains all you need to create an `iota` executable.
-
-#![feature(drain)]
+#![feature(slice_patterns)]
 #![warn(missing_docs)]
 
 extern crate rustbox;
 extern crate gapbuffer;
 extern crate tempdir;
 extern crate unicode_width;
+extern crate rustc_serialize;
 
 pub use editor::Editor;
 pub use input::Input;

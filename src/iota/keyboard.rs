@@ -47,3 +47,43 @@ impl Key {
         }
     }
 }
+
+impl From<&'static str> for Key {
+    fn from(s: &'static str) -> Key {
+        match s {
+            "tab" => Key::Tab,
+            "enter" => Key::Enter,
+            "esc" => Key::Esc,
+            "backspace" => Key::Backspace,
+            "right" => Key::Right,
+            "left" => Key::Left,
+            "down" => Key::Down,
+            "up" => Key::Up,
+            "delete" | "del" => Key::Delete,
+
+            _ => {
+                let bits: Vec<&str> = s.split('-').collect();
+                match &*bits {
+                    // ["shift", c] => { Key::Char(c) }
+                    ["ctrl", c] => { Key::Ctrl(c.as_bytes()[0] as char) }
+                    [c] => { Key::Char(c.as_bytes()[0] as char) }
+
+                    _ => {Key::Esc}
+                }
+            }
+        }
+    }
+}
+
+
+
+#[test]
+fn test_from_str() {
+    let key = Key::Ctrl('q');
+    let parsed_key: Key = Key::from("ctrl-q");
+    assert_eq!(key, parsed_key);
+
+    let key = Key::Char('q');
+    let parsed_key: Key = Key::from("q");
+    assert_eq!(key, parsed_key);
+}

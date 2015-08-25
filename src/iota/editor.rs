@@ -1,6 +1,11 @@
 use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
 use std::collections::VecDeque;
+use std::env::home_dir;
+use std::fs::File;
+use std::io::Read;
+
+use rustc_serialize::json::{Object, Json};
 
 use input::Input;
 use keyboard::Key;
@@ -208,6 +213,44 @@ impl<'e, T: Frontend> Editor<'e, T> {
     // }
 
     fn register_key_bindings(&mut self) {
+
+        if let Some(mut path) = home_dir() {
+            path.push(".iota");
+            path.push("keybindings.json");
+
+            if let Ok(mut file) = File::open(path) {
+                let mut data = String::new();
+                file.read_to_string(&mut data).unwrap();
+
+                let json = Json::from_str(&data).unwrap();
+                let bindings = json.as_object().unwrap();
+
+                for (key, event) in bindings.iter() {
+                    let bits: Vec<&str> = key.split(' ').collect();
+                    let mut keys = Vec::new();
+                    for part in bits {
+                        keys.push(Key::from(part))
+                    }
+
+                    if keys.len() > 0 {
+                        self.bind_keys(&*keys, event.as_string().unwrap())
+                    }
+                }
+            }
+        }
+        // macro_rules! bind {
+        //     ($instance:ident, $key:expr, $event:expr) => {
+        //         panic!("{:?}", $instance.running)
+        //     }
+        // }
+        //
+        // "ctrl-p": "iota.move_up"
+        // "ctrl-shift-p": "iota.move_up"
+        //
+        // "ctrl+p": "iota.move_up"
+        // "ctrl+shift+p": "iota.move_up"
+        //
+        // bind!(self, "up up", "iota.move_up");
         self.bind_keys(&[Key::Up], "iota.move_up");
         self.bind_keys(&[Key::Down], "iota.move_down");
         self.bind_keys(&[Key::Left], "iota.move_left");
@@ -237,7 +280,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
         //   try process event in extensions first
         //   fall back here as a default
         //
-        // NOTE::
+        // NOTE:
         //   Extensions should be able to specify in their return
         //   type whether we should also perform the default Action
         //   for an event. For example, if the extension handles the "iota.save"
