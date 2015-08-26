@@ -20,6 +20,24 @@ use keymap::KeyMap;
 use keymap::KeyMapState;
 
 
+#[derive(Copy, Clone, Debug)]
+struct Event {
+    name: &'static str,
+}
+
+impl Event {
+    pub fn new(name: &'static str) -> Event {
+        Event {
+            name: name,
+        }
+    }
+
+    pub fn get_name(&self) -> &'static str {
+        self.name
+    }
+}
+
+
 /// The main Editor structure
 ///
 /// This is the top-most structure in Iota.
@@ -29,9 +47,8 @@ pub struct Editor<'e, T: Frontend> {
     running: bool,
     frontend: T,
     mode: Box<Mode + 'e>,
-    events_queue: VecDeque<&'static str>,
-
-    keymap: KeyMap<&'static str>,
+    events_queue: VecDeque<Event>,
+    keymap: KeyMap<Event>,
 }
 
 impl<'e, T: Frontend> Editor<'e, T> {
@@ -237,14 +254,14 @@ impl<'e, T: Frontend> Editor<'e, T> {
         for part in bits {
             keys.push(Key::from(part));
         }
-        self.keymap.bind_keys(&*keys, event);
+        self.keymap.bind_keys(&*keys, Event::new(event));
     }
 
-    fn fire_event(&mut self, event: &'static str) {
+    fn fire_event(&mut self, event: Event) {
         self.events_queue.push_back(event);
     }
 
-    fn process_event(&mut self, event: &'static str) {
+    fn process_event(&mut self, event: Event) {
         // TODO:
         //   try process event in extensions first
         //   fall back here as a default
@@ -257,8 +274,9 @@ impl<'e, T: Frontend> Editor<'e, T> {
         //   after whatever custom work they have done. This could be
         //   linting the file, for example.
 
-        match event {
+        match event.get_name() {
             "iota.quit" => { self.running = false; }
+
             "iota.move_up" => { self.view.move_up() }
             "iota.move_down" => { self.view.move_down() }
             "iota.move_left" => { self.view.move_left() }
