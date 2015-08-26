@@ -213,53 +213,16 @@ impl<'e, T: Frontend> Editor<'e, T> {
     // }
 
     fn register_key_bindings(&mut self) {
-
-        if let Some(mut path) = home_dir() {
-            path.push(".iota");
-            path.push("keybindings.json");
-
-            if let Ok(mut file) = File::open(path) {
-                let mut data = String::new();
-                file.read_to_string(&mut data).unwrap();
-
-                let json = Json::from_str(&data).unwrap();
-                let bindings = json.as_object().unwrap();
-
-                for (key, event) in bindings.iter() {
-                    let bits: Vec<&str> = key.split(' ').collect();
-                    let mut keys = Vec::new();
-                    for part in bits {
-                        keys.push(Key::from(part))
-                    }
-
-                    if keys.len() > 0 {
-                        self.bind_keys(&*keys, event.as_string().unwrap())
-                    }
-                }
-            }
-        }
-        // macro_rules! bind {
-        //     ($instance:ident, $key:expr, $event:expr) => {
-        //         panic!("{:?}", $instance.running)
-        //     }
-        // }
-        //
-        // "ctrl-p": "iota.move_up"
-        // "ctrl-shift-p": "iota.move_up"
-        //
-        // "ctrl+p": "iota.move_up"
-        // "ctrl+shift+p": "iota.move_up"
-        //
-        // bind!(self, "up up", "iota.move_up");
-        self.bind_keys(&[Key::Up], "iota.move_up");
-        self.bind_keys(&[Key::Down], "iota.move_down");
-        self.bind_keys(&[Key::Left], "iota.move_left");
-        self.bind_keys(&[Key::Right], "iota.move_right");
-
-        self.bind_keys(&[Key::Ctrl('q')], "iota.quit");
+        // TODO:
+        //   Load these default from a JSON file of some sort
+        self.bind_keys("up", "iota.move_up");
+        self.bind_keys("down", "iota.move_down");
+        self.bind_keys("left", "iota.move_left");
+        self.bind_keys("right", "iota.move_right");
+        self.bind_keys("ctrl-q", "iota.quit");
     }
 
-    pub fn bind_keys(&mut self, keys: &[Key], event: &'static str) {
+    pub fn bind_keys(&mut self, key_str: &'static str, event: &'static str) {
         // TODO:
         //   it would be nice in the future to be able to store multiple events
         //   for each key. So for instance if an extension was to override a core
@@ -268,7 +231,13 @@ impl<'e, T: Frontend> Editor<'e, T> {
         //   stored internally, and potentially disable/enable bindings at will.
         //   As it is now, binding an event to an already bound key will just override
         //   the binding.
-        self.keymap.bind_keys(keys, event);
+
+        let bits: Vec<&str> = key_str.split(' ').collect();
+        let mut keys: Vec<Key> = Vec::new();
+        for part in bits {
+            keys.push(Key::from(part));
+        }
+        self.keymap.bind_keys(&*keys, event);
     }
 
     fn fire_event(&mut self, event: &'static str) {
