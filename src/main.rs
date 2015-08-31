@@ -8,11 +8,7 @@ extern crate iota;
 
 use std::io::stdin;
 use docopt::Docopt;
-use iota::{
-    Editor, Input,
-    StandardMode, NormalMode,
-    RustboxFrontend, Mode
-};
+use iota::{Editor, Input, RustboxFrontend};
 use rustbox::{InitOptions, RustBox, InputMode};
 static USAGE: &'static str = "
 Usage: iota [<filename>] [options]
@@ -66,13 +62,13 @@ fn main() {
     let frontend = RustboxFrontend::new(&rb);
 
     // initialise the editor mode
-    let mode: Box<Mode> = if args.flag_vi {
-        Box::new(NormalMode::new())
-    } else {
-         Box::new(StandardMode::new())
-    };
+    // let mode: Box<Mode> = if args.flag_vi {
+    //     Box::new(NormalMode::new())
+    // } else {
+    //      Box::new(StandardMode::new())
+    // };
 
     // start the editor
-    let mut editor = Editor::new(source, mode, frontend);
+    let mut editor = Editor::new(source, frontend);
     editor.start();
 }

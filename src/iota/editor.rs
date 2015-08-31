@@ -11,7 +11,7 @@ use input::Input;
 use keyboard::Key;
 use view::View;
 use frontends::{Frontend, EditorEvent};
-use modes::{Mode, ModeType, InsertMode, NormalMode};
+// use modes::{Mode, ModeType, InsertMode, NormalMode};
 use overlay::{Overlay, OverlayEvent};
 use buffer::Buffer;
 use command::Command;
@@ -46,19 +46,19 @@ impl Event {
 /// The main Editor structure
 ///
 /// This is the top-most structure in Iota.
-pub struct Editor<'e, T: Frontend> {
+pub struct Editor<T: Frontend> {
     buffers: Vec<Arc<Mutex<Buffer>>>,
     view: View,
     running: bool,
     frontend: T,
-    mode: Box<Mode + 'e>,
+    // mode: Box<Mode + 'e>,
     events_queue: VecDeque<Event>,
     keymap: KeyMap<Event>,
 }
 
-impl<'e, T: Frontend> Editor<'e, T> {
+impl<T: Frontend> Editor<T> {
     /// Create a new Editor instance from the given source
-    pub fn new(source: Input, mode: Box<Mode + 'e>, frontend: T) -> Editor<'e, T> {
+    pub fn new(source: Input, frontend: T) -> Editor<T> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
 
@@ -73,23 +73,13 @@ impl<'e, T: Frontend> Editor<'e, T> {
             view: view,
             running: true,
             frontend: frontend,
-            mode: mode,
+            // mode: mode,
             events_queue: VecDeque::new(),
             keymap: KeyMap::new(),
         }
     }
 
     /// Handle key events
-    ///
-    /// Key events can be handled in an Overlay, OR in the current Mode.
-    ///
-    /// If there is an active Overlay, the key event is sent there, which gives
-    /// back an OverlayEvent. We then parse this OverlayEvent and determine if
-    /// the Overlay is finished and can be cleared. The response from the
-    /// Overlay is then converted to a Command and sent off to be handled.
-    ///
-    /// If there is no active Overlay, the key event is sent to the current
-    /// Mode, which returns a Command which we dispatch to handle_command.
     fn handle_key_event(&mut self, key: Option<Key>) {
         let key = match key {
             Some(k) => k,
@@ -177,20 +167,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
     fn draw(&mut self) {
         self.view.draw(&mut self.frontend);
     }
-
-    /// Handle the given command, performing the associated action
-    // fn handle_command(&mut self, command: Command) {
-    //     let repeat = if command.number > 0 {
-    //         command.number
-    //     } else { 1 };
-    //     for _ in 0..repeat {
-    //         match command.action {
-    //             Action::Instruction(i) => self.handle_instruction(i, command),
-    //             Action::Operation(o) => self.handle_operation(o, command),
-    //         }
-    //     }
-    // }
-
 
     // fn handle_instruction(&mut self, instruction: Instruction, command: Command) {
     //     match instruction {
