@@ -19,6 +19,11 @@ use command::{Action, BuilderEvent, Operation, Instruction};
 use keymap::KeyMap;
 use keymap::KeyMapState;
 
+use textobject::TextObject;
+use buffer::Mark;
+use textobject::Kind;
+use textobject::Offset;
+
 
 #[derive(Copy, Clone, Debug)]
 struct Event {
@@ -99,9 +104,16 @@ impl<'e, T: Frontend> Editor<'e, T> {
             },
             KeyMapState::Continue => {
                 // possibly the start of a match...
+                // not sure what to do here...
             }
             KeyMapState::None => {
                 // no match at all :(
+                //
+                // lets try insert it into the buffer
+                // TODO: use an event for this instead
+                if let Key::Char(ch) = key {
+                    self.view.insert_char(ch);
+                }
             }
         }
     }
@@ -237,6 +249,14 @@ impl<'e, T: Frontend> Editor<'e, T> {
         self.bind_keys("left", "iota.move_left");
         self.bind_keys("right", "iota.move_right");
         self.bind_keys("ctrl-q", "iota.quit");
+
+        self.bind_keys("backspace", "iota.delete_backwards");
+        self.bind_keys("delete", "iota.delete_forwards");
+        self.bind_keys("enter", "iota.newline");
+
+        self.bind_keys("ctrl-z", "iota.undo");
+        self.bind_keys("ctrl-r", "iota.redo");
+        self.bind_keys("ctrl-s", "iota.save");
     }
 
     pub fn bind_keys(&mut self, key_str: &'static str, event: &'static str) {
@@ -276,6 +296,25 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
         match event.get_name() {
             "iota.quit" => { self.running = false; }
+
+            "iota.undo" => { self.view.undo(); }
+            "iota.redo" => { self.view.redo(); }
+            "iota.save" => { self.view.try_save_buffer(); }
+
+            "iota.newline" => { self.view.insert_char('\n'); }
+
+            "iota.delete_backwards" => {
+                self.view.delete_from_mark_to_object(Mark::Cursor(0), TextObject{
+                    kind: Kind::Char,
+                    offset: Offset::Backward(1, Mark::Cursor(0))
+                })
+            }
+            "iota.delete_forwards" => {
+                self.view.delete_from_mark_to_object(Mark::Cursor(0), TextObject{
+                    kind: Kind::Char,
+                    offset: Offset::Forward(1, Mark::Cursor(0))
+                })
+            }
 
             "iota.move_up" => { self.view.move_up() }
             "iota.move_down" => { self.view.move_down() }
