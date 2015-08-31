@@ -1,21 +1,11 @@
-use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
 use std::collections::VecDeque;
-use std::env::home_dir;
-use std::fs::File;
-use std::io::Read;
-
-use rustc_serialize::json::{Object, Json};
 
 use input::Input;
 use keyboard::Key;
 use view::View;
 use frontends::{Frontend, EditorEvent};
-// use modes::{Mode, ModeType, InsertMode, NormalMode};
-use overlay::{Overlay, OverlayEvent};
 use buffer::Buffer;
-use command::Command;
-use command::{Action, BuilderEvent, Operation, Instruction};
 use keymap::KeyMap;
 use keymap::KeyMapState;
 
@@ -235,6 +225,7 @@ impl<T: Frontend> Editor<T> {
         self.bind_keys("ctrl-s", "iota.save");
     }
 
+    /// Bind a key to an event
     pub fn bind_keys(&mut self, key_str: &'static str, event: &'static str) {
         // TODO:
         //   it would be nice in the future to be able to store multiple events

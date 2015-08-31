@@ -15,7 +15,6 @@ extern crate rustc_serialize;
 pub use editor::Editor;
 pub use input::Input;
 pub use frontends::RustboxFrontend;
-// pub use modes::{StandardMode, NormalMode, Mode};
 
 mod input;
 mod utils;
@@ -27,8 +26,6 @@ mod view;
 mod uibuf;
 mod log;
 mod frontends;
-// mod modes;
 mod overlay;
-mod command;
 mod textobject;
 mod iterators;

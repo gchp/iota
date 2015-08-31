@@ -15,7 +15,6 @@ use frontends::Frontend;
 use overlay::{Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
-use command::Command;
 
 /// A View is an abstract Window (into a Buffer).
 ///
