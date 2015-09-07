@@ -114,9 +114,13 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     }
 
                     Overlay::SavePrompt { .. } => {
-                        let path = PathBuf::from(&*data);
-                        self.view.buffer.lock().unwrap().file_path = Some(path);
-                        BuilderEvent::Complete(Command::save_buffer())
+                        if data.len() > 0 {
+                            let path = PathBuf::from(&*data);
+                            self.view.buffer.lock().unwrap().file_path = Some(path);
+                            BuilderEvent::Complete(Command::save_buffer())
+                        } else {
+                            BuilderEvent::Invalid
+                        }
                     }
 
                     Overlay::SelectFile { .. } => {
@@ -171,7 +175,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                 }
             }
             Instruction::SetOverlay(overlay_type) => {
-                self.view.set_overlay(overlay_type) 
+                self.view.set_overlay(overlay_type)
             }
             Instruction::SetMode(mode) => {
                 match mode {
