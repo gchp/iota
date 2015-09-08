@@ -23,6 +23,26 @@ pub fn is_alpha_or_(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 
+/// Determine the length (in bytes) of a UTF-8 character given the first byte.
+pub fn char_length(b: u8) -> usize {
+    if b & 0b1000_0000 == 0b0000_0000 {
+        1
+    } else if b & 0b1110_0000 == 0b1100_0000 {
+        2
+    } else if b & 0b1111_0000 == 0b1110_0000 {
+        3
+    } else if b & 0b1111_1000 == 0b1111_0000 {
+        4
+    } else {
+        panic!("invalid UTF-8 character")
+    }
+}
+
+/// Determine if the given u8 is the start of a UTF-8 character.
+pub fn is_start_of_char(b: u8) -> bool {
+    b & 0b1100_0000 != 0b1000_0000
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

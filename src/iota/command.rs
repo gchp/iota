@@ -1,6 +1,5 @@
 use keyboard::Key;
 use keymap::{ KeyMap, KeyMapState };
-use buffer::Mark;
 use textobject::{ TextObject, Offset, Kind, Anchor };
 use overlay::OverlayType;
 use modes::ModeType;
@@ -13,7 +12,7 @@ pub enum Instruction {
     //FindFile,
     ExitEditor,
 
-    SetMark(Mark),
+    SetCursor,
     SetOverlay(OverlayType),
     SetMode(ModeType),
     SwitchToLastBuffer,
@@ -29,7 +28,7 @@ pub enum Instruction {
 pub enum Operation {
     Insert(char), // insert text
     DeleteObject,         // delete some object
-    DeleteFromMark(Mark), // delete from some mark to an object
+    DeleteFromCursor, // delete from the cursor to an object
 
     Undo,         // rewind buffer transaction log
     Redo,         // replay buffer transaction log
@@ -127,7 +126,7 @@ impl Command {
     pub fn movement(offset: Offset, kind: Kind) -> Command {
         Command {
             number: 1,
-            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+            action: Action::Instruction(Instruction::SetCursor),
             object: Some(TextObject {
                 kind: kind,
                 offset: offset
@@ -149,7 +148,6 @@ pub struct Builder {
     repeat: Option<usize>,
 
     action: Option<Action>,
-    mark: Option<Mark>,
     kind: Option<Kind>,
     anchor: Option<Anchor>,
     offset: Option<Offset>,
@@ -172,7 +170,6 @@ impl Builder {
             number: None,
             repeat: None,
             action: None,
-            mark: None,
             kind: None,
             anchor: None,
             offset: None,
@@ -186,7 +183,6 @@ impl Builder {
         self.number = None;
         self.repeat = None;
         self.action = None;
-        self.mark = None;
         self.kind = None;
         self.anchor = None;
         self.object = None;
@@ -230,7 +226,7 @@ impl Builder {
             // we have at least a kind
             Some(TextObject {
                 kind: kind,
-                offset: self.offset.unwrap_or(Offset::Absolute(0)),
+                offset: self.offset.unwrap_or(Offset::Forward(0)),
             })
         } else {
             None
@@ -287,7 +283,7 @@ impl Builder {
                 // we have just an object, assume move cursor instruction
                 return Some(Command {
                     number: self.repeat.unwrap_or(1) as i32,
-                    action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+                    action: Action::Instruction(Instruction::SetCursor),
                     object: Some(to)
                 });
             }
@@ -366,57 +362,57 @@ fn default_keymap() -> KeyMap<Partial> {
     // next/previous char
     keymap.bind_key(Key::Char('l'), Partial::Object(TextObject {
         kind: Kind::Char,
-        offset: Offset::Forward(1, Mark::Cursor(0))
+        offset: Offset::Forward(1)
     }));
     keymap.bind_key(Key::Char('h'), Partial::Object(TextObject {
         kind: Kind::Char,
-        offset: Offset::Backward(1, Mark::Cursor(0))
+        offset: Offset::Backward(1)
     }));
     keymap.bind_key(Key::Right, Partial::Object(TextObject {
         kind: Kind::Char,
-        offset: Offset::Forward(1, Mark::Cursor(0))
+        offset: Offset::Forward(1)
     }));
     keymap.bind_key(Key::Left, Partial::Object(TextObject {
         kind: Kind::Char,
-        offset: Offset::Backward(1, Mark::Cursor(0))
+        offset: Offset::Backward(1)
     }));
 
     // next/previous line
     keymap.bind_key(Key::Char('j'), Partial::Object(TextObject {
         kind: Kind::Line(Anchor::Same),
-        offset: Offset::Forward(1, Mark::Cursor(0))
+        offset: Offset::Forward(1)
     }));
     keymap.bind_key(Key::Char('k'), Partial::Object(TextObject {
         kind: Kind::Line(Anchor::Same),
-        offset: Offset::Backward(1, Mark::Cursor(0))
+        offset: Offset::Backward(1)
     }));
     keymap.bind_key(Key::Down, Partial::Object(TextObject {
         kind: Kind::Line(Anchor::Same),
-        offset: Offset::Forward(1, Mark::Cursor(0))
+        offset: Offset::Forward(1)
     }));
     keymap.bind_key(Key::Up, Partial::Object(TextObject {
         kind: Kind::Line(Anchor::Same),
-        offset: Offset::Backward(1, Mark::Cursor(0))
+        offset: Offset::Backward(1)
     }));
 
     // next/previous word
     keymap.bind_key(Key::Char('w'), Partial::Object(TextObject {
         kind: Kind::Word(Anchor::Start),
-        offset: Offset::Forward(1, Mark::Cursor(0))
+        offset: Offset::Forward(1)
     }));
     keymap.bind_key(Key::Char('b'), Partial::Object(TextObject {
         kind: Kind::Word(Anchor::Start),
-        offset: Offset::Backward(1, Mark::Cursor(0))
+        offset: Offset::Backward(1)
     }));
 
     // start/end line
     keymap.bind_key(Key::Char('$'), Partial::Object(TextObject {
         kind: Kind::Line(Anchor::End),
-        offset: Offset::Forward(0, Mark::Cursor(0)),
+        offset: Offset::Forward(0),
     }));
     keymap.bind_key(Key::Char('0'), Partial::Object(TextObject {
         kind: Kind::Line(Anchor::Start),
-        offset: Offset::Backward(0, Mark::Cursor(0)),
+        offset: Offset::Backward(0),
     }));
 
     // kinds
@@ -432,7 +428,7 @@ fn default_keymap() -> KeyMap<Partial> {
 
     // actions
     keymap.bind_key(Key::Char('D'), Partial::Action(Action::Operation(Operation::DeleteObject)));
-    keymap.bind_key(Key::Char('d'), Partial::Action(Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0)))));
+    keymap.bind_key(Key::Char('d'), Partial::Action(Action::Operation(Operation::DeleteFromCursor)));
     keymap.bind_key(Key::Char(':'), Partial::Action(Action::Instruction(Instruction::SetOverlay(OverlayType::Prompt))));
 
     keymap

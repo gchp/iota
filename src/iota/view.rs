@@ -1,20 +1,19 @@
-use std::cmp;
 use std::borrow::Cow;
 use std::path::Path;
 use std::path::PathBuf;
 use std::io::Write;
 use std::fs::{File, rename};
 use std::sync::{Mutex, Arc};
+use std::iter;
 
 use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
 
-use buffer::{Buffer, Mark};
+use buffer::{Buffer, Position};
 use uibuf::{UIBuffer, CharColor};
 use frontends::Frontend;
 use overlay::{Overlay, OverlayType};
-use utils;
-use textobject::{Anchor, TextObject, Kind, Offset};
+use textobject::TextObject;
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -27,14 +26,11 @@ pub struct View {
     pub last_buffer: Option<Arc<Mutex<Buffer>>>,
     pub overlay: Overlay,
 
-    /// First character of the top line to be displayed
-    top_line: Mark,
+    /// The character in the upper-left corner
+    top_left: Position,
 
-    /// Index into the top_line - used for horizontal scrolling
-    left_col: usize,
-
-    /// The current View's cursor - a reference into the Buffer
-    cursor: Mark,
+    /// The position of the current View's cursor
+    cursor: Position,
 
     /// The UIBuffer to which the View is drawn
     uibuf: UIBuffer,
@@ -47,22 +43,11 @@ pub struct View {
 impl View {
 
     pub fn new(buffer: Arc<Mutex<Buffer>>, width: usize, height: usize) -> View {
-        let cursor = Mark::Cursor(0);
-        let top_line = Mark::DisplayMark(0);
-
-        {
-            let mut b = buffer.lock().unwrap();
-
-            b.set_mark(cursor, 0);
-            b.set_mark(top_line, 0);
-        }
-
         View {
             buffer: buffer,
             last_buffer: None,
-            top_line: top_line,
-            left_col: 0,
-            cursor: cursor,
+            top_left: Position::origin(),
+            cursor: Position::origin(),
             uibuf: UIBuffer::new(width, height),
             overlay: Overlay::None,
             threshold: 5,
@@ -71,14 +56,6 @@ impl View {
 
     pub fn set_buffer(&mut self, buffer: Arc<Mutex<Buffer>>) {
         self.last_buffer = Some(self.buffer.clone());
-
-        {
-            let mut b = buffer.lock().unwrap();
-
-            b.set_mark(self.cursor, 0);
-            b.set_mark(self.top_line, 0);
-        }
-
         self.buffer = buffer;
     }
 
@@ -129,15 +106,12 @@ impl View {
             let buffer = self.buffer.lock().unwrap();
             let height = self.get_height() - 1;
 
-            // FIXME: don't use unwrap here
-            //        This will fail if for some reason the buffer doesnt have
-            //        the top_line mark
-            let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
-            for y_position in 0..height {
-                let line = lines.next().unwrap_or(vec![]);
-                draw_line(&mut self.uibuf, &line, y_position, self.left_col);
+            let lines = buffer.slice_from(Position::new(0, self.top_left.y))
+                              .lines().chain(iter::repeat("".to_string()))
+                              .take(height);
+            for (y, line) in lines.enumerate() {
+                draw_line(&mut self.uibuf, line.as_bytes(), y, self.top_left.x);
             }
-
         }
         match self.overlay {
             Overlay::None => self.draw_cursor(frontend),
@@ -153,9 +127,7 @@ impl View {
     fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
         let buffer = self.buffer.lock().unwrap();
         let buffer_status = buffer.status_text();
-        let mut cursor_status = buffer.get_mark_coords(self.cursor).unwrap_or((0,0));
-        cursor_status = (cursor_status.0 + 1, cursor_status.1 + 1);
-        let status_text = format!("{} ({}, {})", buffer_status, cursor_status.0, cursor_status.1).into_bytes();
+        let status_text = format!("{} ({}, {})", buffer_status, self.cursor.x + 1, self.cursor.y + 1).into_bytes();
         let status_text_len = status_text.len();
         let width = self.get_width();
         let height = self.get_height() - 1;
@@ -173,12 +145,11 @@ impl View {
     }
 
     fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
-        let buffer = self.buffer.lock().unwrap();
-        if let Some(top_line) = buffer.get_mark_coords(self.top_line) {
-            if let Some((x, y)) = buffer.get_mark_coords(self.cursor) {
-                frontend.draw_cursor((x - self.left_col) as isize, y as isize - top_line.1 as isize);
-            }
-        }
+        let x = self.cursor.x - self.top_left.x;
+        let y = self.cursor.y - self.top_left.y;
+        // FIXME: support for multi-width chars
+        // (x is in units of chars, we want units of cells)
+        frontend.draw_cursor(x as isize, y as isize);
     }
 
     pub fn set_overlay(&mut self, overlay_type: OverlayType) {
@@ -204,88 +175,94 @@ impl View {
         }
     }
 
-    pub fn move_mark(&mut self, mark: Mark, object: TextObject) {
-        self.buffer.lock().unwrap().set_mark_to_object(mark, object);
+    pub fn set_cursor_to_object(&mut self, object: TextObject) {
+        {
+            let buffer = self.buffer.lock().unwrap();
+            if let Some(pos) = buffer.get_object_position(self.cursor, object) {
+                self.cursor = pos;
+            }
+        }
         self.maybe_move_screen();
     }
 
-    /// Update the top_line mark if necessary to keep the cursor on the screen.
+    /// Scroll (vertically and horizontally) if necessary to keep the cursor
+    /// on the screen.
     fn maybe_move_screen(&mut self) {
-        let mut buffer = self.buffer.lock().unwrap();
-        if let (Some(cursor), Some((_, top_line))) = (buffer.get_mark_coords(self.cursor),
-                                                      buffer.get_mark_coords(self.top_line)) {
+        let cursor_x = self.cursor.x;
+        let cursor_y = self.cursor.y;
+        let left = self.top_left.x;
+        let top = self.top_left.y;
+        let width = self.get_width();
+        let height = self.get_height();
+        let threshold = self.threshold;
 
-            let width  = (self.get_width()  - self.threshold) as isize;
-            let height = (self.get_height() - self.threshold) as isize;
-
-            //left-right shifting
-            self.left_col = match cursor.0 as isize - self.left_col as isize {
-                x_offset if x_offset < self.threshold as isize => {
-                    cmp::max(0, self.left_col as isize - (self.threshold as isize - x_offset)) as usize
-                }
-                x_offset if x_offset >= width => {
-                    self.left_col + (x_offset - width + 1) as usize
-                }
-                _ => { self.left_col }
-            };
-
-            //up-down shifting
-            match cursor.1 as isize - top_line as isize {
-                y_offset if y_offset < self.threshold as isize && top_line > 0 => {
-                    let amount = (self.threshold as isize - y_offset) as usize;
-                    let obj = TextObject {
-                        kind: Kind::Line(Anchor::Same),
-                        offset: Offset::Backward(amount, self.top_line)
-                    };
-                    buffer.set_mark_to_object(self.top_line, obj);
-                }
-                y_offset if y_offset >= height => {
-                    let amount = (y_offset - height + 1) as usize;
-                    let obj = TextObject {
-                        kind: Kind::Line(Anchor::Same),
-                        offset: Offset::Forward(amount, self.top_line)
-                    };
-                    buffer.set_mark_to_object(self.top_line, obj);
-                }
-                _ => { }
+        // Horizontal scrolling
+        if cursor_x < left + threshold {
+            // Scroll left
+            let amount = left + threshold - cursor_x;
+            if amount <= left {
+                self.top_left.x -= amount;
+            } else {
+                // can't scroll that far
+                self.top_left.x = 0;
             }
+        } else if cursor_x > left + width - threshold {
+            // Scroll right
+            let amount = cursor_x - (left + width - threshold);
+            self.top_left.x += amount;
+        }
+
+        // Vertical scrolling
+        if cursor_y < top + threshold {
+            // Scroll up
+            let amount = top + threshold - cursor_y;
+            if amount <= top {
+                self.top_left.y -= amount;
+            } else {
+                // can't scroll that far
+                self.top_left.y = 0;
+            }
+        } else if cursor_y > top + height - threshold {
+            // Scroll down
+            let amount = cursor_y - (top + height - threshold);
+            self.top_left.y += amount;
         }
     }
 
     // Delete chars from the first index of object to the last index of object
     pub fn delete_object(&mut self, object: TextObject) {
-        self.buffer.lock().unwrap().remove_object(object);
+        self.buffer.lock().unwrap().remove_object(self.cursor, object);
     }
 
-    pub fn delete_from_mark_to_object(&mut self, mark: Mark, object: TextObject) {
+    pub fn delete_from_cursor_to_object(&mut self, object: TextObject) {
         let mut buffer = self.buffer.lock().unwrap();
-        if let Some((idx, _)) = buffer.get_object_index(object) {
-            if let Some(midx) = buffer.get_mark_idx(mark) {
-                buffer.remove_from_mark_to_object(mark, object);
-                buffer.set_mark(mark, cmp::min(idx, midx));
-            }
+        match buffer.get_object_position(self.cursor, object) {
+            Some(pos) if pos > self.cursor => {
+                buffer.remove(self.cursor, pos);
+            },
+            Some(pos) if pos < self.cursor => {
+                buffer.remove(pos, self.cursor);
+                self.cursor = pos;
+            },
+            _ => ()
         }
     }
 
     /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {
-        self.buffer.lock().unwrap().insert_char(self.cursor, ch as u8);
-        // NOTE: the last param to char_width here may not be correct
-        if let Some(ch_width) = utils::char_width(ch, false, 4, 1) {
-            let obj = TextObject {
-                kind: Kind::Char,
-                offset: Offset::Forward(ch_width, Mark::Cursor(0))
-            };
-            self.move_mark(Mark::Cursor(0), obj)
+        let mut buf = self.buffer.lock().unwrap();
+        buf.insert_char(self.cursor, ch);
+        if let Some(pos) = buf.next_position(self.cursor) {
+            self.cursor = pos;
         }
     }
 
     pub fn undo(&mut self) {
         {
             let mut buffer = self.buffer.lock().unwrap();
-            let point = if let Some(transaction) = buffer.undo() { transaction.end_point }
+            let point = if let Some(pt) = buffer.undo() { pt }
                         else { return; };
-            buffer.set_mark(self.cursor, point);
+            self.cursor = point;
         }
         self.maybe_move_screen();
     }
@@ -293,9 +270,9 @@ impl View {
     pub fn redo(&mut self) {
         {
             let mut buffer = self.buffer.lock().unwrap();
-            let point = if let Some(transaction) = buffer.redo() { transaction.end_point }
+            let point = if let Some(pt) = buffer.redo() { pt }
                         else { return; };
-            buffer.set_mark(self.cursor, point);
+            self.cursor = point;
         }
         self.maybe_move_screen();
     }
@@ -328,14 +305,10 @@ impl View {
             }
         };
 
-        //TODO (lee): Is iteration still necessary in this format?
-        for line in buffer.lines() {
-            let result = file.write_all(&*line);
-
-            if result.is_err() {
-                // TODO(greg): figure out what to do here.
-                panic!("Something went wrong while writing the file");
-            }
+        let result = file.write_all(buffer.to_string().as_bytes());
+        if result.is_err() {
+            // TODO(greg): figure out what to do here.
+            panic!("Something went wrong while writing the file");
         }
 
         if let Err(e) = rename(&tmppath, &*path) {
@@ -409,7 +382,7 @@ mod tests {
 
     use view::View;
     use input::Input;
-    use buffer::Buffer;
+    use buffer::{Buffer, Position};
 
     fn setup_view(testcase: &'static str) -> View {
         let mut buffer = Arc::new(Mutex::new(Buffer::new()));
@@ -418,8 +391,7 @@ mod tests {
             view.insert_char(ch);
         }
 
-        let mut buffer = buffer.lock().unwrap();
-        buffer.set_mark(view.cursor, 0);
+        view.cursor = Position::origin();
         view
     }
 
@@ -430,7 +402,7 @@ mod tests {
 
         {
             let mut buffer = view.buffer.lock().unwrap();
-            assert_eq!(buffer.lines().next().unwrap(), b"ttest\n");
+            assert_eq!(buffer.to_string(), "ttest\nsecond");
         }
     }
 }

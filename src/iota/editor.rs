@@ -169,9 +169,9 @@ impl<'e, T: Frontend> Editor<'e, T> {
         match instruction {
             Instruction::SaveBuffer => { self.view.try_save_buffer() }
             Instruction::ExitEditor => { self.running = false; }
-            Instruction::SetMark(mark) => {
+            Instruction::SetCursor => {
                 if let Some(object) = command.object {
-                    self.view.move_mark(mark, object)
+                    self.view.set_cursor_to_object(object)
                 }
             }
             Instruction::SetOverlay(overlay_type) => {
@@ -204,9 +204,9 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     self.view.delete_object(obj);
                 }
             }
-            Operation::DeleteFromMark(m) => {
-                if command.object.is_some() {
-                    self.view.delete_from_mark_to_object(m, command.object.unwrap())
+            Operation::DeleteFromCursor => {
+                if let Some(obj) = command.object {
+                    self.view.delete_from_cursor_to_object(obj);
                 }
             }
             Operation::Undo => { self.view.undo() }
