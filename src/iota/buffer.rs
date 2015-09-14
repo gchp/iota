@@ -441,7 +441,7 @@ impl Buffer {
     /// Returns the status text for this buffer.
     pub fn status_text(&self) -> String {
         match self.file_path {
-            Some(ref path)  =>  format!("{} ", path.display()),
+            Some(ref path)  =>  format!("[{}] ", path.display()),
             None            =>  format!("untitled "),
         }
     }
