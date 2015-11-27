@@ -100,54 +100,6 @@ impl Editor {
         }
     }
 
-    /// Translate the response from an Overlay to a Command wrapped in a BuilderEvent
-    ///
-    /// In most cases, we will just want to convert the response directly to
-    /// a Command, however in some cases we will want to perform other actions
-    /// first, such as in the case of Overlay::SavePrompt.
-    // fn handle_overlay_response(&mut self, response: Option<String>) -> BuilderEvent {
-    //     // FIXME: This entire method neext to be updated
-    //     match response {
-    //         Some(data) => {
-    //             match self.view.overlay {
-    //
-    //                 // FIXME: this is just a temporary fix
-    //                 Overlay::Prompt { ref data, .. } => {
-    //                     match &**data {
-    //                         // FIXME: need to find a better system for these commands
-    //                         //        They should be chainable
-    //                         //          ie: wq - save & quit
-    //                         //        They should also take arguments
-    //                         //          ie w file.txt - write buffer to file.txt
-    //                         "q" | "quit" => BuilderEvent::Complete(Command::exit_editor()),
-    //                         "w" | "write" => BuilderEvent::Complete(Command::save_buffer()),
-    //
-    //                         _ => BuilderEvent::Incomplete
-    //                     }
-    //                 }
-    //
-    //                 Overlay::SavePrompt { .. } => {
-    //                     let path = PathBuf::from(&*data);
-    //                     self.view.buffer.lock().unwrap().file_path = Some(path);
-    //                     BuilderEvent::Complete(Command::save_buffer())
-    //                 }
-    //
-    //                 Overlay::SelectFile { .. } => {
-    //                     let path = PathBuf::from(data);
-    //                     let buffer = Arc::new(Mutex::new(Buffer::from(path)));
-    //                     self.buffers.push(buffer.clone());
-    //                     self.view.set_buffer(buffer.clone());
-    //                     self.view.clear(&mut self.frontend);
-    //                     BuilderEvent::Complete(Command::noop())
-    //                 }
-    //
-    //                 _ => BuilderEvent::Incomplete,
-    //             }
-    //         }
-    //         None => BuilderEvent::Incomplete
-    //     }
-    // }
-
     /// Handle resize events
     ///
     /// width and height represent the new height of the window.
@@ -159,55 +111,6 @@ impl Editor {
     pub fn draw(&mut self) {
         self.view.draw();
     }
-
-    // fn handle_instruction(&mut self, instruction: Instruction, command: Command) {
-    //     match instruction {
-    //         Instruction::SaveBuffer => { self.view.try_save_buffer() }
-    //         Instruction::ExitEditor => { self.running = false; }
-    //         Instruction::SetMark(mark) => {
-    //             if let Some(object) = command.object {
-    //                 self.view.move_mark(mark, object)
-    //             }
-    //         }
-    //         Instruction::SetOverlay(overlay_type) => {
-    //             self.view.set_overlay(overlay_type)
-    //         }
-    //         Instruction::SetMode(mode) => {
-    //             match mode {
-    //                 ModeType::Insert => { self.mode = Box::new(InsertMode::new()) }
-    //                 ModeType::Normal => { self.mode = Box::new(NormalMode::new()) }
-    //             }
-    //         }
-    //         Instruction::SwitchToLastBuffer => {
-    //             self.view.switch_last_buffer();
-    //             self.view.clear(&mut self.frontend);
-    //         }
-    //
-    //         _ => {}
-    //     }
-    // }
-
-    // fn handle_operation(&mut self, operation: Operation, command: Command) {
-    //     match operation {
-    //         Operation::Insert(c) => {
-    //             for _ in 0..command.number {
-    //                 self.view.insert_char(c)
-    //             }
-    //         }
-    //         Operation::DeleteObject => {
-    //             if let Some(obj) = command.object {
-    //                 self.view.delete_object(obj);
-    //             }
-    //         }
-    //         Operation::DeleteFromMark(m) => {
-    //             if command.object.is_some() {
-    //                 self.view.delete_from_mark_to_object(m, command.object.unwrap())
-    //             }
-    //         }
-    //         Operation::Undo => { self.view.undo() }
-    //         Operation::Redo => { self.view.redo() }
-    //     }
-    // }
 
     fn register_key_bindings(&mut self) {
         // TODO:
