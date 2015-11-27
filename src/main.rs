@@ -11,8 +11,7 @@ use std::io::stdin;
 use docopt::Docopt;
 use iota::{
     Editor, Input,
-    StandardMode, NormalMode,
-    Mode, EditorEvent, Key, RustboxFrontend
+    EditorEvent, Key, RustboxFrontend
 };
 use rustbox::{InitOptions, RustBox, InputMode};
 static USAGE: &'static str = "
@@ -76,7 +75,7 @@ fn main() {
 
     // start the editor
     // editor.start();
-    let mut editor = Editor::new(source, mode, width, height);
+    let mut editor = Editor::new(source, width, height);
     while editor.running {
         editor.draw();
         // editor.view.draw()

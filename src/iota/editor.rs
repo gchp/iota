@@ -13,6 +13,7 @@ use textobject::TextObject;
 use buffer::Mark;
 use textobject::Kind;
 use textobject::Offset;
+use uibuf::UIBuffer;
 
 
 #[derive(Copy, Clone, Debug)]
@@ -35,33 +36,36 @@ impl Event {
 /// The main Editor structure
 ///
 /// This is the top-most structure in Iota.
-pub struct Editor<'e> {
+pub struct Editor {
     pub running: bool,
 
     view: View,
     buffers: Vec<Arc<Mutex<Buffer>>>,
-    mode: Box<Mode + 'e>,
+    // mode: Box<Mode + 'e>,
     events_queue: VecDeque<Event>,
     keymap: KeyMap<Event>,
 }
 
-impl<'e> Editor<'e> {
+impl Editor {
     /// Create a new Editor instance from the given source
-    pub fn new(source: Input, mode: Box<Mode + 'e>, width: usize, height: usize) -> Editor<'e> {
+    pub fn new(source: Input, width: usize, height: usize) -> Editor {
         let mut buffers = Vec::new();
         let buffer = Buffer::from(source);
 
         buffers.push(Arc::new(Mutex::new(buffer)));
 
         let view = View::new(buffers[0].clone(), width, height);
-        Editor {
+        let mut editor = Editor {
             buffers: buffers,
             view: view,
             running: true,
             // mode: mode,
             events_queue: VecDeque::new(),
             keymap: KeyMap::new(),
-        }
+        };
+        editor.register_key_bindings();
+
+        editor
     }
 
     /// Handle key events
@@ -284,6 +288,12 @@ impl<'e> Editor<'e> {
             "iota.move_right" => { self.view.move_right() }
 
             _ => {}
+        }
+    }
+
+    pub fn start_event_loop(&mut self) {
+        while let Some(event) = self.events_queue.pop_front() {
+            self.process_event(event);
         }
     }
 
