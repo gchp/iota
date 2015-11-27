@@ -14,7 +14,9 @@ extern crate unicode_width;
 pub use editor::Editor;
 pub use input::Input;
 pub use frontends::RustboxFrontend;
+pub use frontends::EditorEvent;
 pub use modes::{StandardMode, NormalMode, Mode};
+pub use keyboard::Key;
 
 mod input;
 mod utils;

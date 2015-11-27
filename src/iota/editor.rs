@@ -4,31 +4,29 @@ use std::sync::{Mutex, Arc};
 use input::Input;
 use keyboard::Key;
 use view::View;
-use frontends::{Frontend, EditorEvent};
+use frontends::EditorEvent;
 use modes::{Mode, ModeType, InsertMode, NormalMode};
 use overlay::{Overlay, OverlayEvent};
 use buffer::Buffer;
 use command::Command;
 use command::{Action, BuilderEvent, Operation, Instruction};
+use uibuf::UIBuffer;
 
 
 /// The main Editor structure
 ///
 /// This is the top-most structure in Iota.
-pub struct Editor<'e, T: Frontend> {
-    buffers: Vec<Arc<Mutex<Buffer>>>,
+pub struct Editor<'e> {
+    pub running: bool,
+
     view: View,
-    running: bool,
-    frontend: T,
+    buffers: Vec<Arc<Mutex<Buffer>>>,
     mode: Box<Mode + 'e>,
 }
 
-impl<'e, T: Frontend> Editor<'e, T> {
+impl<'e> Editor<'e> {
     /// Create a new Editor instance from the given source
-    pub fn new(source: Input, mode: Box<Mode + 'e>, frontend: T) -> Editor<'e, T> {
-        let height = frontend.get_window_height();
-        let width = frontend.get_window_width();
-
+    pub fn new(source: Input, mode: Box<Mode + 'e>, width: usize, height: usize) -> Editor<'e> {
         let mut buffers = Vec::new();
         let buffer = Buffer::from(source);
 
@@ -39,7 +37,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
             buffers: buffers,
             view: view,
             running: true,
-            frontend: frontend,
+            // frontend: frontend,
             mode: mode,
         }
     }
@@ -79,7 +77,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
         if remove_overlay {
             self.view.overlay = Overlay::None;
-            self.view.clear(&mut self.frontend);
+            self.view.clear();
         }
 
         if let BuilderEvent::Complete(c) = command {
@@ -128,7 +126,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                         let buffer = Arc::new(Mutex::new(Buffer::from(path)));
                         self.buffers.push(buffer.clone());
                         self.view.set_buffer(buffer.clone());
-                        self.view.clear(&mut self.frontend);
+                        self.view.clear();
                         BuilderEvent::Complete(Command::noop())
                     }
 
@@ -147,8 +145,8 @@ impl<'e, T: Frontend> Editor<'e, T> {
     }
 
     /// Draw the current view to the frontend
-    fn draw(&mut self) {
-        self.view.draw(&mut self.frontend);
+    pub fn draw(&mut self) {
+        self.view.draw();
     }
 
     /// Handle the given command, performing the associated action
@@ -185,7 +183,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
             }
             Instruction::SwitchToLastBuffer => {
                 self.view.switch_last_buffer();
-                self.view.clear(&mut self.frontend);
+                self.view.clear();
             }
 
             _ => {}
@@ -214,19 +212,21 @@ impl<'e, T: Frontend> Editor<'e, T> {
         }
     }
 
-    /// Start Iota!
-    pub fn start(&mut self) {
-        while self.running {
-            self.draw();
-            self.frontend.present();
-            let event = self.frontend.poll_event();
+    pub fn handle_raw_event(&mut self, event: EditorEvent) {
+        match event {
+            EditorEvent::KeyEvent(key)         => self.handle_key_event(key),
+            EditorEvent::Resize(width, height) => self.handle_resize_event(width, height),
 
-            match event {
-                EditorEvent::KeyEvent(key)         => self.handle_key_event(key),
-                EditorEvent::Resize(width, height) => self.handle_resize_event(width, height),
-
-                _ => {}
-            }
+            _ => {}
         }
     }
+
+    pub fn get_cursor_pos(&mut self) -> Option<(isize, isize)> {
+        self.view.get_cursor_pos()
+    }
+
+    pub fn get_content(&mut self) -> &mut UIBuffer {
+        self.view.get_uibuf()
+    }
+
 }

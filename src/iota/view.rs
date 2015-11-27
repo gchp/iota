@@ -119,12 +119,11 @@ impl View {
     /// Clear the buffer
     ///
     /// Fills every cell in the UIBuffer with the space (' ') char.
-    pub fn clear<T: Frontend>(&mut self, frontend: &mut T) {
+    pub fn clear(&mut self) {
         self.uibuf.fill(' ');
-        self.uibuf.draw_everything(frontend);
     }
 
-    pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
+    pub fn draw(&mut self) {
         {
             let buffer = self.buffer.lock().unwrap();
             let height = self.get_height() - 1;
@@ -140,17 +139,17 @@ impl View {
 
         }
         match self.overlay {
-            Overlay::None => self.draw_cursor(frontend),
+            Overlay::None => {}
             _ => {
-                self.overlay.draw(frontend, &mut self.uibuf);
-                self.overlay.draw_cursor(frontend);
+                let height = self.uibuf.get_height() - 1;
+                self.overlay.draw(&mut self.uibuf, height);
+                // self.overlay.draw_cursor(frontend);
             }
         }
-        self.draw_status(frontend);
-        self.uibuf.draw_everything(frontend);
+        self.draw_status();
     }
 
-    fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
+    fn draw_status(&mut self) {
         let buffer = self.buffer.lock().unwrap();
         let buffer_status = buffer.status_text();
         let mut cursor_status = buffer.get_mark_coords(self.cursor).unwrap_or((0,0));
@@ -168,17 +167,34 @@ impl View {
             }
             self.uibuf.update_cell(index, height, ch, CharColor::Black, CharColor::Blue);
         }
-
-        self.uibuf.draw_range(frontend, height, height+1);
     }
 
-    fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
-        let buffer = self.buffer.lock().unwrap();
-        if let Some(top_line) = buffer.get_mark_coords(self.top_line) {
-            if let Some((x, y)) = buffer.get_mark_coords(self.cursor) {
-                frontend.draw_cursor((x - self.left_col) as isize, y as isize - top_line.1 as isize);
+    // fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
+    //     let buffer = self.buffer.lock().unwrap();
+    //     if let Some(top_line) = buffer.get_mark_coords(self.top_line) {
+    //         if let Some((x, y)) = buffer.get_mark_coords(self.cursor) {
+    //             frontend.draw_cursor((x - self.left_col) as isize, y as isize - top_line.1 as isize);
+    //         }
+    //     }
+    // }
+
+    pub fn get_uibuf(&mut self) -> &mut UIBuffer {
+        &mut self.uibuf
+    }
+
+    pub fn get_cursor_pos(&mut self) -> Option<(isize, isize)> {
+        match self.overlay {
+            Overlay::None => {
+                let buffer = self.buffer.lock().unwrap();
+                if let Some(top_line) = buffer.get_mark_coords(self.top_line) {
+                    if let Some((x, y)) = buffer.get_mark_coords(self.cursor) {
+                        return Some(((x - self.left_col) as isize, y as isize - top_line.1 as isize))
+                    }
+                }
             }
+            _ => return self.overlay.get_cursor_pos(self.uibuf.get_height() -1),
         }
+        None
     }
 
     pub fn set_overlay(&mut self, overlay_type: OverlayType) {
@@ -369,7 +385,7 @@ impl View {
 pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
     let width = buf.get_width() - 1;
     let mut x = 0;
-    
+
     for ch in line.iter().skip(left) {
         let ch = *ch as char;
         match ch {
@@ -390,13 +406,13 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
             break;
         }
     }
-    
+
     // Replace any cells after end of line with ' '
     while x < width {
         buf.update_cell_content(x, idx, ' ');
         x += 1;
     }
-    
+
     // If the line is too long to fit on the screen, show an indicator
     let indicator = if line.len() > width + left { '→' } else { ' ' };
     buf.update_cell_content(width, idx, indicator);
