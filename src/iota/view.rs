@@ -11,7 +11,6 @@ use unicode_width::UnicodeWidthChar;
 
 use buffer::{Buffer, Mark};
 use uibuf::{UIBuffer, CharColor};
-use frontends::Frontend;
 use overlay::{Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};

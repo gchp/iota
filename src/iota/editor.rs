@@ -1,10 +1,13 @@
 use std::sync::{Mutex, Arc};
+use std::sync::mpsc::{Sender, Receiver, channel};
 use std::collections::VecDeque;
+
+use rustbox;
 
 use input::Input;
 use keyboard::Key;
 use view::View;
-use frontends::{Frontend, EditorEvent};
+use frontends::EditorEvent;
 use buffer::Buffer;
 use keymap::KeyMap;
 use keymap::KeyMapState;

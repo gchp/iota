@@ -6,14 +6,18 @@ extern crate rustbox;
 extern crate docopt;
 extern crate iota;
 
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::char;
 use std::io::stdin;
 use docopt::Docopt;
 use iota::{
-    Editor, Input,
-    EditorEvent, Key, RustboxFrontend
+    Editor, Input, UIBuffer, CharStyle, CharColor,
+    EditorEvent, Key
 };
 use rustbox::{InitOptions, RustBox, InputMode};
+use rustbox::{Style, Color};
+
 static USAGE: &'static str = "
 Usage: iota [<filename>] [options]
        iota --help
@@ -71,11 +75,11 @@ fn main() {
 
     let height = rb.height();
     let width = rb.width();
-    let mut frontend = RustboxFrontend::new(&rb);
 
     // start the editor
     // editor.start();
     let mut editor = Editor::new(source, width, height);
+
     while editor.running {
         editor.draw();
         // editor.view.draw()
@@ -84,29 +88,67 @@ fn main() {
         {
             // view contents
             let content = editor.get_content();
-            content.draw_everything(&mut frontend);
+            draw_everything(content, &rb);
         }
 
+
+        {
+            let cursor_pos = editor.get_cursor_pos().unwrap();
+            rb.set_cursor(cursor_pos.0, cursor_pos.1);
+        }
         // cursor position
-        let cursor_pos = editor.get_cursor_pos().unwrap();
-        rb.set_cursor(cursor_pos.0, cursor_pos.1);
 
         rb.present();
 
-        let event = match rb.poll_event(true).unwrap() {
-            rustbox::Event::KeyEventRaw(_, key, ch) => {
-                let k = match key {
-                    0 => char::from_u32(ch).map(|c| Key::Char(c)),
-                    a => Key::from_special_code(a),
-                };
-                EditorEvent::KeyEvent(k)
-            }
-            rustbox::Event::ResizeEvent(width, height) => {
-                EditorEvent::Resize(width as usize, height as usize)
-            }
-            _ => EditorEvent::UnSupported
-        };
+        // let event = match rb.poll_event(true).unwrap() {
+        //     rustbox::Event::KeyEventRaw(_, key, ch) => {
+        //         let k = match key {
+        //             0 => char::from_u32(ch).map(|c| Key::Char(c)),
+        //             a => Key::from_special_code(a),
+        //         };
+        //         EditorEvent::KeyEvent(k)
+        //     }
+        //     rustbox::Event::ResizeEvent(width, height) => {
+        //         EditorEvent::Resize(width as usize, height as usize)
+        //     }
+        //     _ => EditorEvent::UnSupported
+        // };
+        //
+        // editor.handle_raw_event(event);
+    }
+}
 
-        editor.handle_raw_event(event);
+fn draw_everything(content: &mut UIBuffer, rb: &RustBox) {
+    let stop = content.get_height();
+    let start = 0;
+
+    let rows = &mut content.rows[start..stop];
+    for row in rows.iter_mut() {
+        for cell in row.iter_mut().filter(|cell| cell.dirty) {
+            // rb.draw_char(cell.x, cell.y, cell.ch, cell.fg, cell.bg, CharStyle::Normal);
+
+            let bg = get_color(cell.bg);
+            let fg = get_color(cell.fg);
+            let style = get_style(CharStyle::Normal);
+
+            rb.print_char(cell.x, cell.y, style, fg, bg, cell.ch);
+
+            cell.dirty = false;
+        }
+    }
+}
+
+fn get_color(c: CharColor) -> Color {
+    match c {
+        CharColor::Default => Color::Default,
+        CharColor::Blue    => Color::Blue,
+        CharColor::Black   => Color::Black,
+    }
+}
+
+/// Translate a CharStyle to rustbox::Style
+fn get_style(s: CharStyle) -> Style {
+    match s {
+        CharStyle::Normal => Style::empty(),
     }
 }

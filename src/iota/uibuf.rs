@@ -1,9 +1,7 @@
-use frontends::Frontend;
-
 pub struct UIBuffer {
     width: usize,
     height: usize,
-    rows: Vec<Vec<Cell>>
+    pub rows: Vec<Vec<Cell>>
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -31,21 +29,6 @@ impl UIBuffer {
             height: height,
             rows: rows,
         }
-    }
-
-    pub fn draw_range<T: Frontend>(&mut self, frontend: &mut T, start: usize, stop: usize) {
-        let rows = &mut self.rows[start..stop];
-        for row in rows.iter_mut() {
-            for cell in row.iter_mut().filter(|cell| cell.dirty) {
-                frontend.draw_char(cell.x, cell.y, cell.ch, cell.fg, cell.bg, CharStyle::Normal);
-                cell.dirty = false;
-            }
-        }
-    }
-
-    pub fn draw_everything<T: Frontend>(&mut self, frontend: &mut T) {
-        let height = self.height;
-        self.draw_range(frontend, 0, height);
     }
 
     pub fn get_width(&self) -> usize {

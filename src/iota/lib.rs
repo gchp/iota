@@ -14,10 +14,11 @@ extern crate rustc_serialize;
 
 pub use editor::Editor;
 pub use input::Input;
-pub use frontends::RustboxFrontend;
+// pub use frontends::RustboxFrontend;
 pub use frontends::EditorEvent;
 // pub use modes::{StandardMode, NormalMode, Mode};
 pub use keyboard::Key;
+pub use uibuf::{UIBuffer, CharStyle, CharColor};
 
 mod input;
 mod utils;

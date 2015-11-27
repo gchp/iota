@@ -2,7 +2,6 @@ use unicode_width::UnicodeWidthChar;
 
 use uibuf::UIBuffer;
 use keyboard::Key;
-use frontends::Frontend;
 
 /// State for the overlay
 pub enum OverlayEvent {
