@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::char;
 use std::io::stdin;
+use std::io::Write;
 use docopt::Docopt;
 use iota::{
     Editor, Input, UIBuffer, CharStyle, CharColor,
@@ -69,18 +70,31 @@ fn main() {
     let height = rb.height();
     let width = rb.width();
 
-    let mut editor = Editor::new(source, width, height);
+    let editor = Arc::new(Mutex::new(Editor::new(source, width, height)));
 
-    while editor.running {
-        editor.draw();
+    let e = editor.clone();
+    thread::spawn(move || {
+        loop {
+            let mut e = e.lock().unwrap();
+            writeln!(&mut std::io::stderr(), "test");
+            let event = e.events.recv().unwrap();
+            panic!("{:?}", event);
+            e.process_event(event);
+        }
+    });
+
+    let edit = editor.clone();
+    let mut edit = edit.lock().unwrap();
+    while edit.running {
+        edit.draw();
 
         {
-            let content = editor.get_content();
+            let content = edit.get_content();
             draw_everything(content, &rb);
         }
 
         {
-            let cursor_pos = editor.get_cursor_pos().unwrap();
+            let cursor_pos = edit.get_cursor_pos().unwrap();
             rb.set_cursor(cursor_pos.0, cursor_pos.1);
         }
 
@@ -100,7 +114,8 @@ fn main() {
             _ => EditorEvent::UnSupported
         };
 
-        editor.handle_raw_event(event);
+        edit.handle_raw_event(event);
+        edit.running = false;
     }
 }
 
