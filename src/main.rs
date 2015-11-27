@@ -6,9 +6,14 @@ extern crate rustbox;
 extern crate docopt;
 extern crate iota;
 
+use std::char;
 use std::io::stdin;
 use docopt::Docopt;
-use iota::{Editor, Input, RustboxFrontend};
+use iota::{
+    Editor, Input,
+    StandardMode, NormalMode,
+    Mode, EditorEvent, Key, RustboxFrontend
+};
 use rustbox::{InitOptions, RustBox, InputMode};
 static USAGE: &'static str = "
 Usage: iota [<filename>] [options]
@@ -58,9 +63,6 @@ fn main() {
         Result::Err(e) => panic!("{}", e),
     };
 
-    // initialise the frontend
-    let frontend = RustboxFrontend::new(&rb);
-
     // initialise the editor mode
     // let mode: Box<Mode> = if args.flag_vi {
     //     Box::new(NormalMode::new())
@@ -68,7 +70,44 @@ fn main() {
     //      Box::new(StandardMode::new())
     // };
 
+    let height = rb.height();
+    let width = rb.width();
+    let mut frontend = RustboxFrontend::new(&rb);
+
     // start the editor
-    let mut editor = Editor::new(source, frontend);
-    editor.start();
+    // editor.start();
+    let mut editor = Editor::new(source, mode, width, height);
+    while editor.running {
+        editor.draw();
+        // editor.view.draw()
+        // editor.get_uibuf()
+
+        {
+            // view contents
+            let content = editor.get_content();
+            content.draw_everything(&mut frontend);
+        }
+
+        // cursor position
+        let cursor_pos = editor.get_cursor_pos().unwrap();
+        rb.set_cursor(cursor_pos.0, cursor_pos.1);
+
+        rb.present();
+
+        let event = match rb.poll_event(true).unwrap() {
+            rustbox::Event::KeyEventRaw(_, key, ch) => {
+                let k = match key {
+                    0 => char::from_u32(ch).map(|c| Key::Char(c)),
+                    a => Key::from_special_code(a),
+                };
+                EditorEvent::KeyEvent(k)
+            }
+            rustbox::Event::ResizeEvent(width, height) => {
+                EditorEvent::Resize(width as usize, height as usize)
+            }
+            _ => EditorEvent::UnSupported
+        };
+
+        editor.handle_raw_event(event);
+    }
 }

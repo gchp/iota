@@ -32,26 +32,22 @@ impl Event {
     }
 }
 
-
 /// The main Editor structure
 ///
 /// This is the top-most structure in Iota.
-pub struct Editor<T: Frontend> {
-    buffers: Vec<Arc<Mutex<Buffer>>>,
+pub struct Editor<'e> {
+    pub running: bool,
+
     view: View,
-    running: bool,
-    frontend: T,
-    // mode: Box<Mode + 'e>,
+    buffers: Vec<Arc<Mutex<Buffer>>>,
+    mode: Box<Mode + 'e>,
     events_queue: VecDeque<Event>,
     keymap: KeyMap<Event>,
 }
 
-impl<T: Frontend> Editor<T> {
+impl<'e> Editor<'e> {
     /// Create a new Editor instance from the given source
-    pub fn new(source: Input, frontend: T) -> Editor<T> {
-        let height = frontend.get_window_height();
-        let width = frontend.get_window_width();
-
+    pub fn new(source: Input, mode: Box<Mode + 'e>, width: usize, height: usize) -> Editor<'e> {
         let mut buffers = Vec::new();
         let buffer = Buffer::from(source);
 
@@ -62,7 +58,6 @@ impl<T: Frontend> Editor<T> {
             buffers: buffers,
             view: view,
             running: true,
-            frontend: frontend,
             // mode: mode,
             events_queue: VecDeque::new(),
             keymap: KeyMap::new(),
@@ -154,8 +149,8 @@ impl<T: Frontend> Editor<T> {
     }
 
     /// Draw the current view to the frontend
-    fn draw(&mut self) {
-        self.view.draw(&mut self.frontend);
+    pub fn draw(&mut self) {
+        self.view.draw();
     }
 
     // fn handle_instruction(&mut self, instruction: Instruction, command: Command) {
@@ -294,24 +289,29 @@ impl<T: Frontend> Editor<T> {
 
     /// Start Iota!
     pub fn start(&mut self) {
-        // self.register_extensions();
         self.register_key_bindings();
 
-        while self.running {
-            self.draw();
-            self.frontend.present();
-            let event = self.frontend.poll_event();
 
-            match event {
-                EditorEvent::KeyEvent(key)         => self.handle_key_event(key),
-                EditorEvent::Resize(width, height) => self.handle_resize_event(width, height),
-
-                _ => {}
-            }
-
-            while let Some(event) = self.events_queue.pop_front() {
-                self.process_event(event);
-            }
+        while let Some(event) = self.events_queue.pop_front() {
+            self.process_event(event);
         }
     }
+
+    pub fn handle_raw_event(&mut self, event: EditorEvent) {
+        match event {
+            EditorEvent::KeyEvent(key)         => self.handle_key_event(key),
+            EditorEvent::Resize(width, height) => self.handle_resize_event(width, height),
+
+            _ => {}
+        }
+    }
+
+    pub fn get_cursor_pos(&mut self) -> Option<(isize, isize)> {
+        self.view.get_cursor_pos()
+    }
+
+    pub fn get_content(&mut self) -> &mut UIBuffer {
+        self.view.get_uibuf()
+    }
+
 }

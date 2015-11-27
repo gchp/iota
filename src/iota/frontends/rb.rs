@@ -24,28 +24,6 @@ impl<'f> RustboxFrontend<'f> {
 }
 
 impl<'f> Frontend for RustboxFrontend<'f> {
-    /// Poll Rustbox for events & translate them into an EditorEvent
-    fn poll_event(&self) -> EditorEvent {
-        match self.rb.poll_event(true).unwrap() {
-            Event::KeyEventRaw(_, key, ch) => {
-                let k = match key {
-                    0 => char::from_u32(ch).map(|c| Key::Char(c)),
-                    a => Key::from_special_code(a),
-                };
-                EditorEvent::KeyEvent(k)
-            }
-            Event::ResizeEvent(width, height) => {
-                EditorEvent::Resize(width as usize, height as usize)
-            }
-            _ => EditorEvent::UnSupported
-        }
-    }
-
-    /// Draw the cursor to the terminal
-    fn draw_cursor(&mut self, offset: isize, linenum: isize) {
-        self.rb.set_cursor(offset, linenum)
-    }
-
     /// Draw a given char & styles to the terminal
     fn draw_char(&mut self, offset: usize, linenum: usize, ch: char, fg: CharColor, bg: CharColor, style: CharStyle) {
         let bg = get_color(bg);
@@ -53,21 +31,6 @@ impl<'f> Frontend for RustboxFrontend<'f> {
         let style = get_style(style);
 
         self.rb.print_char(offset, linenum, style, fg, bg, ch);
-    }
-
-    /// Present the newly drawn data (cursor / content) to the user
-    fn present(&self) {
-        self.rb.present()
-    }
-
-    /// Get the terminal height
-    fn get_window_height(&self) -> usize {
-        self.rb.height()
-    }
-
-    /// Get the terminal width
-    fn get_window_width(&self) -> usize {
-        self.rb.width()
     }
 }
 

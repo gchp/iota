@@ -45,12 +45,11 @@ pub enum Overlay {
 }
 
 impl Overlay {
-    pub fn draw<F: Frontend>(&self, frontend: &mut F, uibuf: &mut UIBuffer) {
+    pub fn draw(&self, uibuf: &mut UIBuffer, height: usize) {
         match self {
             &Overlay::SelectFile     {prefix, ref data, ..} |
             &Overlay::Prompt         {prefix, ref data, ..} |
             &Overlay::SavePrompt     {prefix, ref data, ..} => {
-                let height = frontend.get_window_height() - 1;
                 let offset = prefix.len();
 
                 // draw the given prefix
@@ -62,27 +61,24 @@ impl Overlay {
                 for (index, ch) in data.chars().enumerate() {
                     uibuf.update_cell_content(index + offset, height, ch);
                 }
-
-                uibuf.draw_range(frontend, height, height+1);
             }
 
             _ => {}
         }
     }
 
-    pub fn draw_cursor<F: Frontend>(&mut self, frontend: &mut F) {
+    pub fn get_cursor_pos(&mut self, height: usize) -> Option<(isize, isize)> {
         match self {
             &mut Overlay::SelectFile     {cursor_x, ..} |
             &mut Overlay::Prompt         {cursor_x, ..} |
             &mut Overlay::SavePrompt     {cursor_x, ..} => {
-                // Prompt is always on the bottom, so we can use the
-                // height given by the frontend here
-                let height = frontend.get_window_height() - 1;
-                frontend.draw_cursor(cursor_x as isize, height as isize)
+                // Prompt is always on the bottom
+                return Some((cursor_x as isize, height as isize))
             },
 
             _ => {}
         }
+        None
     }
 
     pub fn handle_key_event(&mut self, key: Key) -> OverlayEvent {

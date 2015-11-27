@@ -23,17 +23,6 @@ pub enum EditorEvent {
 /// Frontends are chose at startup and can't be changed while the Editor is
 /// running.
 pub trait Frontend {
-    /// Poll the frontend for an event, translating it to an EditorEvent
-    fn poll_event(&self) -> EditorEvent;
-    /// Present the newly drawn data (cursor / content) to the user
-    fn present(&self);
-    /// Get the frontends window height or equivalent
-    fn get_window_height(&self) -> usize;
-    /// Get the frontends window width or equivalent
-    fn get_window_width(&self) -> usize;
-    /// Draw the cursor to the frontend
-    fn draw_cursor(&mut self, offset: isize, linenum: isize);
-    /// Draw the given char & styles to the frontend
     fn draw_char(&mut self, offset: usize, linenum: usize, ch: char, fg: CharColor, bg: CharColor, style: CharStyle);
 }
 
