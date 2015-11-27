@@ -70,21 +70,8 @@ fn main() {
     let height = rb.height();
     let width = rb.width();
 
-    let editor = Arc::new(Mutex::new(Editor::new(source, width, height)));
+    let mut edit = Editor::new(source, width, height);
 
-    let e = editor.clone();
-    thread::spawn(move || {
-        loop {
-            let mut e = e.lock().unwrap();
-            writeln!(&mut std::io::stderr(), "test");
-            let event = e.events.recv().unwrap();
-            panic!("{:?}", event);
-            e.process_event(event);
-        }
-    });
-
-    let edit = editor.clone();
-    let mut edit = edit.lock().unwrap();
     while edit.running {
         edit.draw();
 
@@ -115,9 +102,14 @@ fn main() {
         };
 
         edit.handle_raw_event(event);
-        edit.running = false;
+
+        edit.start_event_loop();
+        // while let Ok(event) = edit.events.recv() {
+        //     edit.process_event(event);
+        // }
     }
 }
+
 
 fn draw_everything(content: &mut UIBuffer, rb: &RustBox) {
     let stop = content.get_height();

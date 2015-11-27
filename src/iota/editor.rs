@@ -87,25 +87,21 @@ impl Editor {
             None => return
         };
 
-        let mut stdout = std::io::stderr();
         // look up KeyMap
         match self.keymap.check_key(key) {
             KeyMapState::Match(c) => {
                 // found a match!
-                writeln!(&mut stdout, "match");
                 self.fire_event(c);
             },
             KeyMapState::Continue => {
                 // possibly the start of a match...
                 // not sure what to do here...
-                write!(&mut stdout, "con");
             }
             KeyMapState::None => {
                 // no match at all :(
                 //
                 // lets try insert it into the buffer
                 // TODO: use an event for this instead
-                write!(&mut stdout, "none");
                 if let Key::Char(ch) = key {
                     self.view.insert_char(ch);
                 }
@@ -163,8 +159,8 @@ impl Editor {
     }
 
     fn fire_event(&mut self, event: Event) {
-        // self.events_queue.push_back(event);
-        self.events_sender.send(event);
+        self.events_queue.push_back(event);
+        // self.events_sender.send(event);
     }
 
     pub fn process_event(&mut self, event: Event) {
