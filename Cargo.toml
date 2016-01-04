@@ -1,6 +1,12 @@
 [project]
 name = "iota"
 version = "0.1.0"
+description = "A simple text editor"
+license = "MIT"
+homepage = "https://github.com/gchp/iota"
+repository = "https://github.com/gchp/iota"
+keywords = ["editor", "text", "terminal"]
+readme = "README.md"
 authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
 [dependencies]
