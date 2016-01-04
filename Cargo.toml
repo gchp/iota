@@ -1,5 +1,5 @@
 [project]
-name = "iota"
+name = "iota-editor"
 version = "0.1.0"
 description = "A simple text editor"
 license = "MIT"
