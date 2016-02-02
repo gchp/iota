@@ -10,6 +10,7 @@ extern crate rustbox;
 extern crate gapbuffer;
 extern crate tempdir;
 extern crate unicode_width;
+extern crate strings;
 
 pub use editor::Editor;
 pub use input::Input;

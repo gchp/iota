@@ -9,6 +9,7 @@ use std::convert::From;
 
 // external dependencies
 use gapbuffer::GapBuffer;
+use strings::rope::Rope;
 
 // local dependencies
 use log::{Log, Change, LogEntry};
@@ -22,7 +23,7 @@ use textobject::{TextObject, Kind, Offset, Anchor};
 pub enum Mark {
     /// For keeping track of cursors.
     Cursor(usize),
-    
+
     /// For using in determining some display of characters
     DisplayMark(usize),
 }
@@ -35,7 +36,7 @@ pub enum WordEdgeMatch {
 
 pub struct Buffer {
     /// Current buffers text
-    text: GapBuffer<u8>,
+    text: Rope,
 
     /// Table of marked indices in the text
     /// KEY: mark id => VALUE : (absolute index, line index)
@@ -56,7 +57,7 @@ impl Buffer {
     pub fn new() -> Buffer {
         Buffer {
             file_path: None,
-            text: GapBuffer::new(),
+            text: Rope::new(),
             marks: HashMap::new(),
             log: Log::new(),
         }
@@ -69,12 +70,14 @@ impl Buffer {
 
     /// The x,y coordinates of a mark within the file. None if not a valid mark.
     pub fn get_mark_coords(&self, mark: Mark) -> Option<(usize, usize)> {
-        if let Some(idx) = self.get_mark_idx(mark) {
-            if let Some(line) = get_line(idx, &self.text) {
-                Some((idx - line, (0..idx).filter(|i| -> bool { self.text[*i] == b'\n' })
-                                               .count()))
-            } else { None }
-        } else { None }
+        // if let Some(idx) = self.get_mark_idx(mark) {
+        //     if let Some(line) = get_line(idx, &self.text) {
+        //         Some((idx - line, (0..idx).filter(|i| -> bool { self.text[*i] == b'\n' })
+        //                                        .count()))
+        //     } else { None }
+        // } else { None }
+        // FIXME: actually calculate this
+        Some((0, 0))
     }
 
     /// The absolute index of a mark within the file. None if not a valid mark.
@@ -87,13 +90,13 @@ impl Buffer {
     }
 
     /// Creates an iterator on the text by chars.
-    pub fn chars(&self) -> Chars {
-        Chars {
-            buffer: &self.text,
-            idx: 0,
-            forward: true,
-        }
-    }
+    // pub fn chars(&self) -> Chars {
+    //     Chars {
+    //         buffer: &self.text,
+    //         idx: 0,
+    //         forward: true,
+    //     }
+    // }
 
     /// Creates an iterator on the text by chars that begins at the specified index.
     pub fn chars_from_idx(&self, idx: usize) -> Option<Chars> {
@@ -107,11 +110,11 @@ impl Buffer {
     }
 
     /// Creates an iterator on the text by chars that begins at the specified mark.
-    pub fn chars_from(&self, mark: Mark) -> Option<Chars> {
-        if let Some(&(idx, _)) = self.marks.get(&mark) {
-            self.chars_from_idx(idx)
-        } else { None }
-    }
+    // pub fn chars_from(&self, mark: Mark) -> Option<Chars> {
+    //     if let Some(&(idx, _)) = self.marks.get(&mark) {
+    //         self.chars_from_idx(idx)
+    //     } else { None }
+    // }
 
     /// Creates an iterator on the text by lines.
     pub fn lines(&self) -> Lines {
@@ -235,15 +238,20 @@ impl Buffer {
     /// ie. Get the index of Anchor inside the 23th line in the buffer
     /// or: Get the index of the start of the 23th line
     fn get_line_index_absolute(&self, anchor: Anchor, line_number: usize) -> Option<(usize, usize)> {
-        let text = &self.text;
+        let chars = self.text.chars();
 
-        let nlines = (0..text.len()).filter(|i| text[*i] == b'\n')
-                                    .take(line_number + 1)
-                                    .collect::<Vec<usize>>();
+        // let nlines = (0..text.len()).filter(|i| text[*i] == b'\n')
+        //                             .take(line_number + 1)
+        //                             .collect::<Vec<usize>>();
+        let nlines = chars.filter(|&(ch, _index)| ch == '\n')
+                          .take(line_number + 1)
+                          .map(|(_ch, index)| { index })
+                          .collect::<Vec<usize>>();
+
         match anchor {
             Anchor::Start => {
                 let end_offset = nlines[line_number - 1];
-                let start = get_line(end_offset, text).unwrap();
+                let start = get_line(end_offset, &self.text).unwrap();
                 Some((start, 0))
             }
 
@@ -262,12 +270,21 @@ impl Buffer {
 
     fn get_line_index_backward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<(usize, usize)> {
         let text = &self.text;
+        let chars: Vec<(char, usize)> = self.text.chars().collect();
 
         if let Some(tuple) = self.marks.get(&from_mark) {
             let (index, line_index) = *tuple;
-            let nlines = (0..index).rev().filter(|i| text[*i] == b'\n')
-                                         .take(offset + 1)
-                                         .collect::<Vec<usize>>();
+
+            let nlines = chars.into_iter()
+                              .rev()
+                              .filter(|&(ch, _index)| ch == '\n')
+                              .take(offset + 1)
+                              .map(|(_ch, index)| { index })
+                              .collect::<Vec<usize>>();
+
+            // let nlines = (0..index).rev().filter(|i| text[*i] == b'\n')
+            //                              .take(offset + 1)
+            //                              .collect::<Vec<usize>>();
 
             match anchor {
                 // Get the index of the start of the desired line
@@ -308,12 +325,18 @@ impl Buffer {
     fn get_line_index_forward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<(usize, usize)> {
         let text = &self.text;
         let last = self.len() - 1;
+        let chars = self.text.chars();
 
         if let Some(tuple) = self.marks.get(&from_mark) {
             let (index, line_index) = *tuple;
-            let nlines = (index..text.len()).filter(|i| text[*i] == b'\n')
-                                            .take(offset + 1)
-                                            .collect::<Vec<usize>>();
+            let nlines = chars.filter(|&(ch, _index)| ch == '\n')
+                              .take(offset + 1)
+                              .map(|(_ch, index)| { index })
+                              .collect::<Vec<usize>>();
+
+            // let nlines = (index..text.len()).filter(|i| text[*i] == b'\n')
+            //                                 .take(offset + 1)
+            //                                 .collect::<Vec<usize>>();
 
             match anchor {
                 // Get the same index as the current line_index
@@ -355,88 +378,90 @@ impl Buffer {
 
     fn get_word_index(&self, offset: Offset, anchor: Anchor) -> Option<(usize, usize)> {
         match offset {
-            Offset::Forward(nth_word, from_mark)  => { self.get_word_index_forward(anchor, nth_word, from_mark) }
-            Offset::Backward(nth_word, from_mark) => { self.get_word_index_backward(anchor, nth_word, from_mark) }
-            Offset::Absolute(word_number)         => { self.get_word_index_absolute(anchor, word_number) }
+            // Offset::Forward(nth_word, from_mark)  => { self.get_word_index_forward(anchor, nth_word, from_mark) }
+            // Offset::Backward(nth_word, from_mark) => { self.get_word_index_backward(anchor, nth_word, from_mark) }
+            // Offset::Absolute(word_number)         => { self.get_word_index_absolute(anchor, word_number) }
+
+            _ => {None}
         }
     }
 
-    fn get_word_index_forward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
-        let text = &self.text;
-        let last = self.len() - 1;
-        // TODO: use anchor to determine this
-        let edger = WordEdgeMatch::Whitespace;
+    // fn get_word_index_forward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
+    //     let text = &self.text;
+    //     let last = self.len() - 1;
+    //     // TODO: use anchor to determine this
+    //     let edger = WordEdgeMatch::Whitespace;
+    //
+    //
+    //     if let Some(tuple) = self.marks.get(&from_mark) {
+    //         let (index, _) = *tuple;
+    //         match anchor {
+    //             Anchor::Start => {
+    //                 // move to the start of nth_word from the mark
+    //                 if let Some(new_index) = get_words(index, nth_word, edger, text) {
+    //                     Some((new_index, new_index - get_line(new_index, text).unwrap()))
+    //                 } else {
+    //                     Some((last, last - get_line(last, text).unwrap()))
+    //                 }
+    //             }
+    //
+    //             _ => {
+    //                 print!("Unhandled word anchor: {:?} ", anchor);
+    //                 Some((last, last - get_line(last, text).unwrap()))
+    //             }
+    //         }
+    //     } else {
+    //         None
+    //     }
+    // }
 
+    // fn get_word_index_backward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
+    //     let text = &self.text;
+    //     // TODO: use anchor to determine this
+    //     let edger = WordEdgeMatch::Whitespace;
+    //
+    //
+    //     if let Some(tuple) = self.marks.get(&from_mark) {
+    //         let (index, _) = *tuple;
+    //         match anchor {
+    //             Anchor::Start => {
+    //                 // move to the start of the nth_word before the mark
+    //                 if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
+    //                     Some((new_index, new_index - get_line(new_index, text).unwrap()))
+    //                 } else {
+    //                     Some((0, 0))
+    //                 }
+    //             }
+    //
+    //             _ => {
+    //                 print!("Unhandled word anchor: {:?} ", anchor);
+    //                 None
+    //             },
+    //         }
+    //     } else {
+    //         None
+    //     }
+    // }
 
-        if let Some(tuple) = self.marks.get(&from_mark) {
-            let (index, _) = *tuple;
-            match anchor {
-                Anchor::Start => {
-                    // move to the start of nth_word from the mark
-                    if let Some(new_index) = get_words(index, nth_word, edger, text) {
-                        Some((new_index, new_index - get_line(new_index, text).unwrap()))
-                    } else {
-                        Some((last, last - get_line(last, text).unwrap()))
-                    }
-                }
-
-                _ => {
-                    print!("Unhandled word anchor: {:?} ", anchor);
-                    Some((last, last - get_line(last, text).unwrap()))
-                }
-            }
-        } else {
-            None
-        }
-    }
-
-    fn get_word_index_backward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
-        let text = &self.text;
-        // TODO: use anchor to determine this
-        let edger = WordEdgeMatch::Whitespace;
-
-
-        if let Some(tuple) = self.marks.get(&from_mark) {
-            let (index, _) = *tuple;
-            match anchor {
-                Anchor::Start => {
-                    // move to the start of the nth_word before the mark
-                    if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
-                        Some((new_index, new_index - get_line(new_index, text).unwrap()))
-                    } else {
-                        Some((0, 0))
-                    }
-                }
-
-                _ => {
-                    print!("Unhandled word anchor: {:?} ", anchor);
-                    None
-                },
-            }
-        } else {
-            None
-        }
-    }
-
-    fn get_word_index_absolute(&self, anchor: Anchor, word_number: usize) -> Option<(usize, usize)> {
-        let text = &self.text;
-        // TODO: use anchor to determine this
-        let edger = WordEdgeMatch::Whitespace;
-
-
-        match anchor {
-            Anchor::Start => {
-                let new_index = get_words(0, word_number - 1, edger, text).unwrap();
-
-                Some((new_index, new_index - get_line(new_index, text).unwrap()))
-            }
-
-            _ => {
-                print!("Unhandled word anchor: {:?} ", anchor);
-                None
-            }
-        }
-    }
+    // fn get_word_index_absolute(&self, anchor: Anchor, word_number: usize) -> Option<(usize, usize)> {
+    //     let text = &self.text;
+    //     // TODO: use anchor to determine this
+    //     let edger = WordEdgeMatch::Whitespace;
+    //
+    //
+    //     match anchor {
+    //         Anchor::Start => {
+    //             let new_index = get_words(0, word_number - 1, edger, text).unwrap();
+    //
+    //             Some((new_index, new_index - get_line(new_index, text).unwrap()))
+    //         }
+    //
+    //         _ => {
+    //             print!("Unhandled word anchor: {:?} ", anchor);
+    //             None
+    //         }
+    //     }
+    // }
 
     /// Returns the status text for this buffer.
     pub fn status_text(&self) -> String {
@@ -466,35 +491,36 @@ impl Buffer {
     }
 
     // Remove the chars in the range from start to end
-    pub fn remove_range(&mut self, start: usize, end: usize) -> Option<Vec<u8>> {
-        let text = &mut self.text;
-        let mut transaction = self.log.start(start);
-        let mut vec = (start..end)
-            .rev()
-            .filter_map(|idx| text.remove(idx).map(|ch| (idx, ch)))
-            .inspect(|&(idx, ch)| transaction.log(Change::Remove(idx, ch), idx))
-            .map(|(_, ch)| ch)
-            .collect::<Vec<u8>>();
-        vec.reverse();
-        Some(vec)
+    pub fn remove_range(&mut self, start: usize, end: usize)  {
+        // let text = &mut self.text;
+        // let mut transaction = self.log.start(start);
+        // let mut vec = (start..end)
+        //     .rev()
+        //     .filter_map(|idx| text.remove(idx, end).map(|ch| (idx, ch)))
+        //     .inspect(|&(idx, ch)| transaction.log(Change::Remove(idx, ch), idx))
+        //     .map(|(_, ch)| ch)
+        //     .collect::<Vec<String>>();
+        // vec.reverse();
+        // Some(vec)
     }
 
     // Remove the chars between mark and object
-    pub fn remove_from_mark_to_object(&mut self, mark: Mark, object: TextObject) -> Option<Vec<u8>> {
+    pub fn remove_from_mark_to_object(&mut self, mark: Mark, object: TextObject) {
         if let Some(&(mark_idx, _)) = self.marks.get(&mark) {
             let object_index = self.get_object_index(object);
 
             if let Some((obj_idx, _)) = object_index {
                 if mark_idx != obj_idx {
                     let (start, end) = if mark_idx < obj_idx { (mark_idx, obj_idx) } else { (obj_idx, mark_idx) };
-                    return self.remove_range(start, end);
+                    self.remove_range(start, end);
+                    return;
                 }
             }
         }
-        None
+        // None
     }
 
-    pub fn remove_object(&mut self, object: TextObject) -> Option<Vec<u8>> {
+    pub fn remove_object(&mut self, object: TextObject) {
         let object_start = TextObject { kind: object.kind.with_anchor(Anchor::Start), offset: object.offset };
         let object_end = TextObject { kind: object.kind.with_anchor(Anchor::End), offset: object.offset };
 
@@ -504,15 +530,17 @@ impl Buffer {
         if let (Some((start_index, _)), Some((end_index, _))) = (start, end) {
             return self.remove_range(start_index, end_index);
         }
-        None
+        // None
     }
 
     /// Insert a char at the mark.
-    pub fn insert_char(&mut self, mark: Mark, ch: u8) {
+    pub fn insert_char(&mut self, mark: Mark, ch: char) {
         if let Some(&(idx, _)) = self.marks.get(&mark) {
-            self.text.insert(idx, ch);
+            let mut data = String::new();
+            data.push(ch);
+            self.text.insert_copy(idx, &*data);
             let mut transaction = self.log.start(idx);
-            transaction.log(Change::Insert(idx, ch), idx);
+            transaction.log(Change::Insert(idx, ch as u8), idx);
         }
     }
 
@@ -561,7 +589,7 @@ impl<R: Read + BufferFrom> From<R> for Buffer {
         let mut buff = Buffer::new();
         let mut contents = String::new();
         if let Ok(_) = reader.read_to_string(&mut contents) {
-            buff.text.extend(contents.bytes());
+            buff.text.insert(0, contents);
         }
         buff
     }
@@ -600,48 +628,98 @@ impl WordEdgeMatch {
     }
 }
 
-fn get_words(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
-    (mark + 1..text.len() - 1)
-        .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
-        .take(n_words)
-        .last()
-}
+// fn get_words(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &Rope) -> Option<usize> {
+//     // (mark + 1..text.len() - 1)
+//     //     .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
+//     //     .take(n_words)
+//     //     .last()
+//
+//     let chars: Vec<(char, usize)> = text.chars()
+//                                .filter(|&(ch, idx)| {
+//                                    idx > mark &&
+//                                    edger.is_word_edge(&(chars[idx-1].0 as u8), &(ch as u8))
+//                                })
+//                             //    .map(|(ch, idx)| ch)
+//                       .filter(|&(ch, idx)| {
+//                       })
+//                       .take(n_words).last();
+//     match result {
+//         Some((ch, idx)) => Some(idx),
+//         None => None,
+//     }
+// }
 
-fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
-    (1..mark)
-        .rev()
-        .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
-        .take(n_words)
-        .last()
-}
+// fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &Rope) -> Option<usize> {
+//     // (1..mark)
+//     //     .rev()
+//     //     .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
+//     //     .take(n_words)
+//     //     .last()
+//
+//     let chars = text.chars().collect::<Vec<(char, usize)>>();
+//
+//     let result = chars.into_iter().rev()
+//                       .filter(|&(ch, idx)| {
+//                           idx <= mark && idx >=1 &&
+//                           edger.is_word_edge(&(chars[idx-1].0 as u8), &(ch as u8))
+//                       })
+//                       .take(n_words)
+//                       .last();
+//
+//     match result {
+//         Some((ch, idx)) => Some(idx),
+//         None => None,
+//     }
+// }
 
 /// Returns the index of the first character of the line the mark is in.
 /// Newline prior to mark (EXCLUSIVE) + 1.
-fn get_line(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
+fn get_line(mark: usize, text: &Rope) -> Option<usize> {
     let val = cmp::min(mark, text.len());
-    (0..val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
-                           .take(1)
-                           .next()
+    // (0..val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
+    //                        .take(1)
+    //                        .next()
+
+    let chars: Vec<(char, usize)> = text.chars().collect();
+    // FIXME: this would be better if Rope allowed for char slices
+    //        e.g. text.char_range(1..4).filter(...)
+    let result = chars.clone().into_iter().rev()
+                      .filter(|&(ch, idx)| {
+                          idx <= val + 1 && (
+                             idx == 0 || chars[idx-1].0 == '\n'
+                          )
+                      })
+                      .take(1)
+                      .next();
+
+    match result {
+        Some((ch, idx)) => Some(idx),
+        None => None,
+    }
+
 }
 
 /// Returns the index of the newline character at the end of the line mark is in.
 /// Newline after mark (INCLUSIVE).
-fn get_line_end(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
-    let val = cmp::min(mark, text.len());
-    (val..text.len()+1).filter(|idx| *idx == text.len() || text[*idx] == b'\n')
-                            .take(1)
-                            .next()
-}
+// fn get_line_end(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
+//     let val = cmp::min(mark, text.len());
+//     (val..text.len()+1).filter(|idx| *idx == text.len() || text[*idx] == b'\n')
+//                             .take(1)
+//                             .next()
+// }
 
 /// Performs a transaction on the passed in buffer.
-fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
+fn commit(transaction: &LogEntry, text: &mut Rope) {
     for change in transaction.changes.iter() {
         match change {
             &Change::Insert(idx, ch) => {
-                text.insert(idx, ch);
+                let mut data = String::new();
+                data.push(ch as char);
+                text.insert(idx, data);
             }
             &Change::Remove(idx, _) => {
-                text.remove(idx);
+                // FIXME: this could be wrong, perhaps idx-1 ?
+                text.remove(idx, idx+1);
             }
         }
     }
@@ -670,7 +748,7 @@ mod test {
         };
 
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(buffer.marks.get(&mark).unwrap(), &(1, 1));
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (1, 0));
     }
@@ -686,11 +764,11 @@ mod test {
 
         buffer.set_mark(mark, 3);
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(buffer.marks.get(&mark).unwrap(), &(2, 2));
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (2, 0));
     }
-    
+
     #[test]
     fn move_mark_five_chars_right() {
         let mut buffer = setup_buffer("Some test content");
@@ -701,7 +779,7 @@ mod test {
         };
 
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(buffer.marks.get(&mark).unwrap(), &(5, 5));
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (5, 0));
     }
@@ -716,7 +794,7 @@ mod test {
         };
 
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(buffer.marks.get(&mark).unwrap(), &(18, 0));
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 1));
     }
@@ -732,7 +810,7 @@ mod test {
 
         buffer.set_mark(mark, 18);
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(buffer.marks.get(&mark).unwrap(), &(0, 0));
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 0));
     }
@@ -747,7 +825,7 @@ mod test {
         };
 
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(buffer.marks.get(&mark).unwrap(), &(27, 0));
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (0, 2));
     }
@@ -772,7 +850,7 @@ mod test {
             offset: Offset::Backward(1, mark),
         };
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(buffer.marks.get(&mark).unwrap(), &(15, 15));
         assert_eq!(buffer.get_mark_coords(mark).unwrap(), (15, 0));
     }

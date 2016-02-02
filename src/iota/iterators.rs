@@ -1,8 +1,8 @@
 use std::mem;
-use gapbuffer::GapBuffer;
+use strings::rope::Rope;
 
 pub struct Lines<'a> {
-    pub buffer: &'a GapBuffer<u8>,
+    pub buffer: &'a Rope,
     pub tail: usize,
     pub head: usize,
 }
@@ -13,14 +13,15 @@ impl<'a> Iterator for Lines<'a> {
     fn next(&mut self) -> Option<Vec<u8>> {
         if self.tail != self.head {
             let old_tail = self.tail;
+            let chars: Vec<u8> = self.buffer.chars().map(|(ch, idx)| ch as u8).collect();
             //update tail to either the first char after the next \n or to self.head
             self.tail = (old_tail..self.head).filter(|i| { *i + 1 == self.head
-                                                           || self.buffer[*i] == b'\n' })
+                                                           || chars[*i] == b'\n' })
                                              .take(1)
                                              .next()
                                              .unwrap() + 1;
             Some((old_tail..if self.tail == self.head { self.tail - 1 } else { self.tail })
-                .map( |i| self.buffer[i] ).collect())
+                .map( |i| chars[i] ).collect())
         } else { None }
     }
 
@@ -31,11 +32,11 @@ impl<'a> Iterator for Lines<'a> {
 
 }
 
-/// Iterator traversing GapBuffer as chars
+/// Iterator traversing Rope as chars
 /// Can be made to traverse forwards or backwards with the methods
 /// `rev()` `forward()` and `backward()`
 pub struct Chars<'a> {
-    pub buffer: &'a GapBuffer<u8>,
+    pub buffer: &'a Rope,
     pub idx: usize,
     pub forward: bool,
 }
@@ -92,7 +93,9 @@ impl<'a> Chars<'a> {
 
     fn next_u8(&mut self) -> Option<u8> {
         let n = if self.idx < self.buffer.len() {
-            Some(self.buffer[self.idx])
+            // FIXME: be more efficient
+            let chars: Vec<u8> = self.buffer.chars().map(|(ch, idx)| ch as u8).collect();
+            Some(chars[self.idx])
         } else { None };
 
         if self.forward {

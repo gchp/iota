@@ -269,7 +269,7 @@ impl View {
 
     /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {
-        self.buffer.lock().unwrap().insert_char(self.cursor, ch as u8);
+        self.buffer.lock().unwrap().insert_char(self.cursor, ch);
         // NOTE: the last param to char_width here may not be correct
         if let Some(ch_width) = utils::char_width(ch, false, 4, 1) {
             let obj = TextObject {
@@ -369,7 +369,7 @@ impl View {
 pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
     let width = buf.get_width() - 1;
     let mut x = 0;
-    
+
     for ch in line.iter().skip(left) {
         let ch = *ch as char;
         match ch {
@@ -390,13 +390,13 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
             break;
         }
     }
-    
+
     // Replace any cells after end of line with ' '
     while x < width {
         buf.update_cell_content(x, idx, ' ');
         x += 1;
     }
-    
+
     // If the line is too long to fit on the screen, show an indicator
     let indicator = if line.len() > width + left { '→' } else { ' ' };
     buf.update_cell_content(width, idx, indicator);
