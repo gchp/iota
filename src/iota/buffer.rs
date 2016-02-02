@@ -70,14 +70,23 @@ impl Buffer {
 
     /// The x,y coordinates of a mark within the file. None if not a valid mark.
     pub fn get_mark_coords(&self, mark: Mark) -> Option<(usize, usize)> {
-        // if let Some(idx) = self.get_mark_idx(mark) {
-        //     if let Some(line) = get_line(idx, &self.text) {
-        //         Some((idx - line, (0..idx).filter(|i| -> bool { self.text[*i] == b'\n' })
-        //                                        .count()))
-        //     } else { None }
-        // } else { None }
-        // FIXME: actually calculate this
-        Some((0, 0))
+        if let Some(idx) = self.get_mark_idx(mark) {
+            if let Some(line) = get_line(idx, &self.text) {
+                // let offset  = (0..idx).filter(|i| -> bool { self.text[*i] == b'\n' })
+                //                                .count();
+
+                // FIXME: shouldn't need this
+                if self.text.len() == 0 {
+                    return Some((0, 0))
+                }
+
+                let chars: Vec<u8> = self.text.chars().map(|(ch, idx)| ch as u8).collect();
+                let offset  = (0..idx).filter(|i| -> bool { chars[*i] == b'\n' })
+                                               .count();
+
+                Some((idx - line, offset))
+            } else { None }
+        } else { None }
     }
 
     /// The absolute index of a mark within the file. None if not a valid mark.
@@ -676,27 +685,18 @@ impl WordEdgeMatch {
 /// Newline prior to mark (EXCLUSIVE) + 1.
 fn get_line(mark: usize, text: &Rope) -> Option<usize> {
     let val = cmp::min(mark, text.len());
-    // (0..val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
-    //                        .take(1)
-    //                        .next()
 
-    let chars: Vec<(char, usize)> = text.chars().collect();
-    // FIXME: this would be better if Rope allowed for char slices
-    //        e.g. text.char_range(1..4).filter(...)
-    let result = chars.clone().into_iter().rev()
-                      .filter(|&(ch, idx)| {
-                          idx <= val + 1 && (
-                             idx == 0 || chars[idx-1].0 == '\n'
-                          )
-                      })
-                      .take(1)
-                      .next();
-
-    match result {
-        Some((ch, idx)) => Some(idx),
-        None => None,
+    // FIXME: shouldn't need this?
+    if text.len() == 0 {
+        return Some(0)
     }
 
+    let chars: Vec<(char, usize)> = text.chars().collect();
+
+    // FIXME: this would be better if Rope allowed for char slices
+    //        e.g. text.char_range(1..4).filter(...)
+    (0..val + 1).rev().filter(|idx| *idx == 0 || chars[*idx - 1].0 == '\n')
+        .take(1).next()
 }
 
 /// Returns the index of the newline character at the end of the line mark is in.

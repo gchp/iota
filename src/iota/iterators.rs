@@ -13,7 +13,12 @@ impl<'a> Iterator for Lines<'a> {
     fn next(&mut self) -> Option<Vec<u8>> {
         if self.tail != self.head {
             let old_tail = self.tail;
+
+            // FIXME: shouldn't need this?
+            if self.buffer.len() == 0 { return Some(vec!(0)) }
+
             let chars: Vec<u8> = self.buffer.chars().map(|(ch, idx)| ch as u8).collect();
+
             //update tail to either the first char after the next \n or to self.head
             self.tail = (old_tail..self.head).filter(|i| { *i + 1 == self.head
                                                            || chars[*i] == b'\n' })
