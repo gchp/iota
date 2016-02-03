@@ -75,11 +75,6 @@ impl Buffer {
                 // let offset  = (0..idx).filter(|i| -> bool { self.text[*i] == b'\n' })
                 //                                .count();
 
-                // FIXME: shouldn't need this
-                if self.text.len() == 0 {
-                    return Some((0, 0))
-                }
-
                 let chars: Vec<u8> = self.text.chars().map(|(ch, idx)| ch as u8).collect();
                 let offset  = (0..idx).filter(|i| -> bool { chars[*i] == b'\n' })
                                                .count();
@@ -685,11 +680,6 @@ impl WordEdgeMatch {
 /// Newline prior to mark (EXCLUSIVE) + 1.
 fn get_line(mark: usize, text: &Rope) -> Option<usize> {
     let val = cmp::min(mark, text.len());
-
-    // FIXME: shouldn't need this?
-    if text.len() == 0 {
-        return Some(0)
-    }
 
     let chars: Vec<(char, usize)> = text.chars().collect();
 
