@@ -75,9 +75,14 @@ impl Buffer {
                 // let offset  = (0..idx).filter(|i| -> bool { self.text[*i] == b'\n' })
                 //                                .count();
 
-                let chars: Vec<u8> = self.text.chars().map(|(ch, idx)| ch as u8).collect();
-                let offset  = (0..idx).filter(|i| -> bool { chars[*i] == b'\n' })
-                                               .count();
+                // let chars: Vec<u8> = self.text.chars().map(|(ch, idx)| ch as u8).collect();
+                // let offset  = (0..idx).filter(|i| -> bool { chars[*i] == b'\n' })
+                //                                .count();
+
+                let offset = self.text.slice(0..idx)
+                                      .iter_chars()
+                                      .filter(|&(c, i)| -> bool { c == '\n' })
+                                      .count();
 
                 Some((idx - line, offset))
             } else { None }
@@ -242,15 +247,20 @@ impl Buffer {
     /// ie. Get the index of Anchor inside the 23th line in the buffer
     /// or: Get the index of the start of the 23th line
     fn get_line_index_absolute(&self, anchor: Anchor, line_number: usize) -> Option<(usize, usize)> {
-        let chars = self.text.chars();
+        //let chars = self.text.chars();
 
         // let nlines = (0..text.len()).filter(|i| text[*i] == b'\n')
         //                             .take(line_number + 1)
         //                             .collect::<Vec<usize>>();
-        let nlines = chars.filter(|&(ch, _index)| ch == '\n')
-                          .take(line_number + 1)
-                          .map(|(_ch, index)| { index })
-                          .collect::<Vec<usize>>();
+        let nlines = self.text.slice(line_number + 1..self.text.len()).iter_chars()
+            .filter(|&(ch, _index)| ch == '\n')
+            .map(|(_ch, index)| index)
+            .collect::<Vec<usize>>();
+
+        // let nlines = chars.filter(|&(ch, _index)| ch == '\n')
+        //                   .take(line_number + 1)
+        //                   .map(|(_ch, index)| { index })
+        //                   .collect::<Vec<usize>>();
 
         match anchor {
             Anchor::Start => {
@@ -333,6 +343,7 @@ impl Buffer {
 
         if let Some(tuple) = self.marks.get(&from_mark) {
             let (index, line_index) = *tuple;
+
             let nlines = chars.filter(|&(ch, _index)| ch == '\n')
                               .take(offset + 1)
                               .map(|(_ch, index)| { index })
