@@ -257,15 +257,14 @@ impl View {
         self.buffer.lock().unwrap().remove_object(object);
     }
 
-    // TODO: re-enable this
     pub fn delete_from_mark_to_object(&mut self, mark: Mark, object: TextObject) {
-    //     let mut buffer = self.buffer.lock().unwrap();
-    //     if let Some(mark_pos) = buffer.get_object_index(object) {
-    //         if let Some(midx) = buffer.get_mark_idx(mark) {
-    //             buffer.remove_from_mark_to_object(mark, object);
-    //             buffer.set_mark(mark, cmp::min(mark_pos.absolute, midx));
-    //         }
-    //     }
+        let mut buffer = self.buffer.lock().unwrap();
+        if let Some(mark_pos) = buffer.get_object_index(object) {
+            if let Some(midx) = buffer.get_mark_idx(mark) {
+                buffer.remove_from_mark_to_object(mark, object);
+                buffer.set_mark(mark, cmp::min(mark_pos.absolute, midx));
+            }
+        }
     }
 
     /// Insert a chacter into the buffer & update cursor position accordingly.
