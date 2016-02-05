@@ -20,6 +20,8 @@ use textobject::{TextObject, Kind, Offset, Anchor};
 
 struct MarkPosition {
     absolute: usize,
+    // FIXME: instead of line_number, should this reference the absolute position of the start of
+    // the line? The line_number can probably be calculated pretty easily? Investigate this...
     line_number: usize,
     line_start_offset: usize,
 }
@@ -174,7 +176,7 @@ impl Buffer {
     }
 
     /// Return the buffer index of a TextObject
-    pub fn get_object_index(&self, obj: TextObject) -> Option<(usize, usize)> {
+    pub fn get_object_index(&self, obj: TextObject) -> Option<MarkPosition> {
         match obj.kind {
             Kind::Char => self.get_char_index(obj.offset),
             Kind::Line(anchor) => self.get_line_index(obj.offset, anchor),
@@ -193,7 +195,7 @@ impl Buffer {
     ///
     /// ie: get the index of the 7th character after the cursor
     /// or: get the index of the 130th character from the start of the buffer
-    fn get_char_index(&self, offset: Offset) -> Option<(usize, usize)> {
+    fn get_char_index(&self, offset: Offset) -> Option<MarkPosition> {
         let text = &self.text;
 
         match offset {
@@ -206,11 +208,20 @@ impl Buffer {
                 if let Some(mark_pos) = self.marks.get(&from_mark) {
                     let new_absolute_position = mark_pos.absolute + offset;
                     if new_absolute_position < last {
+
+                        let mut new_mark_pos = MarkPosition::start();
+                        new_mark_pos.absolute = new_absolute_position;
+                        // mark_pos.line_number = 0;
                         // FIXME: with MarkPosition we shouldn't need the call to get_line here
-                        return Some((new_absolute_position, new_absolute_position - get_line(new_absolute_position, text).unwrap()))
+                        new_mark_pos.line_start_offset = new_absolute_position - get_line(new_absolute_position, text).unwrap();
+
+                        return Some(new_mark_pos)
                     } else {
+                        let mut new_mark_pos = MarkPosition::start();
+                        new_mark_pos.absolute = last;
                         // FIXME: with MarkPosition we shouldn't need the call to get_line here
-                        return Some((last, last - get_line(last, text).unwrap()))
+                        new_mark_pos.line_start_offset = last - get_line(last, text).unwrap();
+                        return Some(new_mark_pos)
                     }
                 }
 
@@ -236,8 +247,12 @@ impl Buffer {
                 if let Some(mark_pos) = self.marks.get(&from_mark) {
                     if mark_pos.absolute >= offset {
                         let new_absolute_position = mark_pos.absolute - offset;
+
+                        let mut new_mark_pos = MarkPosition::start();
+                        new_mark_pos.absolute = new_absolute_position;
                         // FIXME: with MarkPosition we shouldn't need the call to get_line here
-                        return Some((new_absolute_position, new_absolute_position - get_line(new_absolute_position, text).unwrap()));
+                        new_mark_pos.line_start_offset = new_absolute_position - get_line(new_absolute_position, text).unwrap();
+                        return Some(new_mark_pos);
                     } else {
                         return None
                     }
@@ -261,7 +276,10 @@ impl Buffer {
             //
             // ie: get the index of the 5th char in the buffer
             Offset::Absolute(absolute_char_offset) => {
-                Some((absolute_char_offset, absolute_char_offset - get_line(absolute_char_offset, text).unwrap()))
+                let mut mark_pos = MarkPosition::start();
+                mark_pos.absolute = absolute_char_offset;
+                mark_pos.line_start_offset = absolute_char_offset - get_line(absolute_char_offset, text).unwrap();
+                Some(mark_pos)
             },
         }
     }
@@ -283,7 +301,7 @@ impl Buffer {
     ///
     /// ie: get the index of the middle of the 7th line after the cursor
     /// or: get the index of the start of the 130th line from the start of the buffer
-    fn get_line_index(&self, offset: Offset, anchor: Anchor) -> Option<(usize, usize)> {
+    fn get_line_index(&self, offset: Offset, anchor: Anchor) -> Option<MarkPosition> {
         match offset {
             Offset::Forward(offset, from_mark)  => { self.get_line_index_forward(anchor, offset, from_mark) }
             Offset::Backward(offset, from_mark) => { self.get_line_index_backward(anchor, offset, from_mark) }
@@ -295,7 +313,7 @@ impl Buffer {
     ///
     /// ie. Get the index of Anchor inside the 23th line in the buffer
     /// or: Get the index of the start of the 23th line
-    fn get_line_index_absolute(&self, anchor: Anchor, line_number: usize) -> Option<(usize, usize)> {
+    fn get_line_index_absolute(&self, anchor: Anchor, line_number: usize) -> Option<MarkPosition> {
         let text = &self.text;
 
         let nlines = (0..text.len()).filter(|i| text[*i] == b'\n')
@@ -305,12 +323,22 @@ impl Buffer {
             Anchor::Start => {
                 let end_offset = nlines[line_number - 1];
                 let start = get_line(end_offset, text).unwrap();
-                Some((start, 0))
+
+                let mut mark_pos = MarkPosition::start();
+                mark_pos.absolute = start;
+                mark_pos.line_start_offset = 0;
+
+                Some(mark_pos)
             }
 
             Anchor::End => {
                 let end_offset = nlines[line_number - 1];
-                Some((end_offset, end_offset))
+
+                let mut mark_pos = MarkPosition::start();
+                mark_pos.absolute = end_offset;
+                mark_pos.line_start_offset = end_offset;
+
+                Some(mark_pos)
             }
 
             _ => {
@@ -321,7 +349,7 @@ impl Buffer {
     }
 
 
-    fn get_line_index_backward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<(usize, usize)> {
+    fn get_line_index_backward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<MarkPosition> {
         let text = &self.text;
         if let Some(mark_pos) = self.marks.get(&from_mark) {
             //let (index, line_index) = *tuple;
@@ -334,10 +362,15 @@ impl Buffer {
                 Anchor::Start => {
                     // if this is the first line in the buffer
                     if nlines.len() == 0 {
-                        return Some((0, 0))
+                        return Some(MarkPosition::start())
                     }
                     let start_offset = cmp::min(mark_pos.line_start_offset + nlines[offset] + 1, nlines[offset]);
-                    Some((start_offset + 1, 0))
+
+                    let mut new_mark_pos = MarkPosition::start();
+                    new_mark_pos.absolute = start_offset + 1;
+                    new_mark_pos.line_start_offset = 0;
+
+                    Some(new_mark_pos)
                 }
 
                 // ie. If the current line_index is 5, then the line_index
@@ -345,13 +378,21 @@ impl Buffer {
                 // desired line.
                 Anchor::Same => {
                     if offset == 0 {
-                        Some((0, 0)) // going to start of the first line
+                        Some(MarkPosition::start()) // going to start of the first line
                     } else if offset == nlines.len() {
-                        Some((cmp::min(mark_pos.line_start_offset, nlines[0]), mark_pos.line_start_offset))
+                        let mut new_mark_pos = MarkPosition::start();
+                        new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset, nlines[0]);
+                        new_mark_pos.line_start_offset = mark_pos.line_start_offset;
+
+                        Some(new_mark_pos)
                     } else if offset > nlines.len() {
-                        Some((0, 0)) // trying to move up from the first line
+                        Some(MarkPosition::start()) // trying to move up from the first line
                     } else {
-                        Some((cmp::min(mark_pos.line_start_offset + nlines[offset] + 1, nlines[offset-1]), mark_pos.line_start_offset))
+                        let mut new_mark_pos = MarkPosition::start();
+                        new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset + nlines[offset] + 1, nlines[offset-1]);
+                        new_mark_pos.line_start_offset = mark_pos.line_start_offset;
+
+                        Some(new_mark_pos)
                     }
                 }
 
@@ -406,7 +447,7 @@ impl Buffer {
         // }
     }
 
-    fn get_line_index_forward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<(usize, usize)> {
+    fn get_line_index_forward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<MarkPosition> {
         let text = &self.text;
         let last = self.len() - 1;
         if let Some(mark_pos) = self.marks.get(&from_mark) {
@@ -423,12 +464,24 @@ impl Buffer {
                 // desired line.
                 Anchor::Same => {
                     if offset == nlines.len() {
-                        Some((cmp::min(mark_pos.line_start_offset + nlines[offset-1] + 1, last), mark_pos.line_start_offset))
+                        let mut new_mark_pos = MarkPosition::start();
+                        new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset + nlines[offset-1] + 1, last);
+                        new_mark_pos.line_start_offset = mark_pos.line_start_offset;
+
+                        Some(new_mark_pos)
                     } else {
                         if offset > nlines.len() {
-                            Some((last, last - get_line(last, text).unwrap()))
+                            let mut new_mark_pos = MarkPosition::start();
+                            new_mark_pos.absolute = last;
+                            new_mark_pos.line_start_offset = last - get_line(last, text).unwrap();
+
+                            Some(new_mark_pos)
                         } else {
-                            Some((cmp::min(mark_pos.line_start_offset + nlines[offset-1] + 1, nlines[offset]), mark_pos.line_start_offset))
+                            let mut new_mark_pos = MarkPosition::start();
+                            new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset + nlines[offset-1] + 1, nlines[offset]);
+                            new_mark_pos.line_start_offset = mark_pos.line_start_offset;
+
+                            Some(new_mark_pos)
                         }
                     }
                 }
@@ -437,10 +490,18 @@ impl Buffer {
                 Anchor::End => {
                     // if this is the last line in the buffer
                     if nlines.len() == 0 {
-                        return Some((last, offset))
+                        let mut new_mark_pos = MarkPosition::start();
+                        new_mark_pos.absolute = last;
+                        new_mark_pos.line_start_offset = offset;
+
+                        return Some(new_mark_pos)
                     }
                     let end_offset = cmp::min(mark_pos.line_start_offset + nlines[offset] + 1, nlines[offset]);
-                    Some((end_offset, end_offset - get_line(end_offset, text).unwrap()))
+                    let mut new_mark_pos = MarkPosition::start();
+                    new_mark_pos.absolute = end_offset;
+                    new_mark_pos.line_start_offset = end_offset - get_line(end_offset, text).unwrap();
+
+                    Some(new_mark_pos)
                 }
 
                 _ => {
@@ -496,7 +557,7 @@ impl Buffer {
         // }
     }
 
-    fn get_word_index(&self, offset: Offset, anchor: Anchor) -> Option<(usize, usize)> {
+    fn get_word_index(&self, offset: Offset, anchor: Anchor) -> Option<MarkPosition> {
         match offset {
             Offset::Forward(nth_word, from_mark)  => { self.get_word_index_forward(anchor, nth_word, from_mark) }
             Offset::Backward(nth_word, from_mark) => { self.get_word_index_backward(anchor, nth_word, from_mark) }
@@ -504,7 +565,7 @@ impl Buffer {
         }
     }
 
-    fn get_word_index_forward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
+    fn get_word_index_forward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<MarkPosition> {
         let text = &self.text;
         let last = self.len() - 1;
         // TODO: use anchor to determine this
@@ -516,15 +577,27 @@ impl Buffer {
                 Anchor::Start => {
                     // move to the start of nth_word from the mark
                     if let Some(new_index) = get_words(mark_pos.absolute, nth_word, edger, text) {
-                        Some((new_index, new_index - get_line(new_index, text).unwrap()))
+                        let mut new_mark_pos = MarkPosition::start();
+                        new_mark_pos.absolute = new_index;
+                        new_mark_pos.line_start_offset = new_index - get_line(new_index, text).unwrap();
+
+                        Some(new_mark_pos)
                     } else {
-                        Some((last, last - get_line(last, text).unwrap()))
+                        let mut new_mark_pos = MarkPosition::start();
+                        new_mark_pos.absolute = last;
+                        new_mark_pos.line_start_offset = last - get_line(last, text).unwrap();
+
+                        Some(new_mark_pos)
                     }
                 }
 
                 _ => {
                     print!("Unhandled word anchor: {:?} ", anchor);
-                    Some((last, last - get_line(last, text).unwrap()))
+                    let mut new_mark_pos = MarkPosition::start();
+                    new_mark_pos.absolute = last;
+                    new_mark_pos.line_start_offset = last - get_line(last, text).unwrap();
+
+                    Some(new_mark_pos)
                 }
             }
         } else {
@@ -554,7 +627,7 @@ impl Buffer {
         // }
     }
 
-    fn get_word_index_backward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<(usize, usize)> {
+    fn get_word_index_backward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<MarkPosition> {
         let text = &self.text;
         // TODO: use anchor to determine this
         let edger = WordEdgeMatch::Whitespace;
@@ -565,9 +638,13 @@ impl Buffer {
                 Anchor::Start => {
                     // move to the start of the nth_word before the mark
                     if let Some(new_index) = get_words_rev(mark_pos.absolute, nth_word, edger, text) {
-                        Some((new_index, new_index - get_line(new_index, text).unwrap()))
+                        let mut new_mark_pos = MarkPosition::start();
+                        new_mark_pos.absolute = new_index;
+                        new_mark_pos.line_start_offset = new_index - get_line(new_index, text).unwrap();
+
+                        Some(new_mark_pos)
                     } else {
-                        Some((0, 0))
+                        Some(MarkPosition::start())
                     }
                 }
 
@@ -602,7 +679,7 @@ impl Buffer {
         // }
     }
 
-    fn get_word_index_absolute(&self, anchor: Anchor, word_number: usize) -> Option<(usize, usize)> {
+    fn get_word_index_absolute(&self, anchor: Anchor, word_number: usize) -> Option<MarkPosition> {
         let text = &self.text;
         // TODO: use anchor to determine this
         let edger = WordEdgeMatch::Whitespace;
@@ -612,7 +689,11 @@ impl Buffer {
             Anchor::Start => {
                 let new_index = get_words(0, word_number - 1, edger, text).unwrap();
 
-                Some((new_index, new_index - get_line(new_index, text).unwrap()))
+                let mut new_mark_pos = MarkPosition::start();
+                new_mark_pos.absolute = new_index;
+                new_mark_pos.line_start_offset = new_index - get_line(new_index, text).unwrap();
+
+                Some(new_mark_pos)
             }
 
             _ => {
@@ -633,19 +714,25 @@ impl Buffer {
     /// Sets the mark to the location of a given TextObject, if it exists.
     /// Adds a new mark or overwrites an existing mark.
     pub fn set_mark_to_object(&mut self, mark: Mark, obj: TextObject) {
-        if let Some(tuple) = self.get_object_index(obj) {
-            self.marks.insert(mark, tuple);
+        if let Some(mark_pos) = self.get_object_index(obj) {
+            self.marks.insert(mark, mark_pos);
         }
     }
 
     /// Sets the mark to a given absolute index. Adds a new mark or overwrites an existing mark.
     pub fn set_mark(&mut self, mark: Mark, idx: usize) {
         if let Some(line) = get_line(idx, &self.text) {
-            if let Some(tuple) = self.marks.get_mut(&mark) {
-                *tuple = (idx, idx - line);
+            if let Some(mark_position) = self.marks.get_mut(&mark) {
+                mark_position.absolute = idx;
+                mark_position.line_start_offset = idx - line;
                 return;
             }
-            self.marks.insert(mark, (idx, idx - line));
+
+            let mut mark_pos = MarkPosition::start();
+            mark_pos.absolute = idx;
+            mark_pos.line_start_offset = idx - line;
+
+            self.marks.insert(mark, mark_pos);
         }
     }
 
@@ -665,16 +752,25 @@ impl Buffer {
 
     // Remove the chars between mark and object
     pub fn remove_from_mark_to_object(&mut self, mark: Mark, object: TextObject) -> Option<Vec<u8>> {
-        if let Some(mark_pos) = self.marks.get(&mark) {
-            let object_index = self.get_object_index(object);
+        // let mark_pos = match self.marks.get(&mark) {
+        //     Some(mp) => mp,
+        //     None => return None,
+        // };
+        // //if let Some(mark_pos) = self.marks.get(&mark) {
+        // let object_index = match self.get_object_index(object) {
+        //     Some(mp) => mp,
+        //     None => return None,
+        // };
 
-            if let Some((obj_idx, _)) = object_index {
-                if mark_pos.absolute != obj_idx {
-                    let (start, end) = if mark_pos.absolute < obj_idx { (mark_pos.absolute, obj_idx) } else { (obj_idx, mark_pos.absolute) };
-                    return self.remove_range(start, end);
-                }
-            }
-        }
+        // if mark_pos.absolute != object_index.absolute {
+        //     let (start, end) = if mark_pos.absolute < object_index.absolute { 
+        //         (mark_pos.absolute, object_index.absolute)
+        //     } else {
+        //         (object_index.absolute, mark_pos.absolute)
+        //     };
+        //     return self.remove_range(start, end);
+        // }
+        //}
         None
         
         // if let Some(&(mark_idx, _)) = self.marks.get(&mark) {
@@ -697,8 +793,8 @@ impl Buffer {
         let start = self.get_object_index(object_start);
         let end = self.get_object_index(object_end);
 
-        if let (Some((start_index, _)), Some((end_index, _))) = (start, end) {
-            return self.remove_range(start_index, end_index);
+        if let (Some(start_pos), Some(end_pos)) = (start, end) {
+            return self.remove_range(start_pos.absolute, end_pos.absolute);
         }
         None
     }

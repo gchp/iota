@@ -153,7 +153,7 @@ impl View {
     fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
         let buffer = self.buffer.lock().unwrap();
         let buffer_status = buffer.status_text();
-        let mut cursor_status = buffer.get_mark_coords(self.cursor).unwrap_or((0,0));
+        let mut cursor_status = buffer.get_mark_display_coords(self.cursor).unwrap_or((0,0));
         cursor_status = (cursor_status.0 + 1, cursor_status.1 + 1);
         let status_text = format!("{} ({}, {})", buffer_status, cursor_status.0, cursor_status.1).into_bytes();
         let status_text_len = status_text.len();
@@ -174,8 +174,8 @@ impl View {
 
     fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
         let buffer = self.buffer.lock().unwrap();
-        if let Some(top_line) = buffer.get_mark_coords(self.top_line) {
-            if let Some((x, y)) = buffer.get_mark_coords(self.cursor) {
+        if let Some(top_line) = buffer.get_mark_display_coords(self.top_line) {
+            if let Some((x, y)) = buffer.get_mark_display_coords(self.cursor) {
                 frontend.draw_cursor((x - self.left_col) as isize, y as isize - top_line.1 as isize);
             }
         }
@@ -212,8 +212,8 @@ impl View {
     /// Update the top_line mark if necessary to keep the cursor on the screen.
     fn maybe_move_screen(&mut self) {
         let mut buffer = self.buffer.lock().unwrap();
-        if let (Some(cursor), Some((_, top_line))) = (buffer.get_mark_coords(self.cursor),
-                                                      buffer.get_mark_coords(self.top_line)) {
+        if let (Some(cursor), Some((_, top_line))) = (buffer.get_mark_display_coords(self.cursor),
+                                                      buffer.get_mark_display_coords(self.top_line)) {
 
             let width  = (self.get_width()  - self.threshold) as isize;
             let height = (self.get_height() - self.threshold) as isize;
@@ -257,14 +257,15 @@ impl View {
         self.buffer.lock().unwrap().remove_object(object);
     }
 
+    // TODO: re-enable this
     pub fn delete_from_mark_to_object(&mut self, mark: Mark, object: TextObject) {
-        let mut buffer = self.buffer.lock().unwrap();
-        if let Some((idx, _)) = buffer.get_object_index(object) {
-            if let Some(midx) = buffer.get_mark_idx(mark) {
-                buffer.remove_from_mark_to_object(mark, object);
-                buffer.set_mark(mark, cmp::min(idx, midx));
-            }
-        }
+    //     let mut buffer = self.buffer.lock().unwrap();
+    //     if let Some(mark_pos) = buffer.get_object_index(object) {
+    //         if let Some(midx) = buffer.get_mark_idx(mark) {
+    //             buffer.remove_from_mark_to_object(mark, object);
+    //             buffer.set_mark(mark, cmp::min(mark_pos.absolute, midx));
+    //         }
+    //     }
     }
 
     /// Insert a chacter into the buffer & update cursor position accordingly.
