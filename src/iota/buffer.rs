@@ -371,7 +371,6 @@ impl Buffer {
     fn get_line_index_backward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<MarkPosition> {
         let text = &self.text;
         if let Some(mark_pos) = self.marks.get(&from_mark) {
-            //let (index, line_index) = *tuple;
             let nlines = (0..mark_pos.absolute).rev().filter(|i| text[*i] == b'\n')
                                          .take(offset + 1)
                                          .collect::<Vec<usize>>();
@@ -379,16 +378,18 @@ impl Buffer {
             match anchor {
                 // Get the index of the start of the desired line
                 Anchor::Start => {
+                    let mut new_mark_pos = MarkPosition::start();
+
                     // if this is the first line in the buffer
                     if nlines.len() == 0 {
-                        return Some(MarkPosition::start())
+                        return Some(new_mark_pos)
                     }
-                    let start_offset = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start + nlines[offset] + 1, nlines[offset]);
 
-                    // let mut new_mark_pos = MarkPosition::start();
-                    // new_mark_pos.absolute = start_offset + 1;
-                    // new_mark_pos.line_start_offset = 0;
-                    let new_mark_pos = get_line_info(start_offset + 1, text).unwrap();
+                    let start_offset = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start + nlines[offset] + 1, nlines[offset]);
+                    new_mark_pos.absolute = start_offset + 1;
+                    new_mark_pos.line_number = nlines.len();
+                    new_mark_pos.absolute_line_start = nlines[0] + 1;
+
 
                     Some(new_mark_pos)
                 }
@@ -411,28 +412,6 @@ impl Buffer {
                         new_mark_pos.absolute_line_start = nlines[nlines.len() - 1] + 1;
                     }
 
-                    // if offset == 0 {
-                    //     Some(MarkPosition::start()) // going to start of the first line
-                    // } else if offset == nlines.len() {
-                    //     // let mut new_mark_pos = MarkPosition::start();
-                    //     // new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset, nlines[0]);
-                    //     // new_mark_pos.line_start_offset = mark_pos.line_start_offset;
-                    //     let new_pos = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start, nlines[0]);
-                    //     let new_mark_pos = get_line_info(new_pos, text).unwrap();
-                    //
-                    //     Some(new_mark_pos)
-                    // } else if offset > nlines.len() {
-                    //     Some(MarkPosition::start()) // trying to move up from the first line
-                    // } else {
-                    //     // let mut new_mark_pos = MarkPosition::start();
-                    //     // new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset + nlines[offset] + 1, nlines[offset-1]);
-                    //     // new_mark_pos.line_start_offset = mark_pos.line_start_offset;
-                    //     let new_pos = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start + nlines[offset] + 1, nlines[offset-1]);
-                    //     let new_mark_pos = get_line_info(new_pos, text).unwrap();
-                    //
-                    //     Some(new_mark_pos)
-                    // }
-
                     Some(new_mark_pos)
                 }
 
@@ -444,54 +423,12 @@ impl Buffer {
         } else {
             None
         }
-
-        // if let Some(tuple) = self.marks.get(&from_mark) {
-        //     let (index, line_index) = *tuple;
-        //     let nlines = (0..index).rev().filter(|i| text[*i] == b'\n')
-        //                                  .take(offset + 1)
-        //                                  .collect::<Vec<usize>>();
-
-        //     match anchor {
-        //         // Get the index of the start of the desired line
-        //         Anchor::Start => {
-        //             // if this is the first line in the buffer
-        //             if nlines.len() == 0 {
-        //                 return Some((0, 0))
-        //             }
-        //             let start_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-        //             Some((start_offset + 1, 0))
-        //         }
-
-        //         // ie. If the current line_index is 5, then the line_index
-        //         // returned will be the fifth index from the start of the
-        //         // desired line.
-        //         Anchor::Same => {
-        //             if offset == 0 {
-        //                 Some((0, 0)) // going to start of the first line
-        //             } else if offset == nlines.len() {
-        //                 Some((cmp::min(line_index, nlines[0]), line_index))
-        //             } else if offset > nlines.len() {
-        //                 Some((0, 0)) // trying to move up from the first line
-        //             } else {
-        //                 Some((cmp::min(line_index + nlines[offset] + 1, nlines[offset-1]), line_index))
-        //             }
-        //         }
-
-        //         _ => {
-        //             print!("Unhandled line anchor: {:?} ", anchor);
-        //             None
-        //         },
-        //     }
-        // } else {
-        //     None
-        // }
     }
 
     fn get_line_index_forward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<MarkPosition> {
         let text = &self.text;
         let last = self.len() - 1;
         if let Some(mark_pos) = self.marks.get(&from_mark) {
-            //let (index, line_index) = *tuple;
             let nlines = (mark_pos.absolute..text.len()).filter(|i| text[*i] == b'\n')
                                             .take(offset + 1)
                                             .collect::<Vec<usize>>();
@@ -522,40 +459,6 @@ impl Buffer {
 
 
                     Some(new_pos)
-
-                    // if offset == nlines.len() {
-                    //     let new_pos = cmp::min(mark_pos.line_start_offset + nlines[offset-1] + 1, last);
-                    //     let new_mark_pos = get_line_info(new_pos, text).unwrap();
-                    //     // let mut new_mark_pos = MarkPosition::start();
-                    //     // new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset + nlines[offset-1] + 1, last);
-                    //     // new_mark_pos.line_start_offset = mark_pos.line_start_offset;
-
-                    //     // new_mark_pos.line_number = mark_pos.line_number;
-                    //     // new_mark_pos.absolute_line_start = mark_pos.absolute_line_start;
-
-                    //     Some(new_mark_pos)
-                    // } else {
-                    //     if offset > nlines.len() {
-                    //         // let mut new_mark_pos = MarkPosition::start();
-                    //         // new_mark_pos.absolute = last;
-                    //         // new_mark_pos.line_start_offset = last - get_line(last, text).unwrap();
-                    //         let new_mark_pos = get_line_info(last, text).unwrap();
-
-                    //         Some(new_mark_pos)
-                    //     } else {
-                    //         let new_pos = cmp::min(mark_pos.line_start_offset + nlines[offset-1] + 1, nlines[offset]);
-                    //         let mut new_mark_pos = get_line_info(new_pos, text).unwrap();
-
-                    //         // let mut new_mark_pos = MarkPosition::start();
-                    //         // new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset + nlines[offset-1] + 1, nlines[offset]);
-                    //         // new_mark_pos.line_start_offset = mark_pos.line_start_offset;
-
-                    //         // new_mark_pos.line_number = mark_pos.line_number;
-                    //         // new_mark_pos.absolute_line_start = mark_pos.absolute_line_start;
-
-                    //         Some(new_mark_pos)
-                    //     }
-                    // }
                 }
 
                 // Get the index of the end of the desired line
@@ -585,49 +488,6 @@ impl Buffer {
         } else {
             None
         }
-
-        // if let Some(tuple) = self.marks.get(&from_mark) {
-        //     let (index, line_index) = *tuple;
-        //     let nlines = (index..text.len()).filter(|i| text[*i] == b'\n')
-        //                                     .take(offset + 1)
-        //                                     .collect::<Vec<usize>>();
-
-        //     match anchor {
-        //         // Get the same index as the current line_index
-        //         //
-        //         // ie. If the current line_index is 5, then the line_index
-        //         // returned will be the fifth index from the start of the
-        //         // desired line.
-        //         Anchor::Same => {
-        //             if offset == nlines.len() {
-        //                 Some((cmp::min(line_index + nlines[offset-1] + 1, last), line_index))
-        //             } else {
-        //                 if offset > nlines.len() {
-        //                     Some((last, last - get_line(last, text).unwrap()))
-        //                 } else {
-        //                     Some((cmp::min(line_index + nlines[offset-1] + 1, nlines[offset]), line_index))
-        //                 }
-        //             }
-        //         }
-
-        //         // Get the index of the end of the desired line
-        //         Anchor::End => {
-        //             // if this is the last line in the buffer
-        //             if nlines.len() == 0 {
-        //                 return Some((last, offset))
-        //             }
-        //             let end_offset = cmp::min(line_index + nlines[offset] + 1, nlines[offset]);
-        //             Some((end_offset, end_offset - get_line(end_offset, text).unwrap()))
-        //         }
-
-        //         _ => {
-        //             print!("Unhandled line anchor: {:?} ", anchor);
-        //             None
-        //         },
-        //     }
-        // } else {
-        //     None
-        // }
     }
 
     fn get_word_index(&self, offset: Offset, anchor: Anchor) -> Option<MarkPosition> {
