@@ -12,14 +12,13 @@ use gapbuffer::GapBuffer;
 
 // local dependencies
 use log::{Log, Change, LogEntry};
-use utils::is_alpha_or_;
 use input::Input;
-use iterators::{Lines, Chars};
+use iterators::Lines;
 use textobject::{TextObject, Kind, Offset, Anchor};
 
 
 #[derive(PartialEq, Debug)]
-struct MarkPosition {
+pub struct MarkPosition {
     pub absolute: usize,
     absolute_line_start: usize,
     line_number: usize,
@@ -59,7 +58,6 @@ pub enum Mark {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum WordEdgeMatch {
-    Alphabet,
     Whitespace,
 }
 
@@ -109,35 +107,6 @@ impl Buffer {
                 Some(mark_pos.absolute)
             } else { None }
         } else { None }
-    }
-
-    /// Creates an iterator on the text by chars.
-    pub fn chars(&self) -> Chars {
-        Chars {
-            buffer: &self.text,
-            idx: 0,
-            forward: true,
-        }
-    }
-
-    /// Creates an iterator on the text by chars that begins at the specified index.
-    pub fn chars_from_idx(&self, idx: usize) -> Option<Chars> {
-        if idx < self.len() {
-            Some(Chars {
-                buffer: &self.text,
-                idx: idx,
-                forward: true,
-            })
-        } else { None }
-    }
-
-    /// Creates an iterator on the text by chars that begins at the specified mark.
-    pub fn chars_from(&self, mark: Mark) -> Option<Chars> {
-        if let Some(mark_pos) = self.marks.get(&mark) {
-            return self.chars_from_idx(mark_pos.absolute)
-        }
-
-        None
     }
 
     /// Creates an iterator on the text by lines.
@@ -629,7 +598,7 @@ impl Buffer {
 // R: Read + BufferFrom fixes the error.
 //
 // TODO: investigate this further - possible compiler bug?
-trait BufferFrom {}
+pub trait BufferFrom {}
 impl BufferFrom for Stdin {}
 impl BufferFrom for File {}
 
@@ -679,10 +648,10 @@ impl WordEdgeMatch {
         match (self, *c1 as char, *c2 as char) {
             (_, '\n', '\n') => true, // Blank lines are always counted as a word
             (&WordEdgeMatch::Whitespace, c1, c2) => c1.is_whitespace() && !c2.is_whitespace(),
-            (&WordEdgeMatch::Alphabet, c1, c2) if c1.is_whitespace() => !c2.is_whitespace(),
-            (&WordEdgeMatch::Alphabet, c1, c2) if is_alpha_or_(c1) => !is_alpha_or_(c2) && !c2.is_whitespace(),
-            (&WordEdgeMatch::Alphabet, c1, c2) if !is_alpha_or_(c1) => is_alpha_or_(c2) && !c2.is_whitespace(),
-            (&WordEdgeMatch::Alphabet, _, _) => false,
+            // (&WordEdgeMatch::Alphabet, c1, c2) if c1.is_whitespace() => !c2.is_whitespace(),
+            // (&WordEdgeMatch::Alphabet, c1, c2) if is_alpha_or_(c1) => !is_alpha_or_(c2) && !c2.is_whitespace(),
+            // (&WordEdgeMatch::Alphabet, c1, c2) if !is_alpha_or_(c1) => is_alpha_or_(c2) && !c2.is_whitespace(),
+            // (&WordEdgeMatch::Alphabet, _, _) => false,
         }
     }
 }
@@ -702,15 +671,6 @@ fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBu
         .last()
 }
 
-/// Returns the index of the first character of the line the mark is in.
-/// Newline prior to mark (EXCLUSIVE) + 1.
-fn get_line(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
-    let val = cmp::min(mark, text.len());
-    (0..val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n')
-                           .take(1)
-                           .next()
-}
-
 fn get_line_info(mark: usize, text: &GapBuffer<u8>) -> Option<MarkPosition> {
     let val = cmp::min(mark, text.len());
     let line_starts: Vec<usize> = (0..val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n').collect();
@@ -726,15 +686,6 @@ fn get_line_info(mark: usize, text: &GapBuffer<u8>) -> Option<MarkPosition> {
         None
     }
 
-}
-
-/// Returns the index of the newline character at the end of the line mark is in.
-/// Newline after mark (INCLUSIVE).
-fn get_line_end(mark: usize, text: &GapBuffer<u8>) -> Option<usize> {
-    let val = cmp::min(mark, text.len());
-    (val..text.len()+1).filter(|idx| *idx == text.len() || text[*idx] == b'\n')
-                            .take(1)
-                            .next()
 }
 
 /// Performs a transaction on the passed in buffer.

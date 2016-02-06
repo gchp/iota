@@ -40,13 +40,6 @@ pub struct Chars<'a> {
     pub forward: bool,
 }
 
-/// Iterator traversing GapBuffer as tuples of (buffer_index, char)
-/// Can be made to traverse forwards or backwards with the methods
-/// `rev()` `forward()` and `backward()`
-pub struct CharIndices<'a> {
-    iter: Chars<'a>
-}
-
 // helper macros/constants
 // u8 -> char code is mostly copied from core::str::Chars
 const CONT_MASK:   u8 = 0b0011_1111u8;
@@ -70,26 +63,6 @@ macro_rules! utf8_is_cont_byte {
 
 
 impl<'a> Chars<'a> {
-    pub fn reverse(mut self) -> Chars<'a> {
-        self.forward = !self.forward;
-        self
-    }
-    pub fn forward(mut self) -> Chars<'a> {
-        self.forward = true;
-        self
-    }
-    pub fn backward(mut self) -> Chars<'a> {
-        self.forward = false;
-        self
-    }
-
-    /// Return an iterator over (byte-index, char)
-    pub fn indices(self) -> CharIndices<'a> {
-        CharIndices {
-            iter: self
-        }
-    }
-
     fn next_u8(&mut self) -> Option<u8> {
         let n = if self.idx < self.buffer.len() {
             Some(self.buffer[self.idx])
@@ -165,35 +138,6 @@ impl<'a> Iterator for Chars<'a> {
 
             // str invariant says `ch` is a valid Unicode Scalar Value
             return unsafe { Some(mem::transmute(ch)) };
-        }
-    }
-}
-
-
-impl<'a> CharIndices<'a> {
-    pub fn rev(mut self) -> CharIndices<'a> {
-        self.iter.forward = !self.iter.forward;
-        self
-    }
-    pub fn forward(mut self) -> CharIndices<'a> {
-        self.iter.forward = true;
-        self
-    }
-    pub fn backward(mut self) -> CharIndices<'a> {
-        self.iter.forward = false;
-        self
-    }
-}
-
-impl<'a> Iterator for CharIndices<'a> {
-    type Item = (usize, char);
-
-    #[inline]
-    fn next(&mut self) -> Option<(usize, char)> {
-        if let Some(c) = self.iter.next() {
-            Some((self.iter.idx, c))
-        } else {
-            None
         }
     }
 }

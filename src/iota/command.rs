@@ -40,7 +40,6 @@ pub enum Operation {
 pub enum Partial {
     Kind(Kind),
     Anchor(Anchor),
-    Offset(Offset),
     Object(TextObject),
     Action(Action),
 }
@@ -307,7 +306,6 @@ impl Builder {
         match partial {
             Partial::Kind(k)      => self.kind = Some(k),
             Partial::Anchor(a)    => self.anchor = Some(a),
-            Partial::Offset(o)    => self.offset = Some(o),
             Partial::Object(o)    => self.object = Some(o),
             Partial::Action(a)    => {
                 self.action = Some(a);

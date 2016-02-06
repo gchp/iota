@@ -13,7 +13,6 @@ pub enum OverlayEvent {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum OverlayType {
     Prompt,
-    SavePrompt,
     SelectFile,
 }
 

@@ -12,16 +12,10 @@ pub fn char_width(c: char, is_cjk: bool, tab_width: usize, position: usize) -> O
     }
 }
 
-pub fn str_width(s: &str, is_cjk: bool, tab_width: usize) -> usize {
-    s.chars().fold(0, |acc, c|
-        acc + char_width(c, is_cjk, tab_width, acc).unwrap_or(0)
-    )
-}
-
 /// Determine if a given char is alphanumeric or an underscore
-pub fn is_alpha_or_(c: char) -> bool {
-    c.is_alphanumeric() || c == '_'
-}
+// pub fn is_alpha_or_(c: char) -> bool {
+//     c.is_alphanumeric() || c == '_'
+// }
 
 #[cfg(test)]
 mod tests {

@@ -200,7 +200,6 @@ impl View {
                     data: String::new(),
                 };
             }
-            _ => {}
         }
     }
 
@@ -369,7 +368,7 @@ impl View {
 pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
     let width = buf.get_width() - 1;
     let mut x = 0;
-    
+
     for ch in line.iter().skip(left) {
         let ch = *ch as char;
         match ch {
@@ -390,13 +389,13 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
             break;
         }
     }
-    
+
     // Replace any cells after end of line with ' '
     while x < width {
         buf.update_cell_content(x, idx, ' ');
         x += 1;
     }
-    
+
     // If the line is too long to fit on the screen, show an indicator
     let indicator = if line.len() > width + left { '→' } else { ' ' };
     buf.update_cell_content(width, idx, indicator);
