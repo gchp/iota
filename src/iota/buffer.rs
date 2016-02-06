@@ -339,22 +339,20 @@ impl Buffer {
                                     .collect::<Vec<usize>>();
         match anchor {
             Anchor::Start => {
-                let end_offset = nlines[line_number - 1];
-                let start = get_line(end_offset, text).unwrap();
-
                 let mut mark_pos = MarkPosition::start();
-                mark_pos.absolute = start;
-                mark_pos.absolute_line_start= start;
-                mark_pos.line_number = line_number - 1;
+                let line_start = nlines[0] + 1;
 
+                mark_pos.absolute = line_start;
+                mark_pos.absolute_line_start = line_start;
+                mark_pos.line_number = line_number - 1;
 
                 Some(mark_pos)
             }
 
             Anchor::End => {
+                let mut mark_pos = MarkPosition::start();
                 let end_offset = nlines[line_number - 1];
 
-                let mut mark_pos = MarkPosition::start();
                 mark_pos.absolute = end_offset;
 
                 Some(mark_pos)
