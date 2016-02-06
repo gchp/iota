@@ -134,7 +134,7 @@ impl View {
             //        the top_line mark
             let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
             for y_position in 0..height {
-                let line = lines.next().unwrap_or(vec![]);
+                let line = lines.next().unwrap_or_else(Vec::new);
                 draw_line(&mut self.uibuf, &line, y_position, self.left_col);
             }
 
@@ -150,6 +150,7 @@ impl View {
         self.uibuf.draw_everything(frontend);
     }
 
+    #[allow(needless_range_loop)]
     fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
         let buffer = self.buffer.lock().unwrap();
         let buffer_status = buffer.status_text();

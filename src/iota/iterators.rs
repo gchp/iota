@@ -110,7 +110,7 @@ impl<'a> Iterator for Chars<'a> {
             }
 
             // str invariant says `ch` is a valid Unicode Scalar Value
-            return unsafe { Some(mem::transmute(ch)) };
+            unsafe { Some(mem::transmute(ch)) }
         } else {
             // read u8s backwards into char (largely copied from core::str::Chars)
             let w = match self.next_u8() {
@@ -137,7 +137,7 @@ impl<'a> Iterator for Chars<'a> {
             ch = utf8_acc_cont_byte!(ch, w);
 
             // str invariant says `ch` is a valid Unicode Scalar Value
-            return unsafe { Some(mem::transmute(ch)) };
+            unsafe { Some(mem::transmute(ch)) }
         }
     }
 }

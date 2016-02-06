@@ -229,7 +229,7 @@ impl Builder {
             // we have at least a kind
             Some(TextObject {
                 kind: kind,
-                offset: self.offset.unwrap_or(Offset::Absolute(0)),
+                offset: self.offset.unwrap_or_else(|| Offset::Absolute(0)),
             })
         } else {
             None

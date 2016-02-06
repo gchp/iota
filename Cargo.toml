@@ -17,6 +17,10 @@ gapbuffer = "0.1.1"
 tempdir = "0.3.0"
 unicode-width = "0.1.1"
 libc = "0.1"
+clippy = {version = "*", optional = true}
+
+[features]
+default=[]
 
 [lib]
 name = "iota"

@@ -107,7 +107,8 @@ impl Log {
     /// Start a new transaction.
     ///
     /// This returns a RAII guard that can be used to record edits during the transaction.
-    pub fn start<'a, 'b>(&'a mut self, idx: usize) -> Transaction<'a> {
+    #[allow(needless_lifetimes)]
+    pub fn start<'a>(&'a mut self, idx: usize) -> Transaction<'a> {
         Transaction {
             entries: self,
             entry: LogEntry {

@@ -75,6 +75,7 @@ pub struct Buffer {
     pub file_path: Option<PathBuf>,
 }
 
+#[allow(len_without_is_empty)]
 impl Buffer {
     /// Constructor for empty buffer.
     pub fn new() -> Buffer {
@@ -172,7 +173,7 @@ impl Buffer {
                     }
                 }
 
-                return None
+                None
             }
 
             // get the index of the char `offset` chars before of `mark`
@@ -191,7 +192,7 @@ impl Buffer {
                     }
                 }
 
-                return None
+                None
             }
 
             // get the index of the char at position `offset` in the buffer
@@ -278,7 +279,7 @@ impl Buffer {
                     let mut new_mark_pos = MarkPosition::start();
 
                     // if this is the first line in the buffer
-                    if nlines.len() == 0 {
+                    if nlines.is_empty() {
                         return Some(new_mark_pos)
                     }
 
@@ -361,7 +362,7 @@ impl Buffer {
                 // Get the index of the end of the desired line
                 Anchor::End => {
                     // if this is the last line in the buffer
-                    if nlines.len() == 0 {
+                    if nlines.is_empty() {
                         let mut new_mark_pos = MarkPosition::start();
                         new_mark_pos.absolute = last;
 
@@ -547,7 +548,7 @@ impl Buffer {
                 (obj_pos.absolute, mark_pos.absolute)
             }
         };
-        return self.remove_range(start, end);
+        self.remove_range(start, end)
     }
 
     pub fn remove_object(&mut self, object: TextObject) -> Option<Vec<u8>> {
@@ -676,7 +677,7 @@ fn get_line_info(mark: usize, text: &GapBuffer<u8>) -> Option<MarkPosition> {
     let line_starts: Vec<usize> = (0..val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n').collect();
 
 
-    if line_starts.len() > 0 {
+    if line_starts.is_empty() {
         let mut mark_pos = MarkPosition::start();
         mark_pos.absolute_line_start = line_starts[0];
         mark_pos.line_number = line_starts.len() - 1;
@@ -690,12 +691,12 @@ fn get_line_info(mark: usize, text: &GapBuffer<u8>) -> Option<MarkPosition> {
 
 /// Performs a transaction on the passed in buffer.
 fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
-    for change in transaction.changes.iter() {
-        match change {
-            &Change::Insert(idx, ch) => {
+    for change in &transaction.changes {
+        match *change {
+            Change::Insert(idx, ch) => {
                 text.insert(idx, ch);
             }
-            &Change::Remove(idx, _) => {
+            Change::Remove(idx, _) => {
                 text.remove(idx);
             }
         }

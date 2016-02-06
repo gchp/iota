@@ -30,7 +30,7 @@ impl<T: Copy> Trie<T> {
             }
         }
 
-        return Some(&(*current))
+        Some(&(*current))
     }
     fn bind_key(&mut self, key: Key, value: T) {
         match *self {
@@ -108,7 +108,7 @@ impl<T: Copy> KeyMap<T> {
             KeyMapState::Match(value) => {
                 self.state = KeyMapState::None;
                 self.path.clear();
-                return KeyMapState::Match(value)
+                KeyMapState::Match(value)
             },
             _ => self.state
         }

@@ -133,7 +133,7 @@ impl Cell {
             rows.push(cells);
         }
 
-        return rows
+        rows
     }
 }
 

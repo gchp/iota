@@ -29,7 +29,7 @@ impl<'f> Frontend for RustboxFrontend<'f> {
         match self.rb.poll_event(true).unwrap() {
             Event::KeyEventRaw(_, key, ch) => {
                 let k = match key {
-                    0 => char::from_u32(ch).map(|c| Key::Char(c)),
+                    0 => char::from_u32(ch).map(Key::Char),
                     a => Key::from_special_code(a),
                 };
                 EditorEvent::KeyEvent(k)
