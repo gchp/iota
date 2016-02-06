@@ -68,10 +68,6 @@ pub struct Buffer {
     text: GapBuffer<u8>,
 
     /// Table of marked indices in the text
-    /// KEY: mark id => VALUE : (absolute index, line index)
-    ///
-    /// - absolute index is the offset from the start of the buffer
-    /// - line index is the offset from the start of the current line
     marks: HashMap<Mark, MarkPosition>,
 
     /// Transaction history (used for undo/redo)
@@ -104,12 +100,6 @@ impl Buffer {
         }
 
         None
-        // if let Some(idx) = self.get_mark_idx(mark) {
-        //     if let Some(line) = get_line(idx, &self.text) {
-        //         Some((idx - line, (0..idx).filter(|i| -> bool { self.text[*i] == b'\n' })
-        //                                        .count()))
-        //     } else { None }
-        // } else { None }
     }
 
     /// The absolute index of a mark within the file. None if not a valid mark.
@@ -119,11 +109,6 @@ impl Buffer {
                 Some(mark_pos.absolute)
             } else { None }
         } else { None }
-        // if let Some(&(idx, _)) = self.marks.get(&mark) {
-        //     if idx < self.len() {
-        //         Some(idx)
-        //     } else { None }
-        // } else { None }
     }
 
     /// Creates an iterator on the text by chars.
@@ -153,9 +138,6 @@ impl Buffer {
         }
 
         None
-        // if let Some(&(idx, _)) = self.marks.get(&mark) {
-        //     self.chars_from_idx(idx)
-        // } else { None }
     }
 
     /// Creates an iterator on the text by lines.
@@ -180,15 +162,6 @@ impl Buffer {
         }
 
         None
-        // if let Some(&(idx, _)) = self.marks.get(&mark) {
-        //     if idx < self.len() {
-        //         Some(Lines {
-        //             buffer: &self.text,
-        //             tail: idx,
-        //             head: self.len(),
-        //         })
-        //     } else { None }
-        // } else { None }
     }
 
     /// Return the buffer index of a TextObject
@@ -200,14 +173,10 @@ impl Buffer {
         }
     }
 
-    /// Get the absolute index of a specific character in the buffer
+    /// Get the position of a specific character in the buffer
     ///
     /// This character can be at an absolute position, or a postion relative
     /// to a given mark.
-    ///
-    /// The absolute offset is in the form (index, line_index) where:
-    ///     index = the offset from the start of the buffer
-    ///     line_index = the offset from the start of the current line
     ///
     /// ie: get the index of the 7th character after the cursor
     /// or: get the index of the 130th character from the start of the buffer
@@ -224,37 +193,17 @@ impl Buffer {
                 if let Some(mark_pos) = self.marks.get(&from_mark) {
                     let new_absolute_position = mark_pos.absolute + offset;
                     if new_absolute_position < last {
-
-                        // let mut new_mark_pos = MarkPosition::start();
-                        // new_mark_pos.absolute = new_absolute_position;
-                        // // mark_pos.line_number = 0;
-                        // // FIXME: with MarkPosition we shouldn't need the call to get_line here
-                        // new_mark_pos.line_start_offset = new_absolute_position - get_line(new_absolute_position, text).unwrap();
+                        // FIXME: it would be nice if we could avoid using get_line_info here...
                         let new_mark_pos = get_line_info(new_absolute_position, text).unwrap();
-
                         return Some(new_mark_pos)
                     } else {
-                        // let mut new_mark_pos = MarkPosition::start();
-                        // new_mark_pos.absolute = last;
-                        // // FIXME: with MarkPosition we shouldn't need the call to get_line here
-                        // new_mark_pos.line_start_offset = last - get_line(last, text).unwrap();
+                        // FIXME: it would be nice if we could avoid using get_line_info here...
                         let new_mark_pos = get_line_info(last, text).unwrap();
                         return Some(new_mark_pos)
                     }
                 }
 
                 return None
-                // if let Some(tuple)= self.marks.get(&from_mark) {
-                //     let (index, _) = *tuple;
-                //     let absolute_index = index + offset;
-                //     if absolute_index < last {
-                //         Some((absolute_index, absolute_index - get_line(absolute_index, text).unwrap()))
-                //     } else {
-                //         Some((last, last - get_line(last, text).unwrap()))
-                //     }
-                // } else {
-                //     None
-                // }
             }
 
             // get the index of the char `offset` chars before of `mark`
@@ -265,11 +214,7 @@ impl Buffer {
                 if let Some(mark_pos) = self.marks.get(&from_mark) {
                     if mark_pos.absolute >= offset {
                         let new_absolute_position = mark_pos.absolute - offset;
-
-                        // let mut new_mark_pos = MarkPosition::start();
-                        // new_mark_pos.absolute = new_absolute_position;
-                        // // FIXME: with MarkPosition we shouldn't need the call to get_line here
-                        // new_mark_pos.line_start_offset = new_absolute_position - get_line(new_absolute_position, text).unwrap();
+                        // FIXME: it would be nice if we could avoid using get_line_info here...
                         let new_mark_pos = get_line_info(new_absolute_position, text).unwrap();
                         return Some(new_mark_pos);
                     } else {
@@ -278,17 +223,6 @@ impl Buffer {
                 }
 
                 return None
-                // if let Some(tuple)= self.marks.get(&from_mark) {
-                //     let (index, _) = *tuple;
-                //     if index >= offset {
-                //         let absolute_index = index - offset;
-                //         Some((absolute_index, absolute_index - get_line(absolute_index, text).unwrap()))
-                //     } else {
-                //         None
-                //     }
-                // } else {
-                //     None
-                // }
             }
 
             // get the index of the char at position `offset` in the buffer
@@ -302,14 +236,10 @@ impl Buffer {
         }
     }
 
-    /// Get the absolute index of a specific line in the buffer
+    /// Get the position of a specific line in the buffer
     ///
     /// This line can be at an absolute position, or a postion relative
     /// to a given mark.
-    ///
-    /// The absolute offset is in the form (index, line_index) where:
-    ///     index = the offset from the start of the buffer
-    ///     line_index = the offset from the start of the current line
     ///
     /// The index is calculated based on a given Anchor. This Anchor determines
     /// where in the line the index is calculated. For instance, if you want
@@ -327,7 +257,7 @@ impl Buffer {
         }
     }
 
-    /// Get the index of the line identified by line_number
+    /// Get the position of the line identified by line_number
     ///
     /// ie. Get the index of Anchor inside the 23th line in the buffer
     /// or: Get the index of the start of the 23th line
@@ -535,28 +465,6 @@ impl Buffer {
         } else {
             None
         }
-
-
-        // if let Some(tuple) = self.marks.get(&from_mark) {
-        //     let (index, _) = *tuple;
-        //     match anchor {
-        //         Anchor::Start => {
-        //             // move to the start of nth_word from the mark
-        //             if let Some(new_index) = get_words(index, nth_word, edger, text) {
-        //                 Some((new_index, new_index - get_line(new_index, text).unwrap()))
-        //             } else {
-        //                 Some((last, last - get_line(last, text).unwrap()))
-        //             }
-        //         }
-
-        //         _ => {
-        //             print!("Unhandled word anchor: {:?} ", anchor);
-        //             Some((last, last - get_line(last, text).unwrap()))
-        //         }
-        //     }
-        // } else {
-        //     None
-        // }
     }
 
     fn get_word_index_backward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<MarkPosition> {
@@ -587,27 +495,6 @@ impl Buffer {
         } else {
             None
         }
-
-        // if let Some(tuple) = self.marks.get(&from_mark) {
-        //     let (index, _) = *tuple;
-        //     match anchor {
-        //         Anchor::Start => {
-        //             // move to the start of the nth_word before the mark
-        //             if let Some(new_index) = get_words_rev(index, nth_word, edger, text) {
-        //                 Some((new_index, new_index - get_line(new_index, text).unwrap()))
-        //             } else {
-        //                 Some((0, 0))
-        //             }
-        //         }
-
-        //         _ => {
-        //             print!("Unhandled word anchor: {:?} ", anchor);
-        //             None
-        //         },
-        //     }
-        // } else {
-        //     None
-        // }
     }
 
     fn get_word_index_absolute(&self, anchor: Anchor, word_number: usize) -> Option<MarkPosition> {
@@ -662,21 +549,6 @@ impl Buffer {
             }
             self.marks.insert(mark, mark_pos);
         }
-        // if let Some(line) = get_line(idx, &self.text) {
-        //     if let Some(mark_position) = self.marks.get_mut(&mark) {
-        //         mark_position.absolute = idx;
-        //         mark_position.line_start_offset = idx - line;
-        //         mark_position.absolute_line_start = line;
-        //         return;
-        //     }
-
-        //     let mut mark_pos = MarkPosition::start();
-        //     mark_pos.absolute = idx;
-        //     mark_pos.line_start_offset = idx - line;
-        //     mark_pos.absolute_line_start = line;
-
-        //     self.marks.insert(mark, mark_pos);
-        // }
     }
 
     // Remove the chars in the range from start to end
@@ -707,18 +579,6 @@ impl Buffer {
             }
         };
         return self.remove_range(start, end);
-
-        // if let Some(&(mark_idx, _)) = self.marks.get(&mark) {
-        //     let object_index = self.get_object_index(object);
-
-        //     if let Some((obj_idx, _)) = object_index {
-        //         if mark_idx != obj_idx {
-        //             let (start, end) = if mark_idx < obj_idx { (mark_idx, obj_idx) } else { (obj_idx, mark_idx) };
-        //             return self.remove_range(start, end);
-        //         }
-        //     }
-        // }
-        // None
     }
 
     pub fn remove_object(&mut self, object: TextObject) -> Option<Vec<u8>> {
@@ -741,11 +601,6 @@ impl Buffer {
             let mut transaction = self.log.start(mark_pos.absolute);
             transaction.log(Change::Insert(mark_pos.absolute, ch), mark_pos.absolute);
         }
-        // if let Some(&(idx, _)) = self.marks.get(&mark) {
-        //     self.text.insert(idx, ch);
-        //     let mut transaction = self.log.start(idx);
-        //     transaction.log(Change::Insert(idx, ch), idx);
-        // }
     }
 
     /// Redo most recently undone action.
@@ -1317,6 +1172,31 @@ mod test {
         assert!(chars.next().unwrap() == 'T');
         assert!(chars.next().unwrap() == '𐍈');
         assert!(chars.next().unwrap() == 't');
+    }
+
+    #[test]
+    fn test_line_down() {
+        let mut buffer = setup_buffer("Some\ntest\ncontent");
+        let mark = Mark::Cursor(0);
+        let obj = TextObject {
+            kind: Kind::Line(Anchor::Same),
+            offset: Offset::Forward(1, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(*buffer.marks.get(&mark).unwrap(), MarkPosition::from((5, 5, 1)));
+        assert_eq!(buffer.get_mark_display_coords(mark).unwrap(), (0, 1));
+
+        let obj = TextObject {
+            kind: Kind::Char,
+            offset: Offset::Forward(1, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(*buffer.marks.get(&mark).unwrap(), MarkPosition::from((6, 5, 1)));
+        assert_eq!(buffer.get_mark_display_coords(mark).unwrap(), (1, 1));
     }
 
     #[test]
