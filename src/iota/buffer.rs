@@ -75,7 +75,7 @@ pub struct Buffer {
     pub file_path: Option<PathBuf>,
 }
 
-#[allow(len_without_is_empty)]
+#[cfg_attr(feature="clippy", allow(len_without_is_empty))]
 impl Buffer {
     /// Constructor for empty buffer.
     pub fn new() -> Buffer {

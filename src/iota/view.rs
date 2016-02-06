@@ -150,7 +150,7 @@ impl View {
         self.uibuf.draw_everything(frontend);
     }
 
-    #[allow(needless_range_loop)]
+    #[cfg_attr(feature="clippy", allow(needless_range_loop))]
     fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
         let buffer = self.buffer.lock().unwrap();
         let buffer_status = buffer.status_text();

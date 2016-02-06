@@ -107,7 +107,7 @@ impl Log {
     /// Start a new transaction.
     ///
     /// This returns a RAII guard that can be used to record edits during the transaction.
-    #[allow(needless_lifetimes)]
+    #[cfg_attr(feature="clippy", allow(needless_lifetimes))]
     pub fn start<'a>(&'a mut self, idx: usize) -> Transaction<'a> {
         Transaction {
             entries: self,
