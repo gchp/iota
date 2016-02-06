@@ -52,7 +52,7 @@ impl From<(usize, usize, usize)> for MarkPosition {
 pub enum Mark {
     /// For keeping track of cursors.
     Cursor(usize),
-    
+
     /// For using in determining some display of characters
     DisplayMark(usize),
 }
@@ -397,27 +397,43 @@ impl Buffer {
                 // returned will be the fifth index from the start of the
                 // desired line.
                 Anchor::Same => {
-                    if offset == 0 {
-                        Some(MarkPosition::start()) // going to start of the first line
-                    } else if offset == nlines.len() {
-                        // let mut new_mark_pos = MarkPosition::start();
-                        // new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset, nlines[0]);
-                        // new_mark_pos.line_start_offset = mark_pos.line_start_offset;
-                        let new_pos = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start, nlines[0]);
-                        let new_mark_pos = get_line_info(new_pos, text).unwrap();
+                    let mut new_mark_pos = MarkPosition::start();
 
-                        Some(new_mark_pos)
+                    if offset == nlines.len() {
+                        new_mark_pos.absolute = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start, nlines[0]);
                     } else if offset > nlines.len() {
-                        Some(MarkPosition::start()) // trying to move up from the first line
+                        return Some(new_mark_pos)
+                    } else if offset == 0 {
+                        return Some(new_mark_pos)
                     } else {
-                        // let mut new_mark_pos = MarkPosition::start();
-                        // new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset + nlines[offset] + 1, nlines[offset-1]);
-                        // new_mark_pos.line_start_offset = mark_pos.line_start_offset;
-                        let new_pos = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start + nlines[offset] + 1, nlines[offset-1]);
-                        let new_mark_pos = get_line_info(new_pos, text).unwrap();
-
-                        Some(new_mark_pos)
+                        new_mark_pos.absolute = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start + nlines[offset] + 1, nlines[offset-1]);
+                        new_mark_pos.line_number = mark_pos.line_number - offset;
+                        new_mark_pos.absolute_line_start = nlines[nlines.len() - 1] + 1;
                     }
+
+                    // if offset == 0 {
+                    //     Some(MarkPosition::start()) // going to start of the first line
+                    // } else if offset == nlines.len() {
+                    //     // let mut new_mark_pos = MarkPosition::start();
+                    //     // new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset, nlines[0]);
+                    //     // new_mark_pos.line_start_offset = mark_pos.line_start_offset;
+                    //     let new_pos = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start, nlines[0]);
+                    //     let new_mark_pos = get_line_info(new_pos, text).unwrap();
+                    //
+                    //     Some(new_mark_pos)
+                    // } else if offset > nlines.len() {
+                    //     Some(MarkPosition::start()) // trying to move up from the first line
+                    // } else {
+                    //     // let mut new_mark_pos = MarkPosition::start();
+                    //     // new_mark_pos.absolute = cmp::min(mark_pos.line_start_offset + nlines[offset] + 1, nlines[offset-1]);
+                    //     // new_mark_pos.line_start_offset = mark_pos.line_start_offset;
+                    //     let new_pos = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start + nlines[offset] + 1, nlines[offset-1]);
+                    //     let new_mark_pos = get_line_info(new_pos, text).unwrap();
+                    //
+                    //     Some(new_mark_pos)
+                    // }
+
+                    Some(new_mark_pos)
                 }
 
                 _ => {
@@ -489,7 +505,7 @@ impl Buffer {
                 Anchor::Same => {
                     let mut new_pos = MarkPosition::start();
                     let new_line_start = nlines[0] + 1;
-                    
+
                     if offset == nlines.len() {
                         new_pos.absolute = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start + nlines[offset-1] + 1, last);
                         new_pos.absolute_line_start = nlines[offset - 1] + 1;
@@ -558,7 +574,7 @@ impl Buffer {
                     new_mark_pos.absolute_line_start = mark_pos.absolute_line_start;
 
                     Some(new_mark_pos)
-                    
+
                 }
 
                 _ => {
@@ -826,7 +842,7 @@ impl Buffer {
             let mark_pos = self.marks.get(&mark).unwrap();
             let obj_pos = self.get_object_index(object).unwrap();
 
-            if mark_pos.absolute < obj_pos.absolute { 
+            if mark_pos.absolute < obj_pos.absolute {
                 (mark_pos.absolute, obj_pos.absolute)
             } else {
                 (obj_pos.absolute, mark_pos.absolute)
@@ -1046,7 +1062,7 @@ mod test {
         };
 
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(*buffer.marks.get(&mark).unwrap(), MarkPosition::from((1, 0, 0)));
         assert_eq!(buffer.get_mark_display_coords(mark).unwrap(), (1, 0));
     }
@@ -1062,11 +1078,11 @@ mod test {
 
         buffer.set_mark(mark, 3);
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(*buffer.marks.get(&mark).unwrap(), MarkPosition::from((2, 0, 0)));
         assert_eq!(buffer.get_mark_display_coords(mark).unwrap(), (2, 0));
     }
-    
+
     #[test]
     fn move_mark_five_chars_right() {
         let mut buffer = setup_buffer("Some test content");
@@ -1077,7 +1093,7 @@ mod test {
         };
 
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(*buffer.marks.get(&mark).unwrap(), MarkPosition::from((5, 0, 0)));
         assert_eq!(buffer.get_mark_display_coords(mark).unwrap(), (5, 0));
     }
@@ -1092,7 +1108,7 @@ mod test {
         };
 
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(*buffer.marks.get(&mark).unwrap(), MarkPosition::from((18, 18, 1)));
         assert_eq!(buffer.get_mark_display_coords(mark).unwrap(), (0, 1));
     }
@@ -1108,7 +1124,7 @@ mod test {
 
         buffer.set_mark(mark, 18);
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(*buffer.marks.get(&mark).unwrap(), MarkPosition::from((0, 0, 0)));
         assert_eq!(buffer.get_mark_display_coords(mark).unwrap(), (0, 0));
     }
@@ -1123,7 +1139,7 @@ mod test {
         };
 
         buffer.set_mark_to_object(mark, obj);
-        
+
         assert_eq!(*buffer.marks.get(&mark).unwrap(), MarkPosition::from((27, 27, 2)));
         assert_eq!(buffer.get_mark_display_coords(mark).unwrap(), (0, 2));
     }
@@ -1149,7 +1165,7 @@ mod test {
         //     offset: Offset::Backward(1, mark),
         // };
         // buffer.set_mark_to_object(mark, obj);
-        // 
+        //
         // assert_eq!(*buffer.marks.get(&mark).unwrap(), MarkPosition::from((15, 15, 0, 0)));
         // assert_eq!(buffer.get_mark_display_coords(mark).unwrap(), (15, 0));
     }
@@ -1449,7 +1465,7 @@ mod test {
         buffer.set_mark(Mark::Cursor(0), 10);
 
         let mark_pos = MarkPosition::from((10, 7, 2));
-        
+
         assert_eq!(mark_pos, get_line_info(10, &buffer.text).unwrap());
     }
 
