@@ -677,7 +677,7 @@ fn get_line_info(mark: usize, text: &GapBuffer<u8>) -> Option<MarkPosition> {
     let line_starts: Vec<usize> = (0..val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n').collect();
 
 
-    if line_starts.is_empty() {
+    if !line_starts.is_empty() {
         let mut mark_pos = MarkPosition::start();
         mark_pos.absolute_line_start = line_starts[0];
         mark_pos.line_number = line_starts.len() - 1;
@@ -1090,40 +1090,6 @@ mod test {
 
         assert_eq!(lines.next().unwrap(), [b'\n']);
         assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't']);
-    }
-
-    #[test]
-    fn test_to_chars() {
-        let mut buffer = setup_buffer("Test𐍈Test");
-        buffer.set_mark(Mark::Cursor(0), 0);
-        let mut chars = buffer.chars();
-        assert!(chars.next().unwrap() == 'T');
-        assert!(chars.next().unwrap() == 'e');
-        assert!(chars.next().unwrap() == 's');
-        assert!(chars.next().unwrap() == 't');
-        assert!(chars.next().unwrap() == '𐍈');
-        assert!(chars.next().unwrap() == 'T');
-    }
-
-    #[test]
-    fn test_to_chars_from() {
-        let mut buffer = setup_buffer("Test𐍈Test");
-        buffer.set_mark(Mark::Cursor(0), 2);
-        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap();
-        assert!(chars.next().unwrap() == 's');
-        assert!(chars.next().unwrap() == 't');
-        assert!(chars.next().unwrap() == '𐍈');
-    }
-
-    #[test]
-    fn test_to_chars_rev() {
-        // 𐍈 encodes as utf8 in 4 bytes... we need a solution for buffer offsets by byte/char
-        let mut buffer = setup_buffer("Test𐍈Test");
-        buffer.set_mark(Mark::Cursor(0), 8);
-        let mut chars = buffer.chars_from(Mark::Cursor(0)).unwrap().reverse();
-        assert!(chars.next().unwrap() == 'T');
-        assert!(chars.next().unwrap() == '𐍈');
-        assert!(chars.next().unwrap() == 't');
     }
 
     #[test]
