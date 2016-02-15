@@ -330,6 +330,7 @@ impl Buffer {
             let nlines = (mark_pos.absolute..text.len()).filter(|i| text[*i] == b'\n')
                                             .take(offset + 1)
                                             .collect::<Vec<usize>>();
+            if nlines.is_empty() { return None }
 
             match anchor {
                 // Get the same index as the current line_index
