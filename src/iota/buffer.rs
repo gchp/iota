@@ -300,9 +300,7 @@ impl Buffer {
 
                     if offset == nlines.len() {
                         new_mark_pos.absolute = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start, nlines[0]);
-                    } else if offset > nlines.len() {
-                        return Some(new_mark_pos)
-                    } else if offset == 0 {
+                    } else if offset > nlines.len() || offset == 0 {
                         return Some(new_mark_pos)
                     } else {
                         new_mark_pos.absolute = cmp::min(mark_pos.absolute - mark_pos.absolute_line_start + nlines[offset] + 1, nlines[offset-1]);
