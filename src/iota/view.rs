@@ -18,7 +18,7 @@ use textobject::{Anchor, TextObject, Kind, Offset};
 
 /// A View is an abstract Window (into a Buffer).
 ///
-/// It draws a portion of a Buffer to a UIBuffer which in turn is drawn to the
+/// It draws a portion of a Buffer to a `UIBuffer` which in turn is drawn to the
 /// screen. It maintains the status bar for the current view, the "dirty status"
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
@@ -157,17 +157,11 @@ impl View {
         let mut cursor_status = buffer.get_mark_display_coords(self.cursor).unwrap_or((0,0));
         cursor_status = (cursor_status.0 + 1, cursor_status.1 + 1);
         let status_text = format!("{} ({}, {})", buffer_status, cursor_status.0, cursor_status.1).into_bytes();
-        let status_text_len = status_text.len();
         let width = self.get_width();
         let height = self.get_height() - 1;
 
-
-        for index in 0..width {
-            let mut ch: char = ' ';
-            if index < status_text_len {
-                ch = status_text[index] as char;
-            }
-            self.uibuf.update_cell(index, height, ch, CharColor::Black, CharColor::Blue);
+        for (index, ch) in status_text.iter().enumerate().take(width) {
+            self.uibuf.update_cell(index, height, *ch as char, CharColor::Black, CharColor::Blue);         
         }
 
         self.uibuf.draw_range(frontend, height, height+1);
@@ -408,11 +402,10 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use view::View;
-    use input::Input;
     use buffer::Buffer;
 
     fn setup_view(testcase: &'static str) -> View {
-        let mut buffer = Arc::new(Mutex::new(Buffer::new()));
+        let buffer = Arc::new(Mutex::new(Buffer::new()));
         let mut view = View::new(buffer.clone(), 50, 50);
         for ch in testcase.chars() {
             view.insert_char(ch);

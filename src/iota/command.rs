@@ -22,7 +22,7 @@ pub enum Instruction {
 
 /// Operations on the Buffer.
 /// These DO alter the text, but otherwise may NOT change editor/view state
-/// Note that these differ from log::Change in that they are higher-level
+/// Note that these differ from `log::Change` in that they are higher-level
 /// operations dependent on state (cursor/mark locations, etc.), as opposed
 /// to concrete operations on absolute indexes (insert 'a' at index 158, etc.)
 #[derive(Copy, Clone, Debug)]
