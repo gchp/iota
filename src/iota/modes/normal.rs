@@ -5,7 +5,7 @@ use command::{Builder, BuilderEvent, Command};
 use super::{Mode, ModeType};
 
 
-/// NormalMode mimics Vi's Normal mode.
+/// `NormalMode` mimics Vi's Normal mode.
 pub struct NormalMode {
     keymap: KeyMap<Command>,
     builder: Builder,
@@ -13,7 +13,7 @@ pub struct NormalMode {
 
 impl NormalMode {
 
-    /// Create a new instance of NormalMode
+    /// Create a new instance of `NormalMode`
     pub fn new() -> NormalMode {
         NormalMode {
             keymap: NormalMode::key_defaults(),
@@ -21,7 +21,7 @@ impl NormalMode {
         }
     }
 
-    /// Creates a KeyMap with default NormalMode key bindings
+    /// Creates a `KeyMap` with default `NormalMode` key bindings
     fn key_defaults() -> KeyMap<Command> {
         let mut keymap = KeyMap::new();
 
