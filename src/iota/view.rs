@@ -18,7 +18,7 @@ use textobject::{Anchor, TextObject, Kind, Offset};
 
 /// A View is an abstract Window (into a Buffer).
 ///
-/// It draws a portion of a Buffer to a UIBuffer which in turn is drawn to the
+/// It draws a portion of a Buffer to a `UIBuffer` which in turn is drawn to the
 /// screen. It maintains the status bar for the current view, the "dirty status"
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
@@ -163,10 +163,9 @@ impl View {
 
 
         for index in 0..width {
-            let mut ch: char = ' ';
-            if index < status_text_len {
-                ch = status_text[index] as char;
-            }
+            let ch: char = if index < status_text_len {
+                status_text[index] as char
+            } else { ' ' };
             self.uibuf.update_cell(index, height, ch, CharColor::Black, CharColor::Blue);
         }
 
@@ -408,11 +407,10 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use view::View;
-    use input::Input;
     use buffer::Buffer;
 
     fn setup_view(testcase: &'static str) -> View {
-        let mut buffer = Arc::new(Mutex::new(Buffer::new()));
+        let buffer = Arc::new(Mutex::new(Buffer::new()));
         let mut view = View::new(buffer.clone(), 50, 50);
         for ch in testcase.chars() {
             view.insert_char(ch);

@@ -71,7 +71,7 @@ impl<'f> Frontend for RustboxFrontend<'f> {
     }
 }
 
-/// Translate a CharColor to rustbox::Color
+/// Translate a `CharColor` to `rustbox::Color`
 fn get_color(c: CharColor) -> Color {
     match c {
         CharColor::Default => Color::Default,
@@ -80,7 +80,7 @@ fn get_color(c: CharColor) -> Color {
     }
 }
 
-/// Translate a CharStyle to rustbox::Style
+/// Translate a `CharStyle` to `rustbox::Style`
 fn get_style(s: CharStyle) -> Style {
     match s {
         CharStyle::Normal => Style::empty(),
