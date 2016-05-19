@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use keyboard::Key;
 
 pub enum Trie<T: Copy> {
@@ -55,13 +56,14 @@ impl<T: Copy> Trie<T> {
                 Trie::Node(ref mut map) => {
                     let key = keys[0];
                     let keys = &keys[1..];
-
-                    if map.contains_key(&key) {
-                        map.get_mut(&key).unwrap().bind_keys(keys, value);
-                    } else {
-                        let mut node = Box::new(Trie::new());
-                        node.bind_keys(keys, value);
-                        map.insert(key, node);
+                    match map.entry(key) {
+                        Entry::Vacant(v) => {
+                            let mut node = Box::new(Trie::new());
+                            node.bind_keys(keys, value);
+                            v.insert(node);
+                        },
+                        Entry::Occupied(mut o) =>
+                            o.get_mut().bind_keys(keys, value)
                     }
                 }
             }

@@ -5,7 +5,7 @@ pub use self::rb::RustboxFrontend;
 
 /// A general means of representing events from different frontends.
 ///
-/// A frontend should translate its own events into an EditorEvent to be used
+/// A frontend should translate its own events into an `EditorEvent` to be used
 /// elsewhere in the program.
 pub enum EditorEvent {
     KeyEvent(Option<Key>),

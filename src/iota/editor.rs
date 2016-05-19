@@ -114,12 +114,12 @@ impl<'e, T: Frontend> Editor<'e, T> {
                     }
 
                     Overlay::SavePrompt { .. } => {
-                        if !data.is_empty() {
+                        if data.is_empty() {
+                            BuilderEvent::Invalid
+                        } else {
                             let path = PathBuf::from(&*data);
                             self.view.buffer.lock().unwrap().file_path = Some(path);
                             BuilderEvent::Complete(Command::save_buffer())
-                        } else {
-                            BuilderEvent::Invalid
                         }
                     }
 

@@ -5,21 +5,21 @@ use command::{BuilderEvent, Command};
 use super::{Mode, ModeType};
 
 
-/// InsertMode mimics Vi's Insert mode.
+/// `InsertMode` mimics Vi's Insert mode.
 pub struct InsertMode {
     keymap: KeyMap<Command>,
 }
 
 impl InsertMode {
 
-    /// Create a new instance of InsertMode
+    /// Create a new instance of `InsertMode`
     pub fn new() -> InsertMode {
         InsertMode {
             keymap: InsertMode::key_defaults(),
         }
     }
 
-    /// Creates a KeyMap with default InsertMode key bindings
+    /// Creates a `KeyMap` with default `InsertMode` key bindings
     fn key_defaults() -> KeyMap<Command> {
         let mut keymap = KeyMap::new();
 
