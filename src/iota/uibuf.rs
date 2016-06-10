@@ -3,7 +3,7 @@ use frontends::Frontend;
 pub struct UIBuffer {
     width: usize,
     height: usize,
-    rows: Vec<Vec<Cell>>
+    pub rows: Vec<Vec<Cell>>
 }
 
 #[derive(Copy, Clone, PartialEq)]

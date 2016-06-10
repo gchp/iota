@@ -12,11 +12,19 @@ extern crate rustbox;
 extern crate gapbuffer;
 extern crate tempdir;
 extern crate unicode_width;
+extern crate libc;
+extern crate mio;
+extern crate serde;
+extern crate serde_json;
+
 
 pub use editor::Editor;
 pub use input::Input;
 pub use frontends::RustboxFrontend;
 pub use modes::{StandardMode, NormalMode, Mode};
+
+pub mod server;
+pub mod frontends;
 
 mod input;
 mod utils;
@@ -27,7 +35,6 @@ mod keymap;
 mod view;
 mod uibuf;
 mod log;
-mod frontends;
 mod modes;
 mod overlay;
 mod command;

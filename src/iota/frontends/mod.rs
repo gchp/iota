@@ -2,6 +2,7 @@ pub use super::keyboard::Key;
 pub use super::uibuf::{CharStyle, CharColor};
 
 pub use self::rb::RustboxFrontend;
+pub mod terminal;
 
 /// A general means of representing events from different frontends.
 ///

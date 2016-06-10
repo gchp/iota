@@ -11,7 +11,8 @@ use docopt::Docopt;
 use iota::{
     Editor, Input,
     StandardMode, NormalMode,
-    RustboxFrontend, Mode
+    RustboxFrontend, Mode,
+    server, frontends
 };
 use rustbox::{InitOptions, RustBox, InputMode};
 static USAGE: &'static str = "
@@ -19,6 +20,8 @@ Usage: iota [<filename>] [options]
        iota --help
 
 Options:
+    --daemon       Run the Iota server in the background
+    --client       Start an Iota client in the foreground
     --vi           Start Iota with vi-like modes
     -h, --help     Show this message.
 ";
@@ -27,6 +30,8 @@ Options:
 #[derive(RustcDecodable, Debug)]
 struct Args {
     arg_filename: Option<String>,
+    flag_daemon: bool,
+    flag_client: bool,
     flag_vi: bool,
     flag_help: bool,
 }
@@ -42,37 +47,45 @@ fn main() {
                             .and_then(|d| d.decode())
                             .unwrap_or_else(|e| e.exit());
 
-    let stdin_is_atty = is_atty(libc::STDIN_FILENO);
-    let stderr_is_atty = is_atty(libc::STDERR_FILENO);
+    if args.flag_daemon {
+        server::start(true)
+    }
 
-    // editor source - either a filename or stdin
-    let source = if stdin_is_atty {
-        Input::Filename(args.arg_filename)
-    } else {
-        Input::Stdin(stdin())
-    };
+    if args.flag_client {
+        frontends::terminal::start();
+    }
+
+    // let stdin_is_atty = is_atty(libc::STDIN_FILENO);
+    // let stderr_is_atty = is_atty(libc::STDERR_FILENO);
+
+    // // editor source - either a filename or stdin
+    // let source = if stdin_is_atty {
+    //     Input::Filename(args.arg_filename)
+    // } else {
+    //     Input::Stdin(stdin())
+    // };
 
 
-    // initialise rustbox
-    let rb = match RustBox::init(InitOptions{
-        buffer_stderr: stderr_is_atty,
-        input_mode: InputMode::Esc,
-    }) {
-        Result::Ok(v) => v,
-        Result::Err(e) => panic!("{}", e),
-    };
+    // // initialise rustbox
+    // let rb = match RustBox::init(InitOptions{
+    //     buffer_stderr: stderr_is_atty,
+    //     input_mode: InputMode::Esc,
+    // }) {
+    //     Result::Ok(v) => v,
+    //     Result::Err(e) => panic!("{}", e),
+    // };
 
-    // initialise the frontend
-    let frontend = RustboxFrontend::new(&rb);
+    // // initialise the frontend
+    // let frontend = RustboxFrontend::new(&rb);
 
-    // initialise the editor mode
-    let mode: Box<Mode> = if args.flag_vi {
-        Box::new(NormalMode::new())
-    } else {
-         Box::new(StandardMode::new())
-    };
+    // // initialise the editor mode
+    // let mode: Box<Mode> = if args.flag_vi {
+    //     Box::new(NormalMode::new())
+    // } else {
+    //      Box::new(StandardMode::new())
+    // };
 
-    // start the editor
-    let mut editor = Editor::new(source, mode, frontend);
-    editor.start();
+    // // start the editor
+    // let mut editor = Editor::new(source, mode, frontend);
+    // editor.start();
 }
