@@ -48,7 +48,7 @@ fn main() {
                             .unwrap_or_else(|e| e.exit());
 
     if args.flag_daemon {
-        server::start(true)
+        server::start(false)
     }
 
     if args.flag_client {

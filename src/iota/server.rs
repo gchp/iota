@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
 use std::net::SocketAddr;
 use std::process::exit;
+use std::path::PathBuf;
 
 use serde_json;
 use libc;
@@ -16,9 +17,11 @@ use ::buffer::Buffer;
 const SERVER_TOKEN: Token = Token(0);
 
 
+#[derive(Debug)]
 enum Response {
     Empty,
     Integer(usize),
+    List(Vec<HashMap<String, String>>),
     
     Error(&'static str)
 }
@@ -35,7 +38,16 @@ impl ServerApi {
         }
     }
 
-    fn create_buffer(&mut self) -> Response {
+    fn create_buffer(&mut self, args: serde_json::Value) -> Response {
+        if let Some(kwargs) = args.as_object() {
+            if let Some(path) = kwargs.get("path").and_then(|v| v.as_string()) {
+                let path = PathBuf::from(path);
+                let buffer = Buffer::from(path);
+                self.buffers.push(buffer);
+                return Response::Empty
+            }
+        } 
+
         let buffer = Buffer::new();
         self.buffers.push(buffer);
 
@@ -43,12 +55,29 @@ impl ServerApi {
     }
 
     fn list_buffers(&mut self) -> Response {
-        Response::Integer(self.buffers.len())
+        Response::Integer(self.buffers.len());
+
+        let mut items = Vec::new();
+
+        for buf in self.buffers.iter() {
+            let mut map = HashMap::new();
+
+            let path: String = match buf.file_path {
+                Some(ref p) => p.to_str().unwrap().to_string(),
+                None => String::new(),
+            };
+
+            map.insert(String::from("path"), path);
+            map.insert(String::from("size"), buf.len().to_string());
+            items.push(map);
+        }
+
+        Response::List(items)
     }
 
     fn handle_rpc(&mut self, command: String, args: serde_json::Value) -> Response {
         match &*command {
-            "create_buffer" => self.create_buffer(),
+            "create_buffer" => self.create_buffer(args),
             "list_buffers" => self.list_buffers(),
 
             _ => Response::Error("Unknown command")
@@ -70,6 +99,7 @@ impl Handler for Iota {
     type Message = ();
 
     fn ready(&mut self, event_loop: &mut EventLoop<Iota>, token: Token, events: EventSet) {
+        println!("events={:?}", events);
         if events.is_readable() {
             match token {
                 SERVER_TOKEN => {
@@ -91,10 +121,13 @@ impl Handler for Iota {
                                         PollOpt::edge() | PollOpt::oneshot()).unwrap();
                 }
 
-                token => {
+                _ => {
+                    println!("{:?}", token);
                     let mut client = self.clients.get_mut(&token).unwrap();
                     if let Some((command, args)) = client.read() {
+                        println!("command: {}", command);
                         let result = self.api.handle_rpc(command, args);
+                        println!("result: {:?}", result);
                         client.result = Some(result);
                     }
                     event_loop.reregister(&client.socket, token, client.interest, PollOpt::edge() | PollOpt::oneshot()).unwrap();
@@ -132,12 +165,26 @@ impl IotaClient {
 
             match self.socket.try_read(&mut buf) {
                 Err(e) => {
-                    println!("Error while reading socket: {:?}", e);
+                    panic!("Error while reading socket: {:?}", e);
+                }
+                Ok(None) => {
+                    println!("Noooone");
                     return None
                 }
-                Ok(None) => return None,
+                Ok(Some(0)) => {
+                    self.interest.remove(EventSet::readable());
+                    self.interest.insert(EventSet::writable());
+                    return None
+                }
                 Ok(Some(len)) =>  {
-                    let raw: serde_json::Value = serde_json::from_slice(&buf[0..len]).unwrap();
+                    println!("read {} bytes", len);
+                    let raw: serde_json::Value = match serde_json::from_slice(&buf[0..len]) {
+                        Ok(val) => val,
+                        Err(e) => {
+                            println!("{:?}", e);
+                            return None
+                        }
+                    };
 
                     self.interest.remove(EventSet::readable());
                     self.interest.insert(EventSet::writable());
@@ -171,6 +218,13 @@ impl IotaClient {
                             .unwrap()
                     }
 
+                    &Response::List(ref list) => {
+                        ObjectBuilder::new()
+                            .insert("response", "ok")
+                            .insert("result", list)
+                            .unwrap()
+                    }
+
                     &Response::Error(msg) => {
                         ObjectBuilder::new()
                             .insert("response", "error")
@@ -185,10 +239,28 @@ impl IotaClient {
         };
 
         let response = serde_json::to_string(&builder).unwrap();
-        self.socket.try_write(response.as_bytes()).unwrap();
+        println!("response={}", response);
+        match self.socket.try_write(response.as_bytes()) {
+            Ok(Some(0)) => {
+            }
+            Ok(Some(n)) => {
+                println!("Wrote {} bytes", n);
+                self.interest.remove(EventSet::writable());
+                self.interest.insert(EventSet::readable());
+            }
 
-        self.interest.remove(EventSet::writable());
-        self.interest.insert(EventSet::readable());
+            Ok(None) => {
+                println!("not ready for writing");
+                return 
+            }
+
+            Err(e) => {
+                println!("interest: {:?}", self.interest);
+                panic!("Error in writing: {}", e);
+            }
+
+        }
+
     }
 }
 

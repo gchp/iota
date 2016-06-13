@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 use std::process::exit;
+use std::io::{Read, Write};
 
 use serde_json;
 use serde_json::builder::ObjectBuilder;
@@ -31,10 +32,10 @@ impl ClientApi {
         }
     }
 
-    fn create_emtpy_buffer(&mut self) {
+    fn create_buffer(&mut self) {
         let builder = ObjectBuilder::new()
             .insert("command", "create_buffer")
-            .insert("args", "[]")
+            .insert("args", "{}")
             .unwrap();
         let payload = serde_json::to_string(&builder).unwrap();
 
@@ -104,7 +105,7 @@ impl TerminalFrontend {
     }
 
     fn set_initial_state(&mut self) {
-        self.api.create_emtpy_buffer(); 
+        self.api.create_buffer(); 
     }
 }
 
