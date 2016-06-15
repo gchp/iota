@@ -26,6 +26,7 @@ pub use modes::{StandardMode, NormalMode, Mode};
 pub mod server;
 pub mod frontends;
 
+pub mod api;
 mod input;
 mod utils;
 mod buffer;

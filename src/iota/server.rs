@@ -10,85 +10,18 @@ use serde_json::builder::ObjectBuilder;
 
 use mio::*;
 use mio::tcp::*;
+use mio::util::Slab;
 
 use ::buffer::Buffer;
+use ::api::{Response, ServerApi};
 
 
 const SERVER_TOKEN: Token = Token(0);
 
 
-#[derive(Debug)]
-enum Response {
-    Empty,
-    Integer(usize),
-    List(Vec<HashMap<String, String>>),
-    
-    Error(&'static str)
-}
-
-
-struct ServerApi {
-    buffers: Vec<Buffer>,
-}
-
-impl ServerApi {
-    fn new() -> ServerApi {
-        ServerApi {
-            buffers: Vec::new(),
-        }
-    }
-
-    fn create_buffer(&mut self, args: serde_json::Value) -> Response {
-        if let Some(kwargs) = args.as_object() {
-            if let Some(path) = kwargs.get("path").and_then(|v| v.as_string()) {
-                let path = PathBuf::from(path);
-                let buffer = Buffer::from(path);
-                self.buffers.push(buffer);
-                return Response::Empty
-            }
-        } 
-
-        let buffer = Buffer::new();
-        self.buffers.push(buffer);
-
-        Response::Empty
-    }
-
-    fn list_buffers(&mut self) -> Response {
-        Response::Integer(self.buffers.len());
-
-        let mut items = Vec::new();
-
-        for buf in self.buffers.iter() {
-            let mut map = HashMap::new();
-
-            let path: String = match buf.file_path {
-                Some(ref p) => p.to_str().unwrap().to_string(),
-                None => String::new(),
-            };
-
-            map.insert(String::from("path"), path);
-            map.insert(String::from("size"), buf.len().to_string());
-            items.push(map);
-        }
-
-        Response::List(items)
-    }
-
-    fn handle_rpc(&mut self, command: String, args: serde_json::Value) -> Response {
-        match &*command {
-            "create_buffer" => self.create_buffer(args),
-            "list_buffers" => self.list_buffers(),
-
-            _ => Response::Error("Unknown command")
-        }
-    }
-}
-
-
 struct Iota {
     socket: TcpListener,
-    clients: HashMap<Token, IotaClient>,
+    clients: Slab<IotaClient>,
     token_counter: usize,
     api: ServerApi,
 }
@@ -99,47 +32,59 @@ impl Handler for Iota {
     type Message = ();
 
     fn ready(&mut self, event_loop: &mut EventLoop<Iota>, token: Token, events: EventSet) {
-        println!("events={:?}", events);
-        if events.is_readable() {
-            match token {
-                SERVER_TOKEN => {
-                    let client_socket = match self.socket.accept() {
-                        Err(e) => {
-                            println!("Accept error: {}", e);
-                            return;
-                        }
-                        Ok(None) => unreachable!("Accept returned 'None'"),
-                        Ok(Some((sock, addr))) => sock
-                    };
+        println!("socket is ready; token={:?}; events={:?}", token, events);
+        match token {
+            SERVER_TOKEN => {
+                assert!(events.is_readable());
 
-                    self.token_counter += 1;
-                    let new_token = Token(self.token_counter);
+                match self.socket.accept() {
+                    Err(e) => {
+                        println!("Accept error: {}", e);
+                        event_loop.shutdown();
+                    }
+                    Ok(Some((socket, addr))) => {
+                        println!("Accepted a new client");
+                        let token = self.clients
+                            .insert_with(|token| IotaClient::new(socket))
+                            .unwrap();
 
-                    self.clients.insert(new_token, IotaClient::new(client_socket));
-                    event_loop.register(&self.clients[&new_token].socket,
-                                        new_token, EventSet::readable(),
-                                        PollOpt::edge() | PollOpt::oneshot()).unwrap();
+                        event_loop.register(&self.clients[token].socket,
+                                            token, EventSet::readable(),
+                                            PollOpt::edge() | PollOpt::oneshot()).unwrap();
+                    }
+                    Ok(None) => {
+                        println!("socket wasn't actually available")
+                    }
                 }
+            }
 
-                _ => {
+            _ => {
+                if events.is_readable() {
                     println!("{:?}", token);
-                    let mut client = self.clients.get_mut(&token).unwrap();
-                    if let Some((command, args)) = client.read() {
+                    if let Some((command, args)) = self.clients[token].read() {
                         println!("command: {}", command);
                         let result = self.api.handle_rpc(command, args);
                         println!("result: {:?}", result);
-                        client.result = Some(result);
+                        self.clients[token].result = Some(result);
                     }
-                    event_loop.reregister(&client.socket, token, client.interest, PollOpt::edge() | PollOpt::oneshot()).unwrap();
+                    if self.clients[token].closed {
+                        self.clients.remove(token);
+                    } else {
+                        event_loop.reregister(&self.clients[token].socket, token, self.clients[token].interest, PollOpt::edge() | PollOpt::oneshot()).unwrap();
+                    }
+                }
+                if events.is_writable() {
+                    //let mut client = self.clients.get_mut(&token).unwrap();
+                    self.clients[token].write();
+                    if self.clients[token].closed {
+                        self.clients.remove(token);
+                    } else {
+                        event_loop.reregister(&self.clients[token].socket, token, self.clients[token].interest, PollOpt::edge() | PollOpt::oneshot()).unwrap();
+                    }
                 }
             }
         }
 
-        if events.is_writable() {
-            let mut client = self.clients.get_mut(&token).unwrap();
-            client.write();
-            event_loop.reregister(&client.socket, token, client.interest, PollOpt::edge() | PollOpt::oneshot()).unwrap();
-        }
     }
 }
 
@@ -148,6 +93,7 @@ struct IotaClient {
     socket: TcpStream,
     interest: EventSet,
     result: Option<Response>,
+    closed: bool,
 }
 
 impl IotaClient {
@@ -156,6 +102,7 @@ impl IotaClient {
             socket: socket,
             interest: EventSet::readable(),
             result: None,
+            closed: false,
         }
     }
     
@@ -172,6 +119,8 @@ impl IotaClient {
                     return None
                 }
                 Ok(Some(0)) => {
+                    println!("Got zero");
+                    self.closed = true;
                     self.interest.remove(EventSet::readable());
                     self.interest.insert(EventSet::writable());
                     return None
@@ -272,7 +221,7 @@ pub fn start(do_fork: bool) {
 
     let mut server = Iota {
         token_counter: 1,
-        clients: HashMap::new(),
+        clients: Slab::new_starting_at(Token(1), 1024),
         socket: server_socket,
         api: ServerApi::new(),
     };

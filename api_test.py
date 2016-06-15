@@ -23,7 +23,7 @@ print(resp)
 
 open_file = json.dumps({
     "command": "list_buffers",
-    "args": {}    
+    "args": {}
 })
 print(len(open_file))
 print("Sending list_buffers")
@@ -33,4 +33,4 @@ resp = s.recv(2048)
 
 print(resp)
 
-#s.close()
+s.close()

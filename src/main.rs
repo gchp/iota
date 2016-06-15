@@ -12,7 +12,7 @@ use iota::{
     Editor, Input,
     StandardMode, NormalMode,
     RustboxFrontend, Mode,
-    server, frontends
+    server, frontends,
 };
 use rustbox::{InitOptions, RustBox, InputMode};
 static USAGE: &'static str = "
