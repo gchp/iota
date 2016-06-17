@@ -32,24 +32,49 @@ impl ClientApi {
         }
     }
 
-    fn create_buffer(&mut self) {
-        let builder = ObjectBuilder::new()
-            .insert("command", "create_buffer")
+    fn list_buffers(&mut self) -> Vec<String> {
+        let object = ObjectBuilder::new()
+            .insert("command", "list_buffers")
             .insert("args", "{}")
             .unwrap();
-        let payload = serde_json::to_string(&builder).unwrap();
 
-        self.stream.try_write(payload.as_bytes()).unwrap();
+        let mut buffers = Vec::new();
 
-        let mut result = [0; 2048];
-        match self.stream.try_read(&mut result) {
-            Err(e) => { println!("Error reading socket: {:?}", e) }
-            Ok(None) => {}
+        let payload = serde_json::to_string(&object).unwrap();
+
+        // TODO: refactor
+        match self.stream.try_write(payload.as_bytes()) {
             Ok(Some(len)) => {
-                let response: serde_json::Value = serde_json::from_slice(&result[0..len]).unwrap();
-                println!("{:?}", response);
+                loop {
+                    let mut result = [0; 2048];
+                    match self.stream.try_read(&mut result) {
+                        Err(e) => {
+                            println!("Error reading socket: {:?}", e);
+                            break
+                        }
+                        Ok(None) => {
+                        }
+                        Ok(Some(len)) => {
+                            let response: serde_json::Value = serde_json::from_slice(&result[0..len]).unwrap();
+                            let obj = response.as_object().unwrap();
+                            let result = obj.get("result").unwrap();
+                            let list = result.as_array().unwrap();
+
+                            for item in list {
+                                let obj = item.as_object().unwrap();
+                                let path = obj.get("path").unwrap().as_string().unwrap().into();
+                                buffers.push(path);
+                            }
+
+                            break
+                        }
+                    }
+                }
             }
+            _ => {}
         }
+
+        buffers
     }
 }
 
@@ -57,6 +82,10 @@ struct TerminalFrontend {
     engine: RustBox,
     ui_buffer: UIBuffer,
     api: ClientApi,
+
+
+    // TODO: remove this
+    current_buffer_path: String,
 }
 
 
@@ -70,6 +99,9 @@ impl TerminalFrontend {
             ui_buffer: UIBuffer::new(width, height),
             engine: engine,
             api: ClientApi::new(),
+
+            // TODO: remove this
+            current_buffer_path: String::new(),
         }
     }
 
@@ -87,7 +119,14 @@ impl TerminalFrontend {
         let height = self.engine.height();
         let width = self.engine.width();
 
-        for index in 0..width {
+        // drawing text in the status bar
+        let chars: Vec<char> = self.current_buffer_path.chars().collect();
+        for index in 0..chars.len() {
+            self.ui_buffer.update_cell(index, height-2, chars[index], CharColor::Black, CharColor::Blue);
+        }
+
+        // drawing the rest of the status bar
+        for index in self.current_buffer_path.len()..width {
             self.ui_buffer.update_cell(index, height - 2, ' ', CharColor::Black, CharColor::Blue);
         }
 
@@ -104,8 +143,13 @@ impl TerminalFrontend {
         }
     }
 
-    fn set_initial_state(&mut self) {
-        self.api.create_buffer(); 
+    fn get_initial_state(&mut self) {
+        let buffers = self.api.list_buffers();
+        if buffers.len() == 0 {
+            panic!("No buffers found");
+        } else {
+            self.current_buffer_path = buffers[0].clone();
+        }
     }
 }
 
@@ -123,7 +167,7 @@ pub fn start() {
     // initialise the frontend
     let mut frontend = TerminalFrontend::new(rb);
 
-    frontend.set_initial_state();
+    frontend.get_initial_state();
 
     frontend.main_loop();
 }

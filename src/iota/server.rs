@@ -60,7 +60,7 @@ impl Handler for Iota {
 
             _ => {
                 if events.is_readable() {
-                    println!("{:?}", token);
+                    println!("read_token={:?}", token);
                     if let Some((command, args)) = self.clients[token].read() {
                         println!("command: {}", command);
                         let result = self.api.handle_rpc(command, args);
@@ -74,7 +74,7 @@ impl Handler for Iota {
                     }
                 }
                 if events.is_writable() {
-                    //let mut client = self.clients.get_mut(&token).unwrap();
+                    println!("write_token={:?}", token);
                     self.clients[token].write();
                     if self.clients[token].closed {
                         self.clients.remove(token);
@@ -107,45 +107,46 @@ impl IotaClient {
     }
     
     fn read(&mut self) -> Option<(String, serde_json::Value)> {
-        loop {
-            let mut buf = [0; 2048];
+        let mut buf = [0; 2048];
 
-            match self.socket.try_read(&mut buf) {
-                Err(e) => {
-                    panic!("Error while reading socket: {:?}", e);
-                }
-                Ok(None) => {
-                    println!("Noooone");
-                    return None
-                }
-                Ok(Some(0)) => {
-                    println!("Got zero");
-                    self.closed = true;
-                    self.interest.remove(EventSet::readable());
-                    self.interest.insert(EventSet::writable());
-                    return None
-                }
-                Ok(Some(len)) =>  {
-                    println!("read {} bytes", len);
-                    let raw: serde_json::Value = match serde_json::from_slice(&buf[0..len]) {
-                        Ok(val) => val,
-                        Err(e) => {
-                            println!("{:?}", e);
-                            return None
-                        }
-                    };
+        // NOTE: not sure if this all needs to be inside a loop...
 
-                    self.interest.remove(EventSet::readable());
-                    self.interest.insert(EventSet::writable());
-
-                    if let Some(obj) = raw.as_object() {
-                        if let (Some(method), Some(args)) = (obj.get("command").and_then(|v| v.as_string()), obj.get("args")) {
-                            // TODO: don't clone args here
-                            return Some((String::from(method), args.clone()))
-                        }
+        match self.socket.try_read(&mut buf) {
+            Err(e) => {
+                panic!("Error while reading socket: {:?}", e);
+            }
+            Ok(None) => {
+                println!("Noooone");
+                return None
+            }
+            Ok(Some(0)) => {
+                println!("Got zero");
+                self.closed = true;
+                self.interest.remove(EventSet::readable());
+                self.interest.insert(EventSet::writable());
+                return None
+            }
+            Ok(Some(len)) =>  {
+                println!("read {} bytes", len);
+                println!("{}", String::from_utf8(Vec::from(&buf[0..len])).unwrap());
+                let raw: serde_json::Value = match serde_json::from_slice(&buf[0..len]) {
+                    Ok(val) => val,
+                    Err(e) => {
+                        println!("Error parsing as JSON {}", e);
+                        return None
                     }
-                    return None
+                };
+
+                self.interest.remove(EventSet::readable());
+                self.interest.insert(EventSet::writable());
+
+                if let Some(obj) = raw.as_object() {
+                    if let (Some(method), Some(args)) = (obj.get("command").and_then(|v| v.as_string()), obj.get("args")) {
+                        // TODO: don't clone args here
+                        return Some((String::from(method), args.clone()))
+                    }
                 }
+                return None
             }
         }
     }
