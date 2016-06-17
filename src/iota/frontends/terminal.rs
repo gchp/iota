@@ -4,9 +4,9 @@ use std::io::{Read, Write};
 
 use serde_json;
 use serde_json::builder::ObjectBuilder;
-use mio::tcp::TcpStream;
+use mio::tcp::{Shutdown, TcpStream};
 use mio::{TryRead, TryWrite};
-use rustbox::{RustBox, InitOptions, InputMode};
+use rustbox::{RustBox, InitOptions, InputMode, Event, Key};
 
 use ::uibuf::{UIBuffer, CharStyle};
 use ::frontends::CharColor;
@@ -30,6 +30,10 @@ impl ClientApi {
         ClientApi {
             stream: stream,
         }
+    }
+
+    fn shutdown(&mut self) {
+        self.stream.shutdown(Shutdown::Both);
     }
 
     fn list_buffers(&mut self) -> Vec<String> {
@@ -109,8 +113,22 @@ impl TerminalFrontend {
         loop {
             self.draw();
             self.engine.present();
-            let event = self.engine.poll_event(true);
+
+            if let Ok(event) = self.engine.poll_event(false) {
+                match event {
+                    Event::KeyEvent(key) => {
+                        match key {
+                            Key::Ctrl('q') => { break }
+                            _ => {}
+                        }
+                    }
+
+                    _ => {}
+                }
+            }
         }
+
+        self.api.shutdown();
     }
 
 
