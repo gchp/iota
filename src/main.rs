@@ -7,6 +7,8 @@ extern crate docopt;
 extern crate iota;
 
 use std::io::stdin;
+use std::thread::spawn;
+
 use docopt::Docopt;
 use iota::{
     Editor, Input,
@@ -47,12 +49,19 @@ fn main() {
                             .and_then(|d| d.decode())
                             .unwrap_or_else(|e| e.exit());
 
+    if !args.flag_daemon && !args.flag_client {
+        // if neither client or daemon has been specified, start both.
+        spawn(|| { server::start(false); });
+        frontends::terminal::start(true);
+    }
+
     if args.flag_daemon {
+        // TODO: change param to false to run in the background
         server::start(false)
     }
 
     if args.flag_client {
-        frontends::terminal::start();
+        frontends::terminal::start(false);
     }
 
     // let stdin_is_atty = is_atty(libc::STDIN_FILENO);

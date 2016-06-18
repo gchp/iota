@@ -32,6 +32,35 @@ impl ClientApi {
         }
     }
 
+    fn server_shutdown(&mut self) {
+        let object = ObjectBuilder::new()
+            .insert("command", "exit")
+            .insert("args", "{}")
+            .unwrap();
+
+        let payload = serde_json::to_string(&object).unwrap();
+        match self.stream.try_write(payload.as_bytes()) {
+            Ok(Some(len)) => {
+                loop {
+                    let mut result = [0; 2048];
+                    match self.stream.try_read(&mut result) {
+                        Err(e) => {
+                            println!("Error reading socket: {:?}", e);
+                            break
+                        }
+                        Ok(None) => {
+                        }
+                        Ok(Some(len)) => {
+                            break
+                        }
+                    }
+                }
+            }
+
+            _ => {}
+        }
+    }
+
     fn shutdown(&mut self) {
         self.stream.shutdown(Shutdown::Both);
     }
@@ -127,8 +156,6 @@ impl TerminalFrontend {
                 }
             }
         }
-
-        self.api.shutdown();
     }
 
 
@@ -172,7 +199,7 @@ impl TerminalFrontend {
 }
 
 
-pub fn start() {
+pub fn start(server_shutdown: bool) {
     // initialise rustbox
     let rb = match RustBox::init(InitOptions{
         buffer_stderr: true,
@@ -188,4 +215,10 @@ pub fn start() {
     frontend.get_initial_state();
 
     frontend.main_loop();
+
+    if server_shutdown {
+        frontend.api.server_shutdown();
+    }
+
+    frontend.api.shutdown();
 }
