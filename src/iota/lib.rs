@@ -16,6 +16,7 @@ extern crate libc;
 extern crate mio;
 extern crate serde;
 extern crate serde_json;
+extern crate uuid;
 
 
 pub use editor::Editor;

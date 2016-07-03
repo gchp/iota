@@ -21,6 +21,7 @@ clippy = {version = "*", optional = true}
 mio = "*"
 serde = "*"
 serde_json = "*"
+uuid = { version = "0.2", features = ["v4"] }
 
 [features]
 default=[]

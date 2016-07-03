@@ -1,36 +1,50 @@
+from argparse import ArgumentParser
+
 import socket
 import json
 
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(("localhost", 10000))
+def get_socket():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect(("localhost", 10000))
+    return s
 
-open_file = json.dumps({
-    "command": "create_buffer",
-    "args": {
-        "path": "/home/gchp/src/github.com/gchp/iota/README.md"
-    }    
-})
+def list_workspaces(s, *args, **kwargs):
+    command = json.dumps({
+        "command": "list_workspaces",
+        "args": {}
+    })
+    s.send(command)
 
-print(len(open_file))
 
-print("Sending open_file")
-s.send(open_file)
-print("Receiving open_file")
-resp = s.recv(2048)
+def create_buffer(s, *args, **kwargs):
+    command = json.dumps({
+        "command": "create_buffer",
+        "args": {
+            "path": "/home/gchp/src/github.com/gchp/iota/README.md"
+        }
+    })
+    s.send(command)
 
-print(resp)
 
-open_file = json.dumps({
-    "command": "list_buffers",
-    "args": {}
-})
-print(len(open_file))
-print("Sending list_buffers")
-s.send(open_file)
-print("Receiving list_buffers")
-resp = s.recv(2048)
+def main():
+    parser = ArgumentParser()
+    parser.add_argument("api_command")
+    parser.add_argument("create_buffer", action="store_true")
 
-print(resp)
+    args = parser.parse_args()
 
-s.close()
+    print(args.api_command)
+
+    s = get_socket()
+
+    method = globals()[args.api_command]
+
+    method(s)
+    response = s.recv(2048)
+    print(response)
+    s.close()
+
+
+if __name__ == "__main__":
+    main()

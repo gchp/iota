@@ -92,7 +92,7 @@ impl Handler for Iota {
 struct IotaClient {
     socket: TcpStream,
     interest: EventSet,
-    result: Option<Response>,
+    result: Option<Result<serde_json::Value, &'static str>>,
     closed: bool,
 }
 
@@ -153,35 +153,17 @@ impl IotaClient {
 
     fn write(&mut self) {
         let builder = match self.result {
-            Some(ref response)    => {
-                match response {
-                    &Response::Empty => {
-                        ObjectBuilder::new()
-                            .insert("response", "ok")
-                            .unwrap()
-                    }
-
-                    &Response::Integer(val) => {
-                        ObjectBuilder::new()
-                            .insert("response", "ok")
-                            .insert("result", val)
-                            .unwrap()
-                    }
-
-                    &Response::List(ref list) => {
-                        ObjectBuilder::new()
-                            .insert("response", "ok")
-                            .insert("result", list)
-                            .unwrap()
-                    }
-
-                    &Response::Error(msg) => {
-                        ObjectBuilder::new()
-                            .insert("response", "error")
-                            .insert("message", msg)
-                            .unwrap()
-                    }
-                }
+            Some(Ok(ref response)) => {
+                ObjectBuilder::new()
+                    .insert("response", "ok")
+                    .insert("result", response)
+                    .unwrap()
+            }
+            Some(Err(message)) => {
+                ObjectBuilder::new()
+                    .insert("response", "error")
+                    .insert("message", message)
+                    .unwrap()
             }
             None => {
                 panic!("Why did this happen?")
