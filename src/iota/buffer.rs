@@ -438,6 +438,8 @@ impl Buffer {
 
     fn get_word_index_backward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<MarkPosition> {
         let text = &self.text;
+        let last = self.len() - 1;
+
         // TODO: use anchor to determine this
         let edger = WordEdgeMatch::Whitespace;
 
@@ -447,19 +449,24 @@ impl Buffer {
                 Anchor::Start => {
                     // move to the start of the nth_word before the mark
                     if let Some(new_index) = get_words_rev(mark_pos.absolute, nth_word, edger, text) {
-                        let mut new_mark_pos = MarkPosition::start();
-                        new_mark_pos.absolute = new_index;
+                        
+                        let new_mark_pos = get_line_info(new_index, text).unwrap();
+                       
+                        Some(new_mark_pos)
+                    } else {    
+                        let new_mark_pos = get_line_info(last, text).unwrap();
 
                         Some(new_mark_pos)
-                    } else {
-                        Some(MarkPosition::start())
                     }
                 }
 
                 _ => {
                     print!("Unhandled word anchor: {:?} ", anchor);
-                    None
-                },
+                    let mut new_mark_pos = MarkPosition::start();
+                    new_mark_pos.absolute = last;
+
+                    Some(new_mark_pos)
+                }
             }
         } else {
             None
