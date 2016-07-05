@@ -454,9 +454,7 @@ impl Buffer {
                        
                         Some(new_mark_pos)
                     } else {    
-                        let new_mark_pos = get_line_info(last, text).unwrap();
-
-                        Some(new_mark_pos)
+                        Some(MarkPosition::start())
                     }
                 }
 
