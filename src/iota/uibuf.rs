@@ -18,7 +18,13 @@ pub enum CharStyle {
 pub enum CharColor {
     Blue,
     Black,
+    Magenta,
+    Green,
+    Yellow,
     White,
+    Orange,
+    Gray,
+    Red,
     // TODO: add other colors
 }
 
