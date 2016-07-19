@@ -13,7 +13,7 @@ use iota::{
     StandardMode, NormalMode,
     RustboxFrontend, Mode
 };
-use rustbox::{InitOptions, RustBox, InputMode};
+use rustbox::{InitOptions, RustBox, InputMode, OutputMode};
 static USAGE: &'static str = "
 Usage: iota [<filename>] [options]
        iota --help
@@ -57,6 +57,7 @@ fn main() {
     let rb = match RustBox::init(InitOptions{
         buffer_stderr: stderr_is_atty,
         input_mode: InputMode::Esc,
+        output_mode: OutputMode::EightBit,
     }) {
         Result::Ok(v) => v,
         Result::Err(e) => panic!("{}", e),

@@ -74,9 +74,15 @@ impl<'f> Frontend for RustboxFrontend<'f> {
 /// Translate a `CharColor` to `rustbox::Color`
 fn get_color(c: CharColor) -> Color {
     match c {
-        CharColor::Default => Color::Default,
         CharColor::Blue    => Color::Blue,
+        CharColor::Red    => Color::Red,
         CharColor::Black   => Color::Black,
+        CharColor::Magenta   => Color::Magenta,
+        CharColor::Green   => Color::Green,
+        CharColor::Yellow   => Color::Yellow,
+        CharColor::White   => Color::White,
+        CharColor::Orange => Color::Byte(0x10),
+        CharColor::Gray => Color::Byte(0x08),
     }
 }
 
