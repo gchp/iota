@@ -35,6 +35,7 @@ pub enum Token {
     Dollar,
     Amp,
     Asterisk,
+    At,
     SingleLineComment(String),
     Attribute(String),
     String(String),
@@ -69,6 +70,7 @@ impl Token {
             Token::Dollar => Some('$'),
             Token::Amp => Some('&'),
             Token::Asterisk => Some('*'),
+            Token::At => Some('@'),
 
             _ => None,
         }
@@ -125,6 +127,7 @@ pub trait Lexer {
                         '$' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Dollar}),
                         '&' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Amp}),
                         '*' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Asterisk}),
+                        '@' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::At}),
                         _ => {
                             let ident = self.handle_ident(c, &mut chars, y_pos);
                             tokens.push(ident);

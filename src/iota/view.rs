@@ -193,7 +193,7 @@ impl View {
                             }
                             Token::Attribute(s) => {
                                 for (offset, ch) in s.chars().enumerate() {
-                                    let (fg, bg) = (CharColor::White, CharColor::Black);
+                                    let (fg, bg) = (CharColor::Yellow, CharColor::Black);
                                     if ch == ' ' {
                                         x_offset += 1;
                                         continue;
