@@ -79,8 +79,58 @@ impl Token {
 }
 
 pub trait Tokenizer {
-    fn get_stream(&self, input: &str) -> Vec<Span>;
     fn handle_ident(&self, ch: char, iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Span;
+    fn handle_char(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize, idx: usize) -> Option<Span>;
+
+    fn get_stream(&self, input: &str) -> Vec<Span> {
+        let mut tokens = Vec::new();
+        let mut y_pos = 0;
+
+        let mut chars = input.chars().enumerate().peekable();
+        while let Some((idx, c)) = chars.next() {
+            match self.handle_char(c, &mut chars, y_pos, idx) {
+                Some(span) => tokens.push(span),
+                None => {
+                    match c {
+                        ' ' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Whitespace}),
+                        '\n' => {
+                            y_pos += 1;
+                            tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Newline})
+                        }
+                        '{' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::OpenBrace}),
+                        '}' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::CloseBrace}),
+                        '(' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::OpenParen}),
+                        ')' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::CloseParen}),
+                        '[' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::OpenSquare}),
+                        ']' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::CloseSquare}),
+                        '\'' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::SingleQuote}),
+                        '"' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::DoubleQuote}),
+                        ',' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Comma}),
+                        ';' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::SemiColon}),
+                        ':' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Colon}),
+                        '/' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::ForwardSlash}),
+                        '|' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Pipe}),
+                        '.' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Dot}),
+                        '=' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Equal}),
+                        '!' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Bang}),
+                        '>' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Greater}),
+                        '<' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Less}),
+                        '-' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Dash}),
+                        '#' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Hash}),
+                        '$' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Dollar}),
+                        '&' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Amp}),
+                        '*' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Asterisk}),
+                        _ => {
+                            let ident = self.handle_ident(c, &mut chars, y_pos);
+                            tokens.push(ident);
+                        }
+                    }
+                }
+            }
+        }
+
+        tokens
+    }
 }
 
 
@@ -127,111 +177,76 @@ fn next_is(iter: &mut Peekable<Enumerate<Chars>>, ch: char) -> bool {
 pub struct RustSyntax;
 
 impl Tokenizer for RustSyntax {
-    fn get_stream(&self, input: &str) -> Vec<Span> {
-        let mut tokens = Vec::new();
-        let mut y_pos = 0;
-
-        let mut chars = input.chars().enumerate().peekable(); 
-        while let Some((idx, c)) = chars.next() {
-            match c {
-                ' ' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Whitespace}),
-                '\n' => {
-                    y_pos += 1;
-                    tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Newline})
-                }
-                '{' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::OpenBrace}),
-                '}' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::CloseBrace}),
-                '(' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::OpenParen}),
-                ')' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::CloseParen}),
-                '[' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::OpenSquare}),
-                ']' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::CloseSquare}),
-                '\'' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::SingleQuote}),
-                '"' => {
-                    let st = idx;
-                    let mut end = idx;
-                    let mut s = String::from("\"");
-                    while let Some(&(e, c)) = chars.peek() {
+    fn handle_char(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize, idx: usize) -> Option<Span> {
+        match ch {
+            '#' => {
+                let st = idx;
+                let mut end = idx;
+                if next_is(&mut iter, '!') || next_is(&mut iter, '[') {
+                    let mut s = String::new();
+                    while let Some(&(e, c)) = iter.peek() {
+                        if c == '\n' { break }
                         end = e;
-                        s.push(chars.next().unwrap().1);
-                        if c == '"' {
-                             break;
-                        }
+                        s.push(iter.next().unwrap().1)
                     }
-                    tokens.push(Span {
+                    return Some(Span {
                         y_pos: y_pos,
                         start: st,
                         end: end,
-                        token: Token::String(s),
+                        token: Token::Attribute(s),
                     });
                 }
-                ',' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Comma}),
-                ';' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::SemiColon}),
-                ':' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Colon}),
-                '/' => {
-                    let st = idx;
-                    let mut end = idx;
-                    if next_is(&mut chars, '/') {
-                        let mut s = String::from("/");
-                        while let Some(&(e, c)) = chars.peek() {
-                            if c == '\n' { break }
-                            end = e;
-                            s.push(chars.next().unwrap().1)
-                        }
-                        //tokens.push(Token::SingleLineComment(s));
-                        tokens.push(Span {
-                            y_pos: y_pos,
-                            start: st,
-                            end: end,
-                            token: Token::SingleLineComment(s),
-                        });
-                        continue;
-                    }
-                    tokens.push(Span {
-                        y_pos: y_pos,
-                        start: st,
-                        end: end,
-                        token: Token::ForwardSlash,
-                    });
-                }
-                '|' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Pipe}),
-                '.' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Dot}),
-                '=' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Equal}),
-                '!' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Bang}),
-                '>' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Greater}),
-                '<' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Less}),
-                '-' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Dash}),
-                '#' => {
-                    let st = idx;
-                    let mut end = idx;
-                    if next_is(&mut chars, '!') || next_is(&mut chars, '[') {
-                        let mut s = String::new();
-                        while let Some(&(e, c)) = chars.peek() {
-                            if c == '\n' { break }
-                            end = e;
-                            s.push(chars.next().unwrap().1)
-                        }
-                        tokens.push(Span {
-                            y_pos: y_pos,
-                            start: st,
-                            end: end,
-                            token: Token::Attribute(s),
-                        });
-                        continue;
-                    }
-                    tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Hash})
-                }
-                '$' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Dollar}),
-                '&' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Amp}),
-                '*' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Asterisk}),
-                _ => {
-                    let ident = self.handle_ident(c, &mut chars, y_pos);
-                    tokens.push(ident);
-                }
-            };
+                return Some(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Hash})
+            }
 
+            '/' => {
+                let st = idx;
+                let mut end = idx;
+                if next_is(&mut iter, '/') {
+                    let mut s = String::from("/");
+                    while let Some(&(e, c)) = iter.peek() {
+                        if c == '\n' { break }
+                        end = e;
+                        s.push(iter.next().unwrap().1)
+                    }
+                    //tokens.push(Token::SingleLineComment(s));
+                    return Some(Span {
+                        y_pos: y_pos,
+                        start: st,
+                        end: end,
+                        token: Token::SingleLineComment(s),
+                    });
+                }
+                return Some(Span {
+                    y_pos: y_pos,
+                    start: st,
+                    end: end,
+                    token: Token::ForwardSlash,
+                });
+            }
+
+            '"' => {
+                let st = idx;
+                let mut end = idx;
+                let mut s = String::from("\"");
+                while let Some(&(e, c)) = iter.peek() {
+                    end = e;
+                    s.push(iter.next().unwrap().1);
+                    if c == '"' {
+                        break;
+                    }
+                }
+                return Some(Span {
+                    y_pos: y_pos,
+                    start: st,
+                    end: end,
+                    token: Token::String(s),
+                });
+            }
+
+            _ => None,
         }
 
-        tokens
     }
 
     fn handle_ident(&self, ch: char, iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Span {
