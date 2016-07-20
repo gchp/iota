@@ -5,7 +5,6 @@ use std::iter::Enumerate;
 use ::syntax::lexer::{Token, Lexer, Span};
 use ::syntax::next_is;
 
-
 pub struct PythonSyntax;
 
 impl Lexer for PythonSyntax {
