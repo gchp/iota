@@ -6,7 +6,7 @@ Iota is a terminal-based text-editor written in Rust.
 
 Here's what it looks like right now, editing itself.
 
-![Screenshot](https://raw.githubusercontent.com/gchp/iota/master/screenshot.png)
+![Screenshot](https://raw.githubusercontent.com/gchp/iota/syntax-highlight/screenshot.png)
 
 ## Motivation
 
