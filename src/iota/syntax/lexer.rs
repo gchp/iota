@@ -216,3 +216,9 @@ define_lang!(rust, RustSyntax, RustSyntax,
              types=["usize", "u32", "i32", "String", "mut", "Buffer", "Option"]
 );
 
+define_lang!(python, PythonSyntax, PythonSyntax,
+             extensions=["py"],
+             keywords=["def", "for", "while", "if", "class", "import", "return", "from", "not", "in", "and", "else", "try", "except"],
+             types=["int", "dict", "list", "typle", "type", "Exception"]
+);
+
