@@ -15,7 +15,7 @@ use log::{Log, Change, LogEntry};
 use input::Input;
 use iterators::Lines;
 use textobject::{TextObject, Kind, Offset, Anchor};
-use lexer::SyntaxInstance;
+use syntax::lexer::SyntaxInstance;
 
 
 #[derive(PartialEq, Debug)]

@@ -33,4 +33,4 @@ mod overlay;
 mod command;
 mod textobject;
 mod iterators;
-mod lexer;
+mod syntax;
