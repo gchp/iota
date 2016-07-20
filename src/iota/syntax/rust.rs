@@ -15,7 +15,7 @@ impl Lexer for RustSyntax {
                 let st = idx;
                 let mut end = idx;
                 if next_is(&mut iter, '!') || next_is(&mut iter, '[') {
-                    let mut s = String::new();
+                    let mut s = String::from("#");
                     while let Some(&(e, c)) = iter.peek() {
                         if c == '\n' { break }
                         end = e;
