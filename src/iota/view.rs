@@ -4,7 +4,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::io::Write;
 use std::fs::{File, rename};
-use std::sync::{Mutex, Arc};
+use std::sync::{Mutex, MutexGuard, Arc};
 use std::io::stderr;
 
 use tempdir::TempDir;
@@ -132,221 +132,141 @@ impl View {
             let buffer = self.buffer.lock().unwrap();
             let height = self.get_height() - 1;
 
-            let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
-            let mut bytes = Vec::new();
-            for l in lines { bytes.extend(l) }
-            let text = String::from_utf8(bytes).unwrap();
-            let rs = RustSyntax(SyntaxInstance{
-                file_extensions: vec!("rs"),
-                keywords: vec!("fn", "struct", "enum"),
-            });
-            let tokens = rs.get_stream(&*text);
-            let mut x_offset = 0;
-            let mut y_offset = 0;
-            for span in tokens {
-                match span.token {
-                    Token::Ident(s) => {
-                        let (fg, bg) = match &*s {
-                            "fn" | "let" | "struct" | "pub" | "use" | "impl" => {
-                                (CharColor::Magenta, CharColor::Black)
+            match buffer.syntax {
+                Some(ref syntax) => {
+                    let height = self.get_height() - 1;
+                    let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
+                    let mut bytes = Vec::new();
+                    for l in lines { bytes.extend(l) }
+                    let text = String::from_utf8(bytes).unwrap();
+                    let tokens = syntax.get_stream(&*text);
+                    let mut x_offset = 0;
+                    let mut y_offset = 0;
+                    for span in tokens {
+                        match span.token {
+                            Token::Ident(s) => {
+                                let (fg, bg) = match &*s {
+                                    "fn" | "let" | "struct" | "pub" | "use" | "impl" => {
+                                        (CharColor::Magenta, CharColor::Black)
+                                    }
+                                    "usize" | "u32" | "i32" | "String" | "mut" | "Buffer" |
+                                        "Option" => {
+                                            (CharColor::Yellow, CharColor::Black)
+                                        }
+                                    "self" => {
+                                        (CharColor::Orange, CharColor::Black)
+                                    }
+                                    _ => {
+                                        (CharColor::White, CharColor::Black)
+                                    }
+                                };
+                                for (offset, x) in s.chars().enumerate() {
+                                    self.uibuf.update_cell(x_offset, y_offset, x, fg, bg);
+                                    x_offset += 1;
+                                }
                             }
-                            "usize" | "u32" | "i32" | "String" | "mut" => {
-                                (CharColor::Yellow, CharColor::Black)
+                            Token::String(s) => {
+                                for (offset, ch) in s.chars().enumerate() {
+                                    let (fg, bg) = (CharColor::Green, CharColor::Black);
+                                    if ch == '\n' {
+                                        y_offset += 1;
+                                        x_offset = 0;
+                                        continue;
+                                    }
+                                    if ch == ' ' {
+                                        x_offset += 1;
+                                        continue;
+                                    }
+                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
+                                    x_offset += 1;
+                                }
                             }
-                            "self" => {
-                                (CharColor::Orange, CharColor::Black)
+                            Token::SingleLineComment(s) => {
+                                for (offset, ch) in s.chars().enumerate() {
+                                    let (fg, bg) = (CharColor::Gray, CharColor::Black);
+                                    if ch == ' ' {
+                                        x_offset += 1;
+                                        continue;
+                                    }
+                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
+                                    x_offset += 1;
+                                }
                             }
-                            _ => {
-                                (CharColor::White, CharColor::Black)
+                            Token::Attribute(s) => {
+                                for (offset, ch) in s.chars().enumerate() {
+                                    let (fg, bg) = (CharColor::White, CharColor::Black);
+                                    if ch == ' ' {
+                                        x_offset += 1;
+                                        continue;
+                                    }
+                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
+                                    x_offset += 1;
+                                }
                             }
-                        };
-                        for (offset, x) in s.chars().enumerate() {
-                            self.uibuf.update_cell(x_offset, y_offset, x, fg, bg);
-                            x_offset += 1;
+                            Token::Whitespace => { x_offset += 1; }
+                            Token::Newline => { x_offset = 0; y_offset += 1; }
+
+                            token => {
+                                let inner_char = token.as_char();
+
+                                match inner_char {
+                                    Some(ch) => {
+                                        self.uibuf.update_cell(x_offset, y_offset, ch, CharColor::White, CharColor::Black);
+                                        x_offset += 1;
+                                    }
+                                    None => {
+                                        panic!("Unhandled token: {:?}", token);
+                                    }
+                                }
+                            }
+                        } 
+                    }
+                }
+                None => {
+                    // FIXME: don't use unwrap here
+                    //        This will fail if for some reason the buffer doesnt have
+                    //        the top_line mark
+                    let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
+                    for y_position in 0..height {
+                        let line = lines.next().unwrap_or_else(Vec::new);
+                        //draw_line(&mut self.uibuf, &line, y_position, self.left_col);
+
+                        let width = self.uibuf.get_width() - 1;
+                        let mut x = 0;
+
+                        for ch in line.iter().skip(self.left_col) {
+                            let ch = *ch as char;
+                            match ch {
+                                '\t' => {
+                                    let w = 4 - x % 4;
+                                    for _ in 0..w {
+                                        self.uibuf.update_cell_content(x, y_position, ' ');
+                                        x += 1;
+                                    }
+                                }
+                                '\n' => {}
+                                _ => {
+                                    self.uibuf.update_cell_content(x, y_position, ch);
+                                    x += UnicodeWidthChar::width(ch).unwrap_or(1);
+                                }
+                            }
+                            if x >= width {
+                                break;
+                            }
                         }
-                    }
-                    Token::String(s) => {
-                        for (offset, ch) in s.chars().enumerate() {
-                            let (fg, bg) = (CharColor::Green, CharColor::Black);
-                            if ch == '\n' {
-                                y_offset += 1;
-                                x_offset = 0;
-                                continue;
-                            }
-                            if ch == ' ' {
-                                x_offset += 1;
-                                continue;
-                            }
-                            self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
-                            x_offset += 1;
+
+                        // Replace any cells after end of line with ' '
+                        while x < width {
+                            self.uibuf.update_cell_content(x, y_position, ' ');
+                            x += 1;
                         }
+
+                        // If the line is too long to fit on the screen, show an indicator
+                        let indicator = if line.len() > width + self.left_col { '→' } else { ' ' };
+                        self.uibuf.update_cell_content(width, y_position, indicator);
                     }
-                    Token::SingleLineComment(s) => {
-                        for (offset, ch) in s.chars().enumerate() {
-                            let (fg, bg) = (CharColor::Gray, CharColor::Black);
-                            if ch == ' ' {
-                                x_offset += 1;
-                                continue;
-                            }
-                            self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
-                            x_offset += 1;
-                        }
-                    }
-                    Token::Attribute(s) => {
-                        for (offset, ch) in s.chars().enumerate() {
-                            let (fg, bg) = (CharColor::White, CharColor::Black);
-                            if ch == ' ' {
-                                x_offset += 1;
-                                continue;
-                            }
-                            self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
-                            x_offset += 1;
-                        }
-                    }
-                    Token::OpenParen => {
-                        self.uibuf.update_cell(x_offset, y_offset, '(', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::CloseParen => {
-                        self.uibuf.update_cell(x_offset, y_offset, ')', CharColor::White, CharColor::Black); 
-                        x_offset += 1;
-                    }
-                    Token::OpenBrace => {
-                        self.uibuf.update_cell(x_offset, y_offset, '{', CharColor::White, CharColor::Black); 
-                        x_offset += 1;
-                    }
-                    Token::CloseBrace => {
-                        self.uibuf.update_cell(x_offset, y_offset, '}', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Equal => {
-                        self.uibuf.update_cell(x_offset, y_offset, '=', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::SemiColon => {
-                        self.uibuf.update_cell(x_offset, y_offset, ';', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::OpenSquare => {
-                        self.uibuf.update_cell(x_offset, y_offset, '[', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::CloseSquare => {
-                        self.uibuf.update_cell(x_offset, y_offset, ']', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Underscore => {
-                        self.uibuf.update_cell(x_offset, y_offset, '_', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Dash => {
-                        self.uibuf.update_cell(x_offset, y_offset, '-', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::SingleQuote => {
-                        self.uibuf.update_cell(x_offset, y_offset, '\'', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::DoubleQuote => {
-                        self.uibuf.update_cell(x_offset, y_offset, '"', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Comma => {
-                        self.uibuf.update_cell(x_offset, y_offset, ',', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Colon => {
-                        self.uibuf.update_cell(x_offset, y_offset, ':', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::ForwardSlash => {
-                        self.uibuf.update_cell(x_offset, y_offset, '/', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Pipe => {
-                        self.uibuf.update_cell(x_offset, y_offset, '|', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Dot => {
-                        self.uibuf.update_cell(x_offset, y_offset, '.', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Bang => {
-                        self.uibuf.update_cell(x_offset, y_offset, '!', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Greater => {
-                        self.uibuf.update_cell(x_offset, y_offset, '>', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Less => {
-                        self.uibuf.update_cell(x_offset, y_offset, '<', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Hash => {
-                        self.uibuf.update_cell(x_offset, y_offset, '#', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Dollar => {
-                        self.uibuf.update_cell(x_offset, y_offset, '$', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Amp => {
-                        self.uibuf.update_cell(x_offset, y_offset, '&', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Asterisk => {
-                        self.uibuf.update_cell(x_offset, y_offset, '*', CharColor::White, CharColor::Black);
-                        x_offset += 1;
-                    }
-                    Token::Whitespace => { x_offset += 1; }
-                    Token::Newline => { x_offset = 0; y_offset += 1; }
-                } 
+                }
             }
-            
-
-            // FIXME: don't use unwrap here
-            //        This will fail if for some reason the buffer doesnt have
-            //        the top_line mark
-            // let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
-            // for y_position in 0..height {
-            //     let line = lines.next().unwrap_or_else(Vec::new);
-            //     //draw_line(&mut self.uibuf, &line, y_position, self.left_col);
-
-            //     let width = self.uibuf.get_width() - 1;
-            //     let mut x = 0;
-
-            //     for ch in line.iter().skip(self.left_col) {
-            //         let ch = *ch as char;
-            //         match ch {
-            //             '\t' => {
-            //                 let w = 4 - x % 4;
-            //                 for _ in 0..w {
-            //                     self.uibuf.update_cell_content(x, y_position, ' ');
-            //                     x += 1;
-            //                 }
-            //             }
-            //             '\n' => {}
-            //             _ => {
-            //                 self.uibuf.update_cell_content(x, y_position, ch);
-            //                 x += UnicodeWidthChar::width(ch).unwrap_or(1);
-            //             }
-            //         }
-            //         if x >= width {
-            //             break;
-            //         }
-            //     }
-
-            //     // Replace any cells after end of line with ' '
-            //     while x < width {
-            //         self.uibuf.update_cell_content(x, y_position, ' ');
-            //         x += 1;
-            //     }
-
-            //     // If the line is too long to fit on the screen, show an indicator
-            //     let indicator = if line.len() > width + self.left_col { '→' } else { ' ' };
-            //     self.uibuf.update_cell_content(width, y_position, indicator);
-            // }
 
         }
         match self.overlay {
