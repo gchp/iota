@@ -154,20 +154,40 @@ pub struct SyntaxInstance {
     pub lexer: Box<Lexer>,
     pub file_extensions: Vec<String>,
     pub keywords: Vec<String>,
+    pub types: Vec<String>,
 }
 
 impl SyntaxInstance {
     pub fn rust() -> SyntaxInstance {
         let keywords = vec!(
-            "".into()
-            );
+            "fn".into(),
+            "let".into(),
+            "struct".into(),
+            "pub".into(),
+            "use".into(),
+            "impl".into(),
+        );
 
+        let types = vec!(
+            "usize".into(), "u32".into(),
+            "i32".into(), "String".into(),
+            "mut".into(), "Buffer".into(),
+            "Option".into(),
+        );
 
         SyntaxInstance {
             lexer: Box::new(RustSyntax),
             file_extensions: vec!("rs".into()),
             keywords: keywords,
         }
+    }
+
+    pub fn is_keyword(&self, s: &str) -> bool {
+        self.keywords.contains(&s.into())
+    }
+
+    pub fn is_type(&self, s: &str) -> bool {
+        self.types.contains(&s.into())
     }
 
     pub fn get_stream(&self, text: &str) -> Vec<Span> {
