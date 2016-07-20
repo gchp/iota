@@ -146,13 +146,12 @@ impl View {
                         match span.token {
                             Token::Ident(s) => {
                                 let (fg, bg) = match &*s {
-                                    "fn" | "let" | "struct" | "pub" | "use" | "impl" => {
+                                    st if syntax.is_keyword(st) => {
                                         (CharColor::Magenta, CharColor::Black)
                                     }
-                                    "usize" | "u32" | "i32" | "String" | "mut" | "Buffer" |
-                                        "Option" => {
-                                            (CharColor::Yellow, CharColor::Black)
-                                        }
+                                    st if syntax.is_type(st) => {
+                                        (CharColor::Yellow, CharColor::Black)
+                                    }
                                     "self" => {
                                         (CharColor::Orange, CharColor::Black)
                                     }
