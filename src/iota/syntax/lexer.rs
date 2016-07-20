@@ -37,6 +37,7 @@ pub enum Token {
     Asterisk,
     At,
     SingleLineComment(String),
+    DocComment(String),
     Attribute(String),
     String(String),
 }

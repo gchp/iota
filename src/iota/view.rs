@@ -191,6 +191,17 @@ impl View {
                                     x_offset += 1;
                                 }
                             }
+                            Token::DocComment(s) => {
+                                for (offset, ch) in s.chars().enumerate() {
+                                    let (fg, bg) = (CharColor::Cyan, CharColor::Black);
+                                    if ch == ' ' {
+                                        x_offset += 1;
+                                        continue;
+                                    }
+                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
+                                    x_offset += 1;
+                                }
+                            }
                             Token::Attribute(s) => {
                                 for (offset, ch) in s.chars().enumerate() {
                                     let (fg, bg) = (CharColor::Yellow, CharColor::Black);

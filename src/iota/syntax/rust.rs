@@ -36,6 +36,13 @@ impl Lexer for RustSyntax {
                 let mut end = idx;
                 if next_is(&mut iter, '/') {
                     let mut s = String::from("/");
+                    s.push(iter.next().unwrap().1);
+
+                    let mut doc_comment = false;
+                    if next_is(&mut iter, '/') {
+                        doc_comment = true;
+                    }
+
                     while let Some(&(e, c)) = iter.peek() {
                         if c == '\n' { break }
                         end = e;
@@ -46,7 +53,7 @@ impl Lexer for RustSyntax {
                         y_pos: y_pos,
                         start: st,
                         end: end,
-                        token: Token::SingleLineComment(s),
+                        token: if doc_comment{ Token::DocComment(s) } else { Token::SingleLineComment(s) },
                     });
                 }
                 return Some(Span {
