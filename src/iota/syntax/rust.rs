@@ -111,6 +111,27 @@ impl Lexer for RustSyntax {
                 });
             }
 
+            ':' => {
+                let st = idx;
+                let mut end = idx;
+                if next_is(&mut iter, ':') {
+                    let (e, c) = iter.next().unwrap();
+                    return Some(Span {
+                        y_pos: y_pos,
+                        start: st,
+                        end: e,
+                        token: Token::Special(String::from("::")),
+                    });
+                } else {
+                    return Some(Span {
+                        y_pos: y_pos,
+                        start: st,
+                        end: end,
+                        token: Token::Colon,
+                    });
+                }
+            }
+
             _ => None,
         }
 
