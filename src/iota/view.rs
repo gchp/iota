@@ -4,8 +4,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::io::Write;
 use std::fs::{File, rename};
-use std::sync::{Mutex, MutexGuard, Arc};
-use std::io::stderr;
+use std::sync::{Mutex, Arc};
 
 use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
@@ -16,7 +15,7 @@ use frontends::Frontend;
 use overlay::{Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
-use lexer::{Token, RustSyntax, SyntaxInstance, Tokenizer};
+use syntax::lexer::Token;
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -143,6 +142,7 @@ impl View {
                     let mut x_offset = 0;
                     let mut y_offset = 0;
                     for span in tokens {
+                        // writeln!(&mut stderr(), "{:?}", span);
                         match span.token {
                             Token::Ident(s) => {
                                 let (fg, bg) = match &*s {
