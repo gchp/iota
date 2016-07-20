@@ -15,6 +15,7 @@ use log::{Log, Change, LogEntry};
 use input::Input;
 use iterators::Lines;
 use textobject::{TextObject, Kind, Offset, Anchor};
+use lexer::SyntaxInstance;
 
 
 #[derive(PartialEq, Debug)]
@@ -73,6 +74,8 @@ pub struct Buffer {
 
     /// Location on disk where the current buffer should be written
     pub file_path: Option<PathBuf>,
+
+    pub syntax: Option<SyntaxInstance>,
 }
 
 #[cfg_attr(feature="clippy", allow(len_without_is_empty))]
@@ -80,6 +83,7 @@ impl Buffer {
     /// Constructor for empty buffer.
     pub fn new() -> Buffer {
         Buffer {
+            syntax: None,
             file_path: None,
             text: GapBuffer::new(),
             marks: HashMap::new(),
@@ -609,11 +613,24 @@ impl BufferFrom for File {}
 
 impl From<PathBuf> for Buffer {
     fn from(path: PathBuf) -> Buffer {
-        if let Ok(file) = File::open(&path) {
-            let mut buff = Buffer::from(file);
-            buff.file_path = Some(path);
-            buff
-        } else { Buffer::new() }
+        let syntax_instance = match path.extension().unwrap().to_str().unwrap() {
+            "rs" => Some(SyntaxInstance::rust()),
+            _ => None,
+        };
+
+        match File::open(&path) {
+            Ok(file) => {
+                let mut buf = Buffer::from(file);
+                buf.file_path = Some(path);
+                buf.syntax = syntax_instance;
+                buf
+            }
+            Err(_) => {
+                let mut buf = Buffer::new();
+                buf.syntax = syntax_instance;
+                buf
+            }
+        }
     }
 }
 

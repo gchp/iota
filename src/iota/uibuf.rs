@@ -101,7 +101,7 @@ impl Cell {
     pub fn new() -> Cell {
         Cell {
             bg: CharColor::Black,
-            fg: CharColor::Red,
+            fg: CharColor::White,
             ch: ' ',
             x: 0,
             y: 0,

@@ -43,6 +43,41 @@ pub enum Token {
     String(String),
 }
 
+impl Token {
+    pub fn as_char(&self) -> Option<char> {
+        match *self {
+            Token::OpenBrace => Some('{'),
+            Token::CloseBrace => Some('}'),
+            Token::OpenParen => Some('('),
+            Token::CloseParen => Some(')'),
+            Token::OpenSquare => Some('['),
+            Token::CloseSquare => Some(']'),
+            Token::Newline => Some('\n'),
+            Token::Whitespace => Some(' '),
+            Token::Underscore => Some('_'),
+            Token::Dash => Some('-'),
+            Token::SingleQuote => Some('\''),
+            Token::DoubleQuote => Some('"'),
+            Token::Comma => Some(','),
+            Token::SemiColon => Some(';'),
+            Token::Colon => Some(':'),
+            Token::ForwardSlash => Some('/'),
+            Token::Pipe => Some('|'),
+            Token::Dot => Some('.'),
+            Token::Equal => Some('='),
+            Token::Bang => Some('!'),
+            Token::Greater => Some('>'),
+            Token::Less => Some('<'),
+            Token::Hash => Some('#'),
+            Token::Dollar => Some('$'),
+            Token::Amp => Some('&'),
+            Token::Asterisk => Some('*'),
+
+            _ => None,
+        }
+    }
+}
+
 pub trait Tokenizer {
     fn get_stream(&self, input: &str) -> Vec<Span>;
     fn handle_ident(&self, ch: char, iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Span;
@@ -58,11 +93,30 @@ pub struct Span {
 }
 
 
-pub struct SyntaxInstance<'s> {
-    pub file_extensions: Vec<&'s str>,
-    pub keywords: Vec<&'s str>,
+pub struct SyntaxInstance {
+    pub lexer: Box<Tokenizer>,
+    pub file_extensions: Vec<String>,
+    pub keywords: Vec<String>,
 }
 
+impl SyntaxInstance {
+    pub fn rust() -> SyntaxInstance {
+        let keywords = vec!(
+            "".into()
+            );
+
+
+        SyntaxInstance {
+            lexer: Box::new(RustSyntax),
+            file_extensions: vec!("rs".into()),
+            keywords: keywords,
+        }
+    }
+
+    pub fn get_stream(&self, text: &str) -> Vec<Span> {
+        self.lexer.get_stream(text)
+    }
+}
 
 fn next_is(iter: &mut Peekable<Enumerate<Chars>>, ch: char) -> bool {
     if let Some(&(_, c)) = iter.peek() {
@@ -70,8 +124,9 @@ fn next_is(iter: &mut Peekable<Enumerate<Chars>>, ch: char) -> bool {
     } else { false }
 }
 
-pub struct RustSyntax<'r>(pub SyntaxInstance<'r>);
-impl <'r>Tokenizer for RustSyntax<'r> {
+pub struct RustSyntax;
+
+impl Tokenizer for RustSyntax {
     fn get_stream(&self, input: &str) -> Vec<Span> {
         let mut tokens = Vec::new();
         let mut y_pos = 0;
@@ -198,7 +253,7 @@ impl <'r>Tokenizer for RustSyntax<'r> {
 
 }
 
-impl <'r>RustSyntax<'r> {
+impl RustSyntax {
     fn is_ident(&self, ch: Option<&(usize, char)>) -> bool {
         if let Some(&(idx, c)) = ch {
             c.is_alphabetic() || c == '_'
@@ -210,10 +265,7 @@ impl <'r>RustSyntax<'r> {
 
 
 fn main() {
-    let rs = RustSyntax(SyntaxInstance{
-        file_extensions: vec!("rs"),
-        keywords: vec!("fn", "struct", "enum"),
-    });
+    let rs = RustSyntax;
 
     let mut data = String::new();
     let mut f = File::open(Path::new("/home/gchp/src/github.com/gchp/iota/input.rs")).unwrap();

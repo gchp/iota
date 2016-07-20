@@ -11,13 +11,15 @@ authors = ["Greg Chapple <gregchapple1@gmail.com>"]
 
 [dependencies]
 docopt = "0.6.47"
-rustbox = "0.8.1"
 rustc-serialize = "0.3.14"
 gapbuffer = "0.1.1"
 tempdir = "0.3.0"
 unicode-width = "0.1.1"
 libc = "0.1"
 clippy = {version = "*", optional = true}
+
+[dependencies.rustbox]
+git = "https://github.com/gchp/rustbox"
 
 [features]
 default=[]
