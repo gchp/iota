@@ -46,33 +46,14 @@ impl Lexer for PythonSyntax {
             }
 
 
-            '"' => {
+            ch if ch == '"' || ch == '\'' => {
                 let st = idx;
                 let mut end = idx;
-                let mut s = String::from("\"");
+                let mut s= format!("{}", ch);
                 while let Some(&(e, c)) = iter.peek() {
                     end = e;
                     s.push(iter.next().unwrap().1);
-                    if c == '"' {
-                        break;
-                    }
-                }
-                return Some(Span {
-                    y_pos: y_pos,
-                    start: st,
-                    end: end,
-                    token: Token::String(s),
-                });
-            }
-
-            '\'' => {
-                let st = idx;
-                let mut end = idx;
-                let mut s = String::from("'");
-                while let Some(&(e, c)) = iter.peek() {
-                    end = e;
-                    s.push(iter.next().unwrap().1);
-                    if c == '\'' {
+                    if c == ch {
                         break;
                     }
                 }
