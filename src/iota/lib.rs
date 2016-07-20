@@ -7,6 +7,7 @@
 #![cfg_attr(feature="clippy", feature(plugin))]
 #![cfg_attr(feature="clippy", plugin(clippy))]
 #![warn(missing_docs)]
+#![feature(concat_idents)]
 
 extern crate rustbox;
 extern crate gapbuffer;

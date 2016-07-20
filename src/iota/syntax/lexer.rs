@@ -2,8 +2,6 @@ use std::str::Chars;
 use std::iter::Peekable;
 use std::iter::Enumerate;
 
-use ::syntax::langs::RustSyntax;
-
 #[derive(Debug)]
 pub enum Token {
     Ident(String),
@@ -158,30 +156,6 @@ pub struct SyntaxInstance {
 }
 
 impl SyntaxInstance {
-    pub fn rust() -> SyntaxInstance {
-        let keywords = vec!(
-            "fn".into(),
-            "let".into(),
-            "struct".into(),
-            "pub".into(),
-            "use".into(),
-            "impl".into(),
-        );
-
-        let types = vec!(
-            "usize".into(), "u32".into(),
-            "i32".into(), "String".into(),
-            "mut".into(), "Buffer".into(),
-            "Option".into(),
-        );
-
-        SyntaxInstance {
-            lexer: Box::new(RustSyntax),
-            file_extensions: vec!("rs".into()),
-            keywords: keywords,
-        }
-    }
-
     pub fn is_keyword(&self, s: &str) -> bool {
         self.keywords.contains(&s.into())
     }
@@ -194,4 +168,48 @@ impl SyntaxInstance {
         self.lexer.get_stream(text)
     }
 }
+
+macro_rules! define_lang {
+    (
+        $name:ident,
+        $lexer_ty:ident,
+        $lexer:expr,
+        extensions=[$($exts:expr),+],
+        keywords=[$($keys:expr),*],
+        types=[$($types:expr),*]
+    ) => {
+        use ::syntax::langs::$lexer_ty;
+
+        impl SyntaxInstance {
+            pub fn $name() -> SyntaxInstance {
+                let mut extensions = Vec::new();
+                $(
+                    extensions.push($exts.into());
+                )*
+                let mut keywords = Vec::new();
+                $(
+                    keywords.push($keys.into());
+                )*
+                let mut types = Vec::new();
+                $(
+                    types.push($types.into());
+                )*
+
+                SyntaxInstance {
+                    lexer: Box::new($lexer),
+                    file_extensions: extensions,
+                    keywords: keywords,
+                    types: types,
+                }
+            }
+        }
+    };
+}
+
+
+define_lang!(rust, RustSyntax, RustSyntax,
+             extensions=["rs"],
+             keywords=["fn", "let", "struct", "pub", "use", "impl"],
+             types=["usize", "u32", "i32", "String", "mut", "Buffer", "Option"]
+);
 
