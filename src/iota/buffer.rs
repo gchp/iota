@@ -615,6 +615,7 @@ impl From<PathBuf> for Buffer {
     fn from(path: PathBuf) -> Buffer {
         let syntax_instance = match path.extension().unwrap().to_str().unwrap() {
             "rs" => Some(SyntaxInstance::rust()),
+            "py" => Some(SyntaxInstance::python()),
             _ => None,
         };
 
