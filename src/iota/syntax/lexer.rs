@@ -153,7 +153,6 @@ pub struct Span {
 
 pub struct SyntaxInstance {
     pub lexer: Box<Lexer>,
-    pub file_extensions: Vec<String>,
     pub keywords: Vec<String>,
     pub types: Vec<String>,
 }
@@ -177,7 +176,6 @@ macro_rules! define_lang {
         $name:ident,
         $lexer_ty:ident,
         $lexer:expr,
-        extensions=[$($exts:expr),+],
         keywords=[$($keys:expr),*],
         types=[$($types:expr),*]
     ) => {
@@ -185,10 +183,6 @@ macro_rules! define_lang {
 
         impl SyntaxInstance {
             pub fn $name() -> SyntaxInstance {
-                let mut extensions = Vec::new();
-                $(
-                    extensions.push($exts.into());
-                )*
                 let mut keywords = Vec::new();
                 $(
                     keywords.push($keys.into());
@@ -200,7 +194,6 @@ macro_rules! define_lang {
 
                 SyntaxInstance {
                     lexer: Box::new($lexer),
-                    file_extensions: extensions,
                     keywords: keywords,
                     types: types,
                 }
@@ -211,13 +204,11 @@ macro_rules! define_lang {
 
 
 define_lang!(rust, RustSyntax, RustSyntax,
-             extensions=["rs"],
              keywords=["fn", "let", "struct", "pub", "use", "impl"],
              types=["usize", "u32", "i32", "String", "mut", "Buffer", "Option"]
 );
 
 define_lang!(python, PythonSyntax, PythonSyntax,
-             extensions=["py"],
              keywords=["def", "for", "while", "if", "class", "import", "return", "from", "not", "in", "and", "else", "try", "except"],
              types=["int", "dict", "list", "typle", "type", "Exception"]
 );
