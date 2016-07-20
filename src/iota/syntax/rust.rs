@@ -48,7 +48,7 @@ impl Lexer for RustSyntax {
                         end = e;
                         s.push(iter.next().unwrap().1)
                     }
-                    //tokens.push(Token::SingleLineComment(s));
+
                     return Some(Span {
                         y_pos: y_pos,
                         start: st,
@@ -83,12 +83,40 @@ impl Lexer for RustSyntax {
                 });
             }
 
+            '\'' => {
+                let st = idx;
+                let mut end = idx;
+                let mut s = String::from("\'");
+                while let Some(&(e, c)) = iter.peek() {
+                    end = e;
+                    s.push(iter.next().unwrap().1);
+                    if c == '\\' {
+                        if let Some(&(e, c_)) = iter.peek() {
+                            // this is handling escaped single quotes...
+                            if c_ == '\'' {
+                                s.push(iter.next().unwrap().1);
+                                continue;
+                            }
+                        }
+                    }
+                    if c == '\'' {
+                        break;
+                    }
+                }
+                return Some(Span {
+                    y_pos: y_pos,
+                    start: st,
+                    end: end,
+                    token: Token::Special(s),
+                });
+            }
+
             _ => None,
         }
 
     }
 
-    fn handle_ident(&self, ch: char, iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Span {
+    fn handle_ident(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Span {
         let mut ident = String::new();
         ident.push(ch);
         let start = iter.peek().unwrap().0 - 1;

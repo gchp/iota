@@ -40,6 +40,7 @@ pub enum Token {
     DocComment(String),
     Attribute(String),
     String(String),
+    Special(String),
 }
 
 impl Token {
@@ -205,8 +206,8 @@ macro_rules! define_lang {
 
 
 define_lang!(rust, RustSyntax, RustSyntax,
-             keywords=["fn", "let", "struct", "pub", "use", "impl"],
-             types=["usize", "u32", "i32", "String", "mut", "Buffer", "Option"]
+             keywords=["fn", "let", "struct", "pub", "use", "impl", "while", "for", "match", "return", "if", "else", "break"],
+             types=["usize", "u32", "i32", "String", "mut", "Buffer", "Option", "str", "char"]
 );
 
 define_lang!(python, PythonSyntax, PythonSyntax,
