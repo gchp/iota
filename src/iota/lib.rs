@@ -35,6 +35,7 @@ mod overlay;
 mod command;
 mod textobject;
 mod iterators;
+mod chained_command;
 
 #[cfg(feature="syntax-highlighting")]
 mod syntax;
