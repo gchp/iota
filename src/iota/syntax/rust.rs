@@ -71,6 +71,15 @@ impl Lexer for RustSyntax {
                 while let Some(&(e, c)) = iter.peek() {
                     end = e;
                     s.push(iter.next().unwrap().1);
+                    if c == '\\' {
+                        if let Some(&(e, c_)) = iter.peek() {
+                            // this is handling escaped single quotes...
+                            if c_ == '"' {
+                                s.push(iter.next().unwrap().1);
+                                continue;
+                            }
+                        }
+                    }
                     if c == '"' {
                         break;
                     }
