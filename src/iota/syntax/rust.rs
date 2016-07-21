@@ -149,7 +149,11 @@ impl Lexer for RustSyntax {
     fn handle_ident(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Span {
         let mut ident = String::new();
         ident.push(ch);
-        let start = iter.peek().unwrap().0 - 1;
+        let mut start = 0;
+
+        if let Some(&(x, c)) = iter.peek() {
+            start = x - 1;
+        }
 
         while self.is_ident(iter.peek()) {
             ident.push(iter.next().unwrap().1)
