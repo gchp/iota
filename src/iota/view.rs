@@ -346,11 +346,25 @@ impl View {
         let mut should_save = false;
         {
             let buffer = self.buffer.lock().unwrap();
+            let prefix = "Enter file name: ";
 
             match buffer.file_path {
-                Some(_) => { should_save = true }
+                Some(ref p) => {
+                    if p.is_dir() {
+                        // If it's a dir, we still need a file name. This is a tmp fix, 
+                        // should ideally be handled better
+                        let path_str = p.to_str().unwrap_or("");
+
+                        self.overlay = Overlay::SavePrompt {
+                            cursor_x: prefix.len() + path_str.len(),
+                            prefix: prefix,
+                            data: String::from(path_str),
+                        };
+                    } else {
+                        should_save = true 
+                    }
+                },
                 None => {
-                    let prefix = "Enter file name: ";
                     self.overlay = Overlay::SavePrompt {
                         cursor_x: prefix.len(),
                         prefix: prefix,
