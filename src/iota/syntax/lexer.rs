@@ -41,6 +41,7 @@ pub enum Token {
     Attribute(String),
     String(String),
     Special(String),
+    FunctionCallDef(String),
 }
 
 impl Token {
