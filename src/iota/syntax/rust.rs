@@ -159,11 +159,20 @@ impl Lexer for RustSyntax {
             ident.push(iter.next().unwrap().1)
         }
 
+        let end = ident.len() - 1;
+        let token;
+
+        if next_is(&mut iter, '(') {
+            token = Token::FunctionCallDef(ident);
+        } else {
+            token = Token::Ident(ident);
+        }
+
         Span {
             y_pos: y_pos,
             start: start,
-            end: start + ident.len() - 1,
-            token: Token::Ident(ident),
+            end: start + end,
+            token: token,
         }
     }
 }

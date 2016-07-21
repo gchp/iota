@@ -187,6 +187,13 @@ impl View {
                                     x_offset += 1;
                                 }
                             }
+                            Token::FunctionCallDef(s) => {
+                                let (fg, bg) = (CharColor::Blue, CharColor::Black);
+                                for (offset, x) in s.chars().enumerate() {
+                                    self.uibuf.update_cell(x_offset, y_offset, x, fg, bg);
+                                    x_offset += 1;
+                                }
+                            }
                             Token::SingleLineComment(s) => {
                                 for (offset, ch) in s.chars().enumerate() {
                                     let (fg, bg) = (CharColor::Gray, CharColor::Black);
