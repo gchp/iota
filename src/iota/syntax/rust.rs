@@ -39,7 +39,7 @@ impl Lexer for RustSyntax {
                     s.push(iter.next().unwrap().1);
 
                     let mut doc_comment = false;
-                    if next_is(&mut iter, '/') {
+                    if next_is(&mut iter, '/') || next_is(&mut iter, '!') {
                         doc_comment = true;
                     }
 
