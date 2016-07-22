@@ -92,35 +92,33 @@ impl Lexer for RustSyntax {
                 });
             }
 
-            // TODO: this was horribly broken - figure out how to fix it
-            // FIXME:
-            // '\'' => {
-            //     let st = idx;
-            //     let mut end = idx;
-            //     let mut s = String::from("\'");
-            //     while let Some(&(e, c)) = iter.peek() {
-            //         end = e;
-            //         s.push(iter.next().unwrap().1);
-            //         if c == '\\' {
-            //             if let Some(&(e, c_)) = iter.peek() {
-            //                 // this is handling escaped single quotes...
-            //                 if c_ == '\'' {
-            //                     s.push(iter.next().unwrap().1);
-            //                     continue;
-            //                 }
-            //             }
-            //         }
-            //         if c == '\'' {
-            //             break;
-            //         }
-            //     }
-            //     return Some(Span {
-            //         y_pos: y_pos,
-            //         start: st,
-            //         end: end,
-            //         token: Token::Special(s),
-            //     });
-            // }
+            '\'' => {
+                let st = idx;
+                let mut end = idx;
+                let mut s = String::from("\'");
+                while let Some(&(e, c)) = iter.peek() {
+                    end = e;
+                    s.push(iter.next().unwrap().1);
+                    if c == '\\' {
+                        if let Some(&(e, c_)) = iter.peek() {
+                            // this is handling escaped single quotes...
+                            if c_ == '\'' {
+                                s.push(iter.next().unwrap().1);
+                                continue;
+                            }
+                        }
+                    }
+                    if c == '\'' {
+                        break;
+                    }
+                }
+                return Some(Span {
+                    y_pos: y_pos,
+                    start: st,
+                    end: end,
+                    token: Token::Special(s),
+                });
+            }
 
             _ => None,
         }
