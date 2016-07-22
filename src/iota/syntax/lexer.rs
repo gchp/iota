@@ -84,8 +84,8 @@ impl Token {
 }
 
 pub trait Lexer {
-    fn handle_ident(&self, ch: char, iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Span;
-    fn handle_char(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize, idx: usize) -> Option<Span>;
+    fn handle_ident(&self, ch: char, iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Token;
+    fn handle_char(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize, idx: usize) -> Option<Token>;
 
     fn is_ident(&self, ch: Option<&(usize, char)>) -> bool {
         if let Some(&(idx, c)) = ch {
@@ -95,7 +95,7 @@ pub trait Lexer {
         }
     }
 
-    fn get_stream(&self, input: &str) -> Vec<Span> {
+    fn get_stream(&self, input: &str) -> Vec<Token> {
         let mut tokens = Vec::new();
         let mut y_pos = 0;
 
@@ -105,41 +105,41 @@ pub trait Lexer {
                 Some(span) => tokens.push(span),
                 None => {
                     match c {
-                        ' ' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Whitespace}),
+                        ' ' => tokens.push(Token::Whitespace),
                         '\n' => {
                             y_pos += 1;
-                            tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Newline})
+                            tokens.push(Token::Newline)
                         }
-                        '{' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::OpenBrace}),
-                        '}' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::CloseBrace}),
-                        '(' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::OpenParen}),
-                        ')' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::CloseParen}),
-                        '[' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::OpenSquare}),
-                        ']' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::CloseSquare}),
-                        '\'' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::SingleQuote}),
-                        '"' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::DoubleQuote}),
-                        ',' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Comma}),
-                        ';' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::SemiColon}),
-                        '/' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::ForwardSlash}),
-                        '|' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Pipe}),
-                        '.' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Dot}),
-                        '=' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Equal}),
-                        '!' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Bang}),
-                        '>' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Greater}),
-                        '<' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Less}),
-                        '-' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Dash}),
-                        '#' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Hash}),
-                        '$' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Dollar}),
-                        '&' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Amp}),
-                        '*' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Asterisk}),
-                        '@' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::At}),
-                        '_' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Underscore}),
+                        '{' => tokens.push(Token::OpenBrace),
+                        '}' => tokens.push(Token::CloseBrace),
+                        '(' => tokens.push(Token::OpenParen),
+                        ')' => tokens.push(Token::CloseParen),
+                        '[' => tokens.push(Token::OpenSquare),
+                        ']' => tokens.push(Token::CloseSquare),
+                        '\'' => tokens.push(Token::SingleQuote),
+                        '"' => tokens.push(Token::DoubleQuote),
+                        ',' => tokens.push(Token::Comma),
+                        ';' => tokens.push(Token::SemiColon),
+                        '/' => tokens.push(Token::ForwardSlash),
+                        '|' => tokens.push(Token::Pipe),
+                        '.' => tokens.push(Token::Dot),
+                        '=' => tokens.push(Token::Equal),
+                        '!' => tokens.push(Token::Bang),
+                        '>' => tokens.push(Token::Greater),
+                        '<' => tokens.push(Token::Less),
+                        '-' => tokens.push(Token::Dash),
+                        '#' => tokens.push(Token::Hash),
+                        '$' => tokens.push(Token::Dollar),
+                        '&' => tokens.push(Token::Amp),
+                        '*' => tokens.push(Token::Asterisk),
+                        '@' => tokens.push(Token::At),
+                        '_' => tokens.push(Token::Underscore),
                         ':' => {
                             if next_is(&mut chars, ':') {
                                 let _ = chars.next();
-                                tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 2, token: Token::DoubleColon})
+                                tokens.push(Token::DoubleColon)
                             } else {
-                                tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Colon})
+                                tokens.push(Token::Colon)
                             }
                         }
                         _ => {
@@ -153,15 +153,6 @@ pub trait Lexer {
 
         tokens
     }
-}
-
-
-#[derive(Debug)]
-pub struct Span {
-    pub start: usize,
-    pub end: usize,
-    pub token: Token,
-    pub y_pos: usize,
 }
 
 
@@ -180,7 +171,7 @@ impl SyntaxInstance {
         self.types.contains(&s.into())
     }
 
-    pub fn get_stream(&self, text: &str) -> Vec<Span> {
+    pub fn get_stream(&self, text: &str) -> Vec<Token> {
         self.lexer.get_stream(text)
     }
 }

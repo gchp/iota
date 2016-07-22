@@ -2,14 +2,14 @@ use std::str::Chars;
 use std::iter::Peekable;
 use std::iter::Enumerate;
 
-use ::syntax::lexer::{Token, Lexer, Span};
+use ::syntax::lexer::{Token, Lexer};
 use ::syntax::next_is;
 
 
 pub struct RustSyntax;
 
 impl Lexer for RustSyntax {
-    fn handle_char(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize, idx: usize) -> Option<Span> {
+    fn handle_char(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize, idx: usize) -> Option<Token> {
         match ch {
             '#' => {
                 let st = idx;
@@ -21,14 +21,9 @@ impl Lexer for RustSyntax {
                         end = e;
                         s.push(iter.next().unwrap().1)
                     }
-                    return Some(Span {
-                        y_pos: y_pos,
-                        start: st,
-                        end: end,
-                        token: Token::Attribute(s),
-                    });
+                    return Some(Token::Attribute(s));
                 }
-                return Some(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Hash})
+                return Some(Token::Hash)
             }
 
             '/' => {
@@ -49,19 +44,9 @@ impl Lexer for RustSyntax {
                         s.push(iter.next().unwrap().1)
                     }
 
-                    return Some(Span {
-                        y_pos: y_pos,
-                        start: st,
-                        end: end,
-                        token: if doc_comment{ Token::DocComment(s) } else { Token::SingleLineComment(s) },
-                    });
+                    return Some(if doc_comment{ Token::DocComment(s) } else { Token::SingleLineComment(s) });
                 }
-                return Some(Span {
-                    y_pos: y_pos,
-                    start: st,
-                    end: end,
-                    token: Token::ForwardSlash,
-                });
+                return Some(Token::ForwardSlash);
             }
 
             '"' => {
@@ -84,12 +69,7 @@ impl Lexer for RustSyntax {
                         break;
                     }
                 }
-                return Some(Span {
-                    y_pos: y_pos,
-                    start: st,
-                    end: end,
-                    token: Token::String(s),
-                });
+                return Some(Token::String(s));
             }
 
             '\'' => {
@@ -112,12 +92,7 @@ impl Lexer for RustSyntax {
                         break;
                     }
                 }
-                return Some(Span {
-                    y_pos: y_pos,
-                    start: st,
-                    end: end,
-                    token: Token::Special(s),
-                });
+                return Some(Token::Special(s));
             }
 
             _ => None,
@@ -125,7 +100,7 @@ impl Lexer for RustSyntax {
 
     }
 
-    fn handle_ident(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Span {
+    fn handle_ident(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Token {
         let mut ident = String::new();
         ident.push(ch);
         let mut start = 0;
@@ -153,12 +128,7 @@ impl Lexer for RustSyntax {
             token = Token::Ident(ident);
         }
 
-        Span {
-            y_pos: y_pos,
-            start: start,
-            end: start + end,
-            token: token,
-        }
+        token
     }
 }
 
