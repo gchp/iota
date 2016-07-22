@@ -2,6 +2,8 @@ use std::str::Chars;
 use std::iter::Peekable;
 use std::iter::Enumerate;
 
+use super::next_is;
+
 #[derive(Debug)]
 pub enum Token {
     Ident(String),
@@ -36,6 +38,7 @@ pub enum Token {
     Amp,
     Asterisk,
     At,
+    DoubleColon,
     SingleLineComment(String),
     DocComment(String),
     Attribute(String),
@@ -117,7 +120,6 @@ pub trait Lexer {
                         '"' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::DoubleQuote}),
                         ',' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Comma}),
                         ';' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::SemiColon}),
-                        ':' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Colon}),
                         '/' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::ForwardSlash}),
                         '|' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Pipe}),
                         '.' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Dot}),
@@ -131,6 +133,15 @@ pub trait Lexer {
                         '&' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Amp}),
                         '*' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Asterisk}),
                         '@' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::At}),
+                        '_' => tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Underscore}),
+                        ':' => {
+                            if next_is(&mut chars, ':') {
+                                let _ = chars.next();
+                                tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 2, token: Token::DoubleColon})
+                            } else {
+                                tokens.push(Span{y_pos: y_pos, start: idx, end: idx + 1, token: Token::Colon})
+                            }
+                        }
                         _ => {
                             let ident = self.handle_ident(c, &mut chars, y_pos);
                             tokens.push(ident);

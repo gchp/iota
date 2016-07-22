@@ -16,6 +16,7 @@ use overlay::{Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
 use syntax::lexer::Token;
+use syntax::lexer::Span;
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -134,15 +135,14 @@ impl View {
             match buffer.syntax {
                 Some(ref syntax) => {
                     let height = self.get_height() - 1;
-                    let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
+                    let lines = buffer.lines_from(self.top_line).unwrap().take(height);
                     let mut bytes = Vec::new();
                     for l in lines { bytes.extend(l) }
                     let text = String::from_utf8(bytes).unwrap();
-                    let tokens = syntax.get_stream(&*text);
+                    let mut tokens = syntax.get_stream(&*text).into_iter().peekable();
                     let mut x_offset = 0;
                     let mut y_offset = 0;
-                    for span in tokens {
-                        // writeln!(&mut stderr(), "{:?}", span);
+                    while let Some(span) = tokens.next() {
                         match span.token {
                             Token::Ident(s) => {
                                 let (fg, bg) = match &*s {
@@ -156,17 +156,21 @@ impl View {
                                         (CharColor::Orange, CharColor::Black)
                                     }
                                     _ => {
-                                        (CharColor::White, CharColor::Black)
+                                        if let Some(&Span{ token: Token::DoubleColon, .. }) = tokens.peek() {
+                                            (CharColor::Blue, CharColor::Black)
+                                        } else {
+                                            (CharColor::White, CharColor::Black)
+                                        }
                                     }
                                 };
-                                for (offset, x) in s.chars().enumerate() {
-                                    self.uibuf.update_cell(x_offset, y_offset, x, fg, bg);
+                                for ch in s.chars() {
+                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
                                     x_offset += 1;
                                 }
                             }
                             Token::String(s) => {
-                                for (offset, ch) in s.chars().enumerate() {
-                                    let (fg, bg) = (CharColor::Green, CharColor::Black);
+                                let (fg, bg) = (CharColor::Green, CharColor::Black);
+                                for ch in s.chars() {
                                     if ch == '\n' {
                                         y_offset += 1;
                                         x_offset = 0;
@@ -182,21 +186,21 @@ impl View {
                             }
                             Token::Special(s) => {
                                 let (fg, bg) = (CharColor::Red, CharColor::Black);
-                                for (offset, x) in s.chars().enumerate() {
-                                    self.uibuf.update_cell(x_offset, y_offset, x, fg, bg);
+                                for ch in s.chars() {
+                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
                                     x_offset += 1;
                                 }
                             }
                             Token::FunctionCallDef(s) => {
                                 let (fg, bg) = (CharColor::Blue, CharColor::Black);
-                                for (offset, x) in s.chars().enumerate() {
-                                    self.uibuf.update_cell(x_offset, y_offset, x, fg, bg);
+                                for ch in s.chars() {
+                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
                                     x_offset += 1;
                                 }
                             }
                             Token::SingleLineComment(s) => {
-                                for (offset, ch) in s.chars().enumerate() {
-                                    let (fg, bg) = (CharColor::Gray, CharColor::Black);
+                                let (fg, bg) = (CharColor::Gray, CharColor::Black);
+                                for ch in s.chars() {
                                     if ch == ' ' {
                                         x_offset += 1;
                                         continue;
@@ -206,8 +210,8 @@ impl View {
                                 }
                             }
                             Token::DocComment(s) => {
-                                for (offset, ch) in s.chars().enumerate() {
-                                    let (fg, bg) = (CharColor::Cyan, CharColor::Black);
+                                let (fg, bg) = (CharColor::Cyan, CharColor::Black);
+                                for ch in s.chars() {
                                     if ch == ' ' {
                                         x_offset += 1;
                                         continue;
@@ -217,8 +221,8 @@ impl View {
                                 }
                             }
                             Token::Attribute(s) => {
-                                for (offset, ch) in s.chars().enumerate() {
-                                    let (fg, bg) = (CharColor::Yellow, CharColor::Black);
+                                let (fg, bg) = (CharColor::Yellow, CharColor::Black);
+                                for ch in s.chars() {
                                     if ch == ' ' {
                                         x_offset += 1;
                                         continue;
@@ -226,6 +230,13 @@ impl View {
                                     self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
                                     x_offset += 1;
                                 }
+                            }
+                            Token::DoubleColon => {
+                                let (fg, bg) = (CharColor::Red, CharColor::Black);
+                                self.uibuf.update_cell(x_offset, y_offset, ':', fg, bg);
+                                x_offset += 1;
+                                self.uibuf.update_cell(x_offset, y_offset, ':', fg, bg);
+                                x_offset += 1;
                             }
                             Token::Whitespace => { x_offset += 1; }
                             Token::Newline => { x_offset = 0; y_offset += 1; }
