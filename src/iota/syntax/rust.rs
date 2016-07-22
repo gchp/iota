@@ -142,8 +142,14 @@ impl Lexer for RustSyntax {
         let token;
 
         if next_is(&mut iter, '(') {
+            // function calls or definitions
             token = Token::FunctionCallDef(ident);
+        } else if next_is(&mut iter, '!') {
+            // macro calls
+            ident.push(iter.next().unwrap().1);
+            token = Token::Special(ident);
         } else {
+            // regular idents
             token = Token::Ident(ident);
         }
 
