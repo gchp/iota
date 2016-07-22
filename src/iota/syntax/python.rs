@@ -2,13 +2,13 @@ use std::str::Chars;
 use std::iter::Peekable;
 use std::iter::Enumerate;
 
-use ::syntax::lexer::{Token, Lexer, Span};
+use ::syntax::lexer::{Token, Lexer};
 use ::syntax::next_is;
 
 pub struct PythonSyntax;
 
 impl Lexer for PythonSyntax {
-    fn handle_char(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize, idx: usize) -> Option<Span> {
+    fn handle_char(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize, idx: usize) -> Option<Token> {
         match ch {
             '#' => {
                 let st = idx;
@@ -19,12 +19,7 @@ impl Lexer for PythonSyntax {
                     end = e;
                     s.push(iter.next().unwrap().1)
                 }
-                return Some(Span {
-                    y_pos: y_pos,
-                    start: st,
-                    end: end,
-                    token: Token::SingleLineComment(s),
-                });
+                return Some(Token::SingleLineComment(s));
             }
 
             '@' => {
@@ -36,12 +31,7 @@ impl Lexer for PythonSyntax {
                     end = e;
                     s.push(iter.next().unwrap().1)
                 }
-                return Some(Span {
-                    y_pos: y_pos,
-                    start: st,
-                    end: end,
-                    token: Token::Attribute(s),
-                });
+                return Some(Token::Attribute(s));
             }
 
 
@@ -56,12 +46,7 @@ impl Lexer for PythonSyntax {
                         break;
                     }
                 }
-                return Some(Span {
-                    y_pos: y_pos,
-                    start: st,
-                    end: end,
-                    token: Token::String(s),
-                });
+                return Some(Token::String(s));
             }
 
             _ => None,
@@ -69,7 +54,7 @@ impl Lexer for PythonSyntax {
 
     }
 
-    fn handle_ident(&self, ch: char, iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Span {
+    fn handle_ident(&self, ch: char, iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Token {
         let mut ident = String::new();
         ident.push(ch);
         let start = iter.peek().unwrap().0 - 1;
@@ -78,12 +63,7 @@ impl Lexer for PythonSyntax {
             ident.push(iter.next().unwrap().1)
         }
 
-        Span {
-            y_pos: y_pos,
-            start: start,
-            end: start + ident.len() - 1,
-            token: Token::Ident(ident),
-        }
+        Token::Ident(ident)
     }
 }
 

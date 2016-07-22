@@ -16,7 +16,6 @@ use overlay::{Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
 use syntax::lexer::Token;
-use syntax::lexer::Span;
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -142,8 +141,8 @@ impl View {
                     let mut tokens = syntax.get_stream(&*text).into_iter().peekable();
                     let mut x_offset = 0;
                     let mut y_offset = 0;
-                    while let Some(span) = tokens.next() {
-                        match span.token {
+                    while let Some(token) = tokens.next() {
+                        match token {
                             Token::Ident(s) => {
                                 let (fg, bg) = match &*s {
                                     st if syntax.is_keyword(st) => {
@@ -156,7 +155,7 @@ impl View {
                                         (CharColor::Orange, CharColor::Black)
                                     }
                                     _ => {
-                                        if let Some(&Span{ token: Token::DoubleColon, .. }) = tokens.peek() {
+                                        if let Some(&Token::DoubleColon) = tokens.peek() {
                                             (CharColor::Blue, CharColor::Black)
                                         } else {
                                             (CharColor::White, CharColor::Black)
