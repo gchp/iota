@@ -218,7 +218,7 @@ macro_rules! define_lang {
 
 
 define_lang!(rust, RustSyntax, RustSyntax,
-             keywords=["fn", "let", "struct", "pub", "use", "impl", "while", "for", "match", "return", "if", "else", "break"],
+             keywords=["fn", "let", "struct", "pub", "use", "impl", "while", "for", "match", "return", "if", "else", "break", "mod", "extern", "crate"],
              types=["usize", "u32", "i32", "String", "mut", "Buffer", "Option", "str", "char"]
 );
 
