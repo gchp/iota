@@ -180,8 +180,12 @@ impl View {
                                         x_offset += 1;
                                         continue;
                                     }
-                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
-                                    x_offset += 1;
+                                    if x_offset < self.uibuf.get_width() {
+                                        self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
+                                        x_offset += 1;
+                                    } else {
+                                        continue;
+                                    }
                                 }
                             }
                             Token::Special(s) => {
@@ -246,8 +250,12 @@ impl View {
 
                                 match inner_char {
                                     Some(ch) => {
-                                        self.uibuf.update_cell(x_offset, y_offset, ch, CharColor::White, CharColor::Black);
-                                        x_offset += 1;
+                                        if x_offset < self.uibuf.get_width() {
+                                            self.uibuf.update_cell(x_offset, y_offset, ch, CharColor::White, CharColor::Black);
+                                            x_offset += 1;
+                                        } else {
+                                            continue;
+                                        }
                                     }
                                     None => {
                                         panic!("Unhandled token: {:?}", token);
