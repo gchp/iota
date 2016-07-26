@@ -16,9 +16,9 @@ pub enum CharStyle {
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum CharColor {
-    Default,
     Blue,
     Black,
+    White,
     // TODO: add other colors
 }
 
@@ -94,8 +94,8 @@ pub struct Cell {
 impl Cell {
     pub fn new() -> Cell {
         Cell {
-            bg: CharColor::Default,
-            fg: CharColor::Default,
+            bg: CharColor::Black,
+            fg: CharColor::White,
             ch: ' ',
             x: 0,
             y: 0,
@@ -181,7 +181,7 @@ mod tests {
         let cell_num = 10;
         let row_num = 0;
         let ch = 'q';
-        let fg = CharColor::Default;
+        let fg = CharColor::White;
         let bg = CharColor::Blue;
 
         uibuf.update_cell(cell_num, row_num, ch, fg, bg);
