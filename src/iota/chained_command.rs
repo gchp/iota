@@ -100,6 +100,9 @@ impl ChainedCmdBuilder {
         if self.quit {
             res.push(Command::exit_editor());
         }
+        if res.is_empty() {
+            res.push(Command::noop());
+        }
 
         return res;
     }
@@ -155,6 +158,6 @@ impl<'a> ChainedCmdParser<'a> {
             }
             self.pos += 1;
         }
-        str::from_utf8(&self.buffer[start..self.pos]).unwrap_or("")
+        str::from_utf8(&self.buffer[start..self.pos + 1]).unwrap_or("")
     }
 }
