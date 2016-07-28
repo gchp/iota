@@ -54,7 +54,7 @@ impl Lexer for PythonSyntax {
 
     }
 
-    fn handle_ident(&self, ch: char, iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Token {
+    fn handle_ident(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Token {
         let mut ident = String::new();
         ident.push(ch);
         let start = iter.peek().unwrap().0 - 1;
@@ -63,7 +63,17 @@ impl Lexer for PythonSyntax {
             ident.push(iter.next().unwrap().1)
         }
 
-        Token::Ident(ident)
+
+        let token;
+        if next_is(&mut iter, '(') {
+            // function calls or definitions
+            token = Token::FunctionCallDef(ident);
+        } else {
+            // regular idents
+            token = Token::Ident(ident);
+        }
+
+        token
     }
 }
 
