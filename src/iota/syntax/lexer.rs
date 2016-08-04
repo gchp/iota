@@ -39,6 +39,7 @@ pub enum Token {
     Asterisk,
     At,
     DoubleColon,
+    Number(char),
     SingleLineComment(String),
     DocComment(String),
     Attribute(String),
@@ -141,6 +142,9 @@ pub trait Lexer {
                             } else {
                                 tokens.push(Token::Colon)
                             }
+                        }
+                        ch if ch.is_numeric() => {
+                            tokens.push(Token::Number(ch));
                         }
                         _ => {
                             let ident = self.handle_ident(c, &mut chars, y_pos);

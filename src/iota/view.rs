@@ -167,6 +167,10 @@ impl View {
                                     x_offset += 1;
                                 }
                             }
+                            Token::Number(ch) => {
+                                self.uibuf.update_cell(x_offset, y_offset, ch, CharColor::Orange, CharColor::Black);
+                                x_offset += 1;
+                            }
                             Token::String(s) => {
                                 let (fg, bg) = (CharColor::Green, CharColor::Black);
                                 for ch in s.chars() {
