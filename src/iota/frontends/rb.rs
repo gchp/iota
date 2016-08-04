@@ -84,6 +84,7 @@ fn get_color(c: CharColor) -> Color {
         CharColor::Cyan   => Color::Cyan,
         CharColor::Orange => Color::Byte(0x10),
         CharColor::Gray => Color::Byte(0x08),
+        CharColor::DarkGray => Color::Byte(19),
     }
 }
 

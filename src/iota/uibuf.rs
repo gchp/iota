@@ -26,6 +26,7 @@ pub enum CharColor {
     Gray,
     Red,
     Cyan,
+    DarkGray,
     // TODO: add other colors
 }
 

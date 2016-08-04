@@ -342,7 +342,7 @@ impl View {
             let ch: char = if index < status_text_len {
                 status_text[index] as char
             } else { ' ' };
-            self.uibuf.update_cell(index, height, ch, CharColor::Black, CharColor::Gray);
+            self.uibuf.update_cell(index, height, ch, CharColor::Black, CharColor::DarkGray);
         }
 
         self.uibuf.draw_range(frontend, height, height+1);
