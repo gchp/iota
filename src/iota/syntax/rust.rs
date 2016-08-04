@@ -75,7 +75,7 @@ impl Lexer for RustSyntax {
             '\'' => {
                 let st = idx;
                 let mut end = idx;
-                let mut s = String::from("\'");
+                let mut s = String::from("'");
                 while let Some(&(e, c)) = iter.peek() {
                     end = e;
                     s.push(iter.next().unwrap().1);
@@ -88,7 +88,7 @@ impl Lexer for RustSyntax {
                             }
                         }
                     }
-                    if c == '\'' {
+                    if !c.is_alphanumeric() {
                         break;
                     }
                 }
