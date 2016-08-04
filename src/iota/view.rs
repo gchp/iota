@@ -15,6 +15,8 @@ use frontends::Frontend;
 use overlay::{Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
+
+#[cfg(feature="syntax-highlighting")]
 use syntax::lexer::Token;
 
 /// A View is an abstract Window (into a Buffer).
@@ -125,6 +127,34 @@ impl View {
         self.uibuf.draw_everything(frontend);
     }
 
+    #[cfg(not(feature = "syntax-highlighting"))]
+    pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
+        {
+            let buffer = self.buffer.lock().unwrap();
+            let height = self.get_height() - 1;
+
+            // FIXME: don't use unwrap here
+            //        This will fail if for some reason the buffer doesnt have
+            //        the top_line mark
+            let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
+            for y_position in 0..height {
+                let line = lines.next().unwrap_or_else(Vec::new);
+                draw_line(&mut self.uibuf, &line, y_position, self.left_col);
+            }
+
+        }
+        match self.overlay {
+            Overlay::None => self.draw_cursor(frontend),
+            _ => {
+                self.overlay.draw(frontend, &mut self.uibuf);
+                self.overlay.draw_cursor(frontend);
+            }
+        }
+        self.draw_status(frontend);
+        self.uibuf.draw_everything(frontend);
+    }
+
+    #[cfg(feature = "syntax-highlighting")]
     pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
         self.clear(frontend);
         {
@@ -269,47 +299,10 @@ impl View {
                     }
                 }
                 None => {
-                    // FIXME: don't use unwrap here
-                    //        This will fail if for some reason the buffer doesnt have
-                    //        the top_line mark
                     let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
                     for y_position in 0..height {
                         let line = lines.next().unwrap_or_else(Vec::new);
-                        //draw_line(&mut self.uibuf, &line, y_position, self.left_col);
-
-                        let width = self.uibuf.get_width() - 1;
-                        let mut x = 0;
-
-                        for ch in line.iter().skip(self.left_col) {
-                            let ch = *ch as char;
-                            match ch {
-                                '\t' => {
-                                    let w = 4 - x % 4;
-                                    for _ in 0..w {
-                                        self.uibuf.update_cell_content(x, y_position, ' ');
-                                        x += 1;
-                                    }
-                                }
-                                '\n' => {}
-                                _ => {
-                                    self.uibuf.update_cell_content(x, y_position, ch);
-                                    x += UnicodeWidthChar::width(ch).unwrap_or(1);
-                                }
-                            }
-                            if x >= width {
-                                break;
-                            }
-                        }
-
-                        // Replace any cells after end of line with ' '
-                        while x < width {
-                            self.uibuf.update_cell_content(x, y_position, ' ');
-                            x += 1;
-                        }
-
-                        // If the line is too long to fit on the screen, show an indicator
-                        let indicator = if line.len() > width + self.left_col { '→' } else { ' ' };
-                        self.uibuf.update_cell_content(width, y_position, indicator);
+                        draw_line(&mut self.uibuf, &line, y_position, self.left_col);
                     }
                 }
             }

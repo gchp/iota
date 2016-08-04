@@ -23,6 +23,7 @@ git = "https://github.com/gchp/rustbox"
 
 [features]
 default=[]
+syntax-highlighting = []
 
 [lib]
 name = "iota"

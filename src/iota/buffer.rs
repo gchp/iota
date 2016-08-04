@@ -15,6 +15,8 @@ use log::{Log, Change, LogEntry};
 use input::Input;
 use iterators::Lines;
 use textobject::{TextObject, Kind, Offset, Anchor};
+
+#[cfg(feature="syntax-highlighting")]
 use syntax::lexer::SyntaxInstance;
 
 
@@ -75,6 +77,7 @@ pub struct Buffer {
     /// Location on disk where the current buffer should be written
     pub file_path: Option<PathBuf>,
 
+    #[cfg(feature="syntax-highlighting")]
     pub syntax: Option<SyntaxInstance>,
 }
 
@@ -82,13 +85,24 @@ pub struct Buffer {
 impl Buffer {
     /// Constructor for empty buffer.
     pub fn new() -> Buffer {
-        Buffer {
+        #[cfg(feature="syntax-highlighting")]
+        let buffer = Buffer {
             syntax: None,
             file_path: None,
             text: GapBuffer::new(),
             marks: HashMap::new(),
             log: Log::new(),
-        }
+        };
+
+        #[cfg(not(feature="syntax-highlighting"))]
+        let buffer = Buffer {
+            file_path: None,
+            text: GapBuffer::new(),
+            marks: HashMap::new(),
+            log: Log::new(),
+        };
+
+        buffer
     }
 
     /// Length of the text stored in this buffer.
@@ -612,6 +626,7 @@ impl BufferFrom for Stdin {}
 impl BufferFrom for File {}
 
 impl From<PathBuf> for Buffer {
+    #[cfg(feature="syntax-highlighting")]
     fn from(path: PathBuf) -> Buffer {
         let syntax_instance = match path.extension().unwrap().to_str().unwrap() {
             "rs" => Some(SyntaxInstance::rust()),
@@ -630,6 +645,19 @@ impl From<PathBuf> for Buffer {
                 let mut buf = Buffer::new();
                 buf.syntax = syntax_instance;
                 buf
+            }
+        }
+    }
+    #[cfg(not(feature="syntax-highlighting"))]
+    fn from(path: PathBuf) -> Buffer {
+        match File::open(&path) {
+            Ok(file) => {
+                let mut buf = Buffer::from(file);
+                buf.file_path = Some(path);
+                buf
+            }
+            Err(_) => {
+                Buffer::new()
             }
         }
     }

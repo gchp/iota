@@ -8,6 +8,7 @@
 #![cfg_attr(feature="clippy", plugin(clippy))]
 #![warn(missing_docs)]
 #![feature(concat_idents)]
+#![feature(stmt_expr_attributes)]
 
 extern crate rustbox;
 extern crate gapbuffer;
@@ -34,4 +35,6 @@ mod overlay;
 mod command;
 mod textobject;
 mod iterators;
+
+#[cfg(feature="syntax-highlighting")]
 mod syntax;
