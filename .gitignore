@@ -2,3 +2,5 @@ target
 *.swp
 *.racertmp
 .cargo
+config.mk
+config.tmp

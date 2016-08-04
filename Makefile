@@ -1,34 +1,27 @@
 CARGO=$(or $(shell which cargo 2> /dev/null),/usr/local/bin/cargo)
-OPTS=
 
-all: release
+CARGO_ARGS=
 
-release:
-	${CARGO} build --release ${OPTS}
+include config.mk
 
-debug:
-	${CARGO} build ${OPTS}
+ifdef FEATURES
+	CARGO_ARGS += --features $(FEATURES)
+endif
 
-# eg: make run OPTS='LICENCE --vi'
-#     open LICENSE with vi bindings
-run:
-	${CARGO} run --release -- ${OPTS}
+ifneq ($(DEBUG), 1)
+	CARGO_ARGS += --release
+endif
 
-run-debug:
-	${CARGO} run -- ${OPTS}
+ifeq ($(SILENT), 1)
+	QUIET=@
+endif
 
-test:
-	${CARGO} test ${OPTS}
+
+
+all:
+	${QUIET}${CARGO} build ${CARGO_ARGS}
 
 clean:
 	${CARGO} clean
-
-help:
-	@echo "Please use 'make <target>' where <target> is one of"
-	@echo "  release     to build iota with optimisations"
-	@echo "  debug       to build iota without optimisations"
-	@echo "  run         to run iota with optimisations"
-	@echo "  run-debug   to run iota without optimisations"
-	@echo "  clean       same as 'cargo clean'"
-	@echo "  test        same as 'cargo test'"
-	@echo ""
+	-rm config.tmp
+	-rm config.mk

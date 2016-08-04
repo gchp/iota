@@ -1,0 +1,83 @@
+#!/usr/bin/env python
+
+import os
+import argparse
+import tempfile
+import filecmp
+from collections import OrderedDict
+
+
+def message(msg):
+    print("configure: {}".format(msg))
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Configure the iota build!")
+    parser.add_argument(
+        "--enable-syntax-highlighting",
+        action="store_true",
+        help="Configure a build including syntax-highlighting")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Configure a debug build")
+    parser.add_argument(
+        "--loud", action="store_true",
+        help="Output commands being run by make")
+
+    args = parser.parse_args()
+
+    return args
+
+
+def parse(args):
+    config = {
+        'features': [],
+        'debug': False,
+        'silent': True,
+    }
+
+    if args.enable_syntax_highlighting:
+        config['features'].append('syntax-highlighting')
+
+    if args.debug:
+        config['debug'] = True
+
+    if args.loud:
+        config['silent'] = False
+
+    return OrderedDict(sorted(config.items(), key=lambda i: i[0]))
+
+
+def main():
+    args = parse_args()
+    parsed_config = parse(args)
+    tmp_config = open("./config.tmp", "w+")
+
+    for key, val in parsed_config.items():
+        if isinstance(val, list):
+            val_str = " ".join(val)
+            var = "{}={}\n".format(key.upper(), val_str)
+            tmp_config.write(var)
+            continue
+
+        if isinstance(val, bool):
+            val_str = int(val)
+            var = "{}={}\n".format(key.upper(), val_str)
+            tmp_config.write(var)
+            continue
+
+    tmp_config.seek(0)
+
+    if os.path.exists("config.mk") and filecmp.cmp("config.tmp", "config.mk"):
+        message("config unchanged - leaving in place")
+        return
+    else:
+        message("regenerating config.mk")
+        with open("config.mk", "w+") as f:
+            f.write(tmp_config.read())
+
+
+if __name__ == "__main__":
+    main()
