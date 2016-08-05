@@ -1,6 +1,5 @@
 use std::str::Chars;
 use std::iter::Peekable;
-use std::iter::Enumerate;
 
 use super::next_is;
 
@@ -85,11 +84,11 @@ impl Token {
 }
 
 pub trait Lexer {
-    fn handle_ident(&self, ch: char, iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize) -> Token;
-    fn handle_char(&self, ch: char, mut iter: &mut Peekable<Enumerate<Chars>>, y_pos: usize, idx: usize) -> Option<Token>;
+    fn handle_ident(&self, ch: char, iter: &mut Peekable<Chars>) -> Token;
+    fn handle_char(&self, ch: char, mut iter: &mut Peekable<Chars>) -> Option<Token>;
 
-    fn is_ident(&self, ch: Option<&(usize, char)>) -> bool {
-        if let Some(&(idx, c)) = ch {
+    fn is_ident(&self, ch: Option<&char>) -> bool {
+        if let Some(&c) = ch {
             c.is_alphabetic() || c == '_'
         } else {
             false
@@ -98,17 +97,15 @@ pub trait Lexer {
 
     fn get_stream(&self, input: &str) -> Vec<Token> {
         let mut tokens = Vec::new();
-        let mut y_pos = 0;
 
-        let mut chars = input.chars().enumerate().peekable();
-        while let Some((idx, c)) = chars.next() {
-            match self.handle_char(c, &mut chars, y_pos, idx) {
+        let mut chars = input.chars().peekable();
+        while let Some(c) = chars.next() {
+            match self.handle_char(c, &mut chars) {
                 Some(span) => tokens.push(span),
                 None => {
                     match c {
                         ' ' => tokens.push(Token::Whitespace),
                         '\n' => {
-                            y_pos += 1;
                             tokens.push(Token::Newline)
                         }
                         '{' => tokens.push(Token::OpenBrace),
@@ -147,7 +144,7 @@ pub trait Lexer {
                             tokens.push(Token::Number(ch));
                         }
                         _ => {
-                            let ident = self.handle_ident(c, &mut chars, y_pos);
+                            let ident = self.handle_ident(c, &mut chars);
                             tokens.push(ident);
                         }
                     }
