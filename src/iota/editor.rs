@@ -168,7 +168,12 @@ impl<'e, T: Frontend> Editor<'e, T> {
     fn handle_instruction(&mut self, instruction: Instruction, command: Command) {
         match instruction {
             Instruction::SaveBuffer => { self.view.try_save_buffer() }
-            Instruction::ExitEditor => { self.running = false; }
+            Instruction::ExitEditor => {
+                // TODO(gchp): give the user a message about an unsaved file
+                if !self.view.buffer_is_dirty() {
+                    self.running = false;
+                }
+            }
             Instruction::SetMark(mark) => {
                 if let Some(object) = command.object {
                     self.view.move_mark(mark, object)

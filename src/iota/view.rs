@@ -338,6 +338,13 @@ impl View {
             self.uibuf.update_cell(index, height, ch, CharColor::Black, CharColor::DarkGray);
         }
 
+        if buffer.dirty {
+            let data = ['[', '*', ']'];
+            for (idx, ch) in data.iter().enumerate() {
+                self.uibuf.update_cell(status_text_len + idx + 1, height, *ch, CharColor::Black, CharColor::Red);
+            }
+        }
+
         self.uibuf.draw_range(frontend, height, height+1);
     }
 
@@ -529,7 +536,16 @@ impl View {
             }
         }
 
-        if should_save { self.save_buffer() }
+        if should_save {
+            self.save_buffer();
+            let mut buffer = self.buffer.lock().unwrap();
+            buffer.dirty = false;
+        }
+    }
+
+    /// Whether or not the current buffer has unsaved changes
+    pub fn buffer_is_dirty(&mut self) -> bool {
+        self.buffer.lock().unwrap().dirty
     }
 
 }

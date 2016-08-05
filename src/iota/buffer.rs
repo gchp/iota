@@ -79,6 +79,9 @@ pub struct Buffer {
 
     #[cfg(feature="syntax-highlighting")]
     pub syntax: Option<SyntaxInstance>,
+
+    /// Whether or not the Buffer has unsaved changes
+    pub dirty: bool,
 }
 
 #[cfg_attr(feature="clippy", allow(len_without_is_empty))]
@@ -92,6 +95,7 @@ impl Buffer {
             text: GapBuffer::new(),
             marks: HashMap::new(),
             log: Log::new(),
+            dirty: false,
         };
 
         #[cfg(not(feature="syntax-highlighting"))]
@@ -100,6 +104,7 @@ impl Buffer {
             text: GapBuffer::new(),
             marks: HashMap::new(),
             log: Log::new(),
+            dirty: false,
         };
 
         buffer
@@ -581,6 +586,7 @@ impl Buffer {
         let end = self.get_object_index(object_end);
 
         if let (Some(start_pos), Some(end_pos)) = (start, end) {
+            self.dirty = true;
             return self.remove_range(start_pos.absolute, end_pos.absolute);
         }
         None
@@ -592,6 +598,7 @@ impl Buffer {
             self.text.insert(mark_pos.absolute, ch);
             let mut transaction = self.log.start(mark_pos.absolute);
             transaction.log(Change::Insert(mark_pos.absolute, ch), mark_pos.absolute);
+            self.dirty = true;
         }
     }
 
