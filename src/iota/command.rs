@@ -16,6 +16,7 @@ pub enum Instruction {
     SetMark(Mark),
     SetOverlay(OverlayType),
     SetMode(ModeType),
+    ShowMessage(&'static str),
     SwitchToLastBuffer,
     None,
 }
@@ -59,6 +60,15 @@ pub struct Command {
 }
 
 impl Command {
+    /// Display a message
+    pub fn show_message(msg: &'static str) -> Command {
+        Command {
+            action: Action::Instruction(Instruction::ShowMessage(msg)),
+            number: 0,
+            object: None,
+        }
+    }
+
     /// Shortcut to create an ExitEditor command
     pub fn exit_editor() -> Command {
         Command {

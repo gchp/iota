@@ -24,7 +24,7 @@ pub enum EditorEvent {
 /// running.
 pub trait Frontend {
     /// Poll the frontend for an event, translating it to an EditorEvent
-    fn poll_event(&self) -> EditorEvent;
+    fn poll_event(&self) -> Option<EditorEvent>;
     /// Present the newly drawn data (cursor / content) to the user
     fn present(&self);
     /// Get the frontends window height or equivalent

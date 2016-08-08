@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::io::Write;
 use std::fs::{File, rename};
 use std::sync::{Mutex, Arc};
+use std::time::SystemTime;
 
 use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
@@ -45,6 +46,10 @@ pub struct View {
     /// Number of lines from the top/bottom of the View after which vertical
     /// scrolling begins.
     threshold: usize,
+
+    /// Message to be displayed in the status bar along with the time it
+    /// was displayed.
+    message: Option<(&'static str, SystemTime)>,
 }
 
 impl View {
@@ -69,6 +74,7 @@ impl View {
             uibuf: UIBuffer::new(width, height),
             overlay: Overlay::None,
             threshold: 5,
+            message: None,
         }
     }
 
@@ -344,7 +350,11 @@ impl View {
                 self.uibuf.update_cell(status_text_len + idx + 1, height, *ch, CharColor::Black, CharColor::Red);
             }
         }
-
+        if let Some((message, _time)) = self.message {
+            for (offset, ch) in message.chars().enumerate() {
+                self.uibuf.update_cell_content(offset, height + 1, ch);
+            }
+        }
         self.uibuf.draw_range(frontend, height, height+1);
     }
 
@@ -375,6 +385,29 @@ impl View {
                     prefix: prefix,
                     data: String::new(),
                 };
+            }
+        }
+    }
+
+    /// Display the given message
+    pub fn show_message(&mut self, message: &'static str) {
+        self.message = Some((message, SystemTime::now()));
+    }
+
+    /// Clear the currently displayed message if it has been there for 5 or more seconds
+    ///
+    /// Does nothing if there is no message, or of the message has been there for
+    /// less that five seconds.
+    pub fn maybe_clear_message(&mut self) {
+        if let Some((_message, time)) = self.message {
+            match time.elapsed() {
+                Ok(elapsed) => {
+                    if elapsed.as_secs() >= 5 {
+                        self.message = None;
+                    }
+                }
+
+                _ => {}
             }
         }
     }

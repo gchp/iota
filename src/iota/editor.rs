@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
+use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc::channel;
 
 use input::Input;
 use keyboard::Key;
@@ -21,6 +23,9 @@ pub struct Editor<'e, T: Frontend> {
     running: bool,
     frontend: T,
     mode: Box<Mode + 'e>,
+
+    command_queue: Receiver<Command>,
+    command_sender: Sender<Command>,
 }
 
 impl<'e, T: Frontend> Editor<'e, T> {
@@ -28,6 +33,8 @@ impl<'e, T: Frontend> Editor<'e, T> {
     pub fn new(source: Input, mode: Box<Mode + 'e>, frontend: T) -> Editor<'e, T> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
+
+        let (snd, recv) = channel();
 
         let mut buffers = Vec::new();
         let buffer = Buffer::from(source);
@@ -41,6 +48,9 @@ impl<'e, T: Frontend> Editor<'e, T> {
             running: true,
             frontend: frontend,
             mode: mode,
+
+            command_queue: recv,
+            command_sender: snd,
         }
     }
 
@@ -83,7 +93,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
         }
 
         if let BuilderEvent::Complete(c) = command {
-            self.handle_command(c);
+            let _ = self.command_sender.send(c);
         }
     }
 
@@ -169,10 +179,12 @@ impl<'e, T: Frontend> Editor<'e, T> {
         match instruction {
             Instruction::SaveBuffer => { self.view.try_save_buffer() }
             Instruction::ExitEditor => {
-                // TODO(gchp): give the user a message about an unsaved file
-                if !self.view.buffer_is_dirty() {
+                if self.view.buffer_is_dirty() {
+                    let _ = self.command_sender.send(Command::show_message("Unsaved changes"));
+                } else {
                     self.running = false;
                 }
+
             }
             Instruction::SetMark(mark) => {
                 if let Some(object) = command.object {
@@ -191,6 +203,9 @@ impl<'e, T: Frontend> Editor<'e, T> {
             Instruction::SwitchToLastBuffer => {
                 self.view.switch_last_buffer();
                 self.view.clear(&mut self.frontend);
+            }
+            Instruction::ShowMessage(msg) => {
+                self.view.show_message(msg)
             }
 
             _ => {}
@@ -224,11 +239,17 @@ impl<'e, T: Frontend> Editor<'e, T> {
         while self.running {
             self.draw();
             self.frontend.present();
+            self.view.maybe_clear_message();
+
+            while let Ok(message) = self.command_queue.try_recv() {
+                self.handle_command(message)
+            }
+
             let event = self.frontend.poll_event();
 
             match event {
-                EditorEvent::KeyEvent(key)         => self.handle_key_event(key),
-                EditorEvent::Resize(width, height) => self.handle_resize_event(width, height),
+                Some(EditorEvent::KeyEvent(key))         => self.handle_key_event(key),
+                Some(EditorEvent::Resize(width, height)) => self.handle_resize_event(width, height),
 
                 _ => {}
             }

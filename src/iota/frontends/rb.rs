@@ -1,4 +1,5 @@
 use std::char;
+use std::time::Duration;
 
 use rustbox::{RustBox, Event};
 use rustbox::{Style, Color};
@@ -25,19 +26,25 @@ impl<'f> RustboxFrontend<'f> {
 
 impl<'f> Frontend for RustboxFrontend<'f> {
     /// Poll Rustbox for events & translate them into an EditorEvent
-    fn poll_event(&self) -> EditorEvent {
-        match self.rb.poll_event(true).unwrap() {
-            Event::KeyEventRaw(_, key, ch) => {
+    fn poll_event(&self) -> Option<EditorEvent> {
+        // NOTE: this may need to be adjusted slightly if there are some
+        //       perceived delays in event handling
+        let timeout = Duration::from_millis(40);
+        match self.rb.peek_event(timeout, true) {
+            Ok(Event::KeyEventRaw(_, key, ch)) => {
                 let k = match key {
                     0 => char::from_u32(ch).map(Key::Char),
                     a => Key::from_special_code(a),
                 };
-                EditorEvent::KeyEvent(k)
+                Some(EditorEvent::KeyEvent(k))
             }
-            Event::ResizeEvent(width, height) => {
-                EditorEvent::Resize(width as usize, height as usize)
+            Ok(Event::ResizeEvent(width, height)) => {
+                Some(EditorEvent::Resize(width as usize, height as usize))
             }
-            _ => EditorEvent::UnSupported
+            Ok(_) => Some(EditorEvent::UnSupported),
+            Err(_) => {
+                return None
+            }
         }
     }
 
