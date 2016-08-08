@@ -550,6 +550,7 @@ impl Buffer {
 
     // Remove the chars in the range from start to end
     pub fn remove_range(&mut self, start: usize, end: usize) -> Option<Vec<u8>> {
+        self.dirty = true;
         let text = &mut self.text;
         let mut transaction = self.log.start(start);
         let mut vec = (start..end)
@@ -586,7 +587,6 @@ impl Buffer {
         let end = self.get_object_index(object_end);
 
         if let (Some(start_pos), Some(end_pos)) = (start, end) {
-            self.dirty = true;
             return self.remove_range(start_pos.absolute, end_pos.absolute);
         }
         None
