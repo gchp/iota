@@ -34,12 +34,11 @@ impl Mode for InsertMode {
     fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
         if let Key::Char(c) = key {
             BuilderEvent::Complete(Command::insert_char(c))
+        } else if let KeyMapState::Match(c) = self.keymap.check_key(key) {
+            BuilderEvent::Complete(c)
         } else {
-            if let KeyMapState::Match(c) = self.keymap.check_key(key) {
-                BuilderEvent::Complete(c)
-            } else {
-                BuilderEvent::Incomplete
-            }
+            BuilderEvent::Incomplete
         }
+    
     }
 }

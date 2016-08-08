@@ -400,14 +400,10 @@ impl View {
     /// less that five seconds.
     pub fn maybe_clear_message(&mut self) {
         if let Some((_message, time)) = self.message {
-            match time.elapsed() {
-                Ok(elapsed) => {
-                    if elapsed.as_secs() >= 5 {
-                        self.message = None;
-                    }
+            if let Ok(elapsed) = time.elapsed() {
+                if elapsed.as_secs() >= 5 {
+                    self.message = None;
                 }
-
-                _ => {}
             }
         }
     }

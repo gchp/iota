@@ -13,7 +13,7 @@ pub mod langs {
 
 fn next_is(iter: &mut Peekable<Chars>, ch: char) -> bool {
     if let Some(&c) = iter.peek() {
-        if c == ch { true } else { false }
+        c == ch
     } else { false }
 }
 

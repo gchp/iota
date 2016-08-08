@@ -43,7 +43,7 @@ impl<'f> Frontend for RustboxFrontend<'f> {
             }
             Ok(_) => Some(EditorEvent::UnSupported),
             Err(_) => {
-                return None
+                None
             }
         }
     }

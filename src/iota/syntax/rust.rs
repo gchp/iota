@@ -19,7 +19,7 @@ impl Lexer for RustSyntax {
                     }
                     return Some(Token::Attribute(s));
                 }
-                return Some(Token::Hash)
+                Some(Token::Hash)
             }
 
             '/' => {
@@ -27,10 +27,7 @@ impl Lexer for RustSyntax {
                     let mut s = String::from("/");
                     s.push(iter.next().unwrap());
 
-                    let mut doc_comment = false;
-                    if next_is(&mut iter, '/') || next_is(&mut iter, '!') {
-                        doc_comment = true;
-                    }
+                    let doc_comment = next_is(&mut iter, '/') || next_is(&mut iter, '!');
 
                     while let Some(&c) = iter.peek() {
                         if c == '\n' { break }
@@ -39,7 +36,7 @@ impl Lexer for RustSyntax {
 
                     return Some(if doc_comment{ Token::DocComment(s) } else { Token::SingleLineComment(s) });
                 }
-                return Some(Token::ForwardSlash);
+                Some(Token::ForwardSlash)
             }
 
             '"' => {
@@ -59,7 +56,7 @@ impl Lexer for RustSyntax {
                         break;
                     }
                 }
-                return Some(Token::String(s));
+                Some(Token::String(s))
             }
 
             '\'' => {
@@ -79,7 +76,7 @@ impl Lexer for RustSyntax {
                         break;
                     }
                 }
-                return Some(Token::Special(s));
+                Some(Token::Special(s))
             }
 
             _ => None,

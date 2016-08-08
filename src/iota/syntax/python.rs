@@ -15,7 +15,7 @@ impl Lexer for PythonSyntax {
                     if c == '\n' { break }
                     s.push(iter.next().unwrap())
                 }
-                return Some(Token::SingleLineComment(s));
+                Some(Token::SingleLineComment(s))
             }
 
             '@' => {
@@ -24,7 +24,7 @@ impl Lexer for PythonSyntax {
                     if c == '\n' { break }
                     s.push(iter.next().unwrap())
                 }
-                return Some(Token::Attribute(s));
+                Some(Token::Attribute(s))
             }
 
 
@@ -36,7 +36,7 @@ impl Lexer for PythonSyntax {
                         break;
                     }
                 }
-                return Some(Token::String(s));
+                Some(Token::String(s))
             }
 
             _ => None,
@@ -53,16 +53,13 @@ impl Lexer for PythonSyntax {
         }
 
 
-        let token;
         if next_is(&mut iter, '(') {
             // function calls or definitions
-            token = Token::FunctionCallDef(ident);
+            Token::FunctionCallDef(ident)
         } else {
             // regular idents
-            token = Token::Ident(ident);
+            Token::Ident(ident)
         }
-
-        token
     }
 }
 
