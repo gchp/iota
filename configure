@@ -19,6 +19,10 @@ def parse_args():
         action="store_true",
         help="Configure a build including syntax-highlighting")
     parser.add_argument(
+        "--enable-clippy",
+        action="store_true",
+        help="Configure a build including clippy lints")
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="Configure a debug build")
@@ -41,6 +45,9 @@ def parse(args):
     if args.enable_syntax_highlighting:
         config['features'].append('syntax-highlighting')
 
+    if args.enable_clippy:
+        config['features'].append('clippy')
+
     if args.debug:
         config['debug'] = True
 
@@ -58,7 +65,7 @@ def main():
     for key, val in parsed_config.items():
         if isinstance(val, list):
             val_str = " ".join(val)
-            var = "{}={}\n".format(key.upper(), val_str)
+            var = "{}=\"{}\"\n".format(key.upper(), val_str)
             tmp_config.write(var)
             continue
 
