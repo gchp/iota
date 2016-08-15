@@ -12,7 +12,7 @@ use overlay::{Overlay, OverlayEvent};
 use buffer::Buffer;
 use command::Command;
 use command::{Action, BuilderEvent, Operation, Instruction};
-
+use chained_command::ChainedCmdBuilder;
 
 /// The main Editor structure
 ///
@@ -72,20 +72,27 @@ impl<'e, T: Frontend> Editor<'e, T> {
         };
 
         let mut remove_overlay = false;
-        let command = match self.view.overlay {
-            Overlay::None => self.mode.handle_key_event(key),
+        let mut command = BuilderEvent::Incomplete;
+
+        match self.view.overlay {
+            Overlay::None => { command = self.mode.handle_key_event(key) },
             _             => {
                 let event = self.view.overlay.handle_key_event(key);
                 match event {
                     OverlayEvent::Finished(response) => {
                         remove_overlay = true;
-                        self.handle_overlay_response(response)
+                        let commands = self.handle_overlay_response(response);
+                        for cmd in commands {
+                            if let BuilderEvent::Complete(c) = cmd {
+                                self.handle_command(c);
+                            }
+                        }
                     }
 
-                    _ => { BuilderEvent::Incomplete }
+                    _ => { command = BuilderEvent::Incomplete }
                 }
             }
-        };
+        }
 
         if remove_overlay {
             self.view.overlay = Overlay::None;
@@ -102,34 +109,33 @@ impl<'e, T: Frontend> Editor<'e, T> {
     /// In most cases, we will just want to convert the response directly to
     /// a Command, however in some cases we will want to perform other actions
     /// first, such as in the case of Overlay::SavePrompt.
-    fn handle_overlay_response(&mut self, response: Option<String>) -> BuilderEvent {
-        // FIXME: This entire method neext to be updated
+    fn handle_overlay_response(&mut self, response: Option<String>) -> Vec<BuilderEvent> {
+        let mut commands = vec![];
+
         match response {
             Some(data) => {
                 match self.view.overlay {
 
-                    // FIXME: this is just a temporary fix
                     Overlay::Prompt { ref data, .. } => {
-                        match &**data {
-                            // FIXME: need to find a better system for these commands
-                            //        They should be chainable
-                            //          ie: wq - save & quit
-                            //        They should also take arguments
-                            //          ie w file.txt - write buffer to file.txt
-                            "q" | "quit" => BuilderEvent::Complete(Command::exit_editor()),
-                            "w" | "write" => BuilderEvent::Complete(Command::save_buffer()),
+                        let mut builder = ChainedCmdBuilder::new();
+                        let cmds: Vec<Command> = builder.parse(&**data);
 
-                            _ => BuilderEvent::Incomplete
+                        if cmds.len() < 1 {
+                            commands.push(BuilderEvent::Incomplete);
+                        } else {
+                            for cmd in cmds {
+                                commands.push(BuilderEvent::Complete(cmd));
+                            }
                         }
                     }
 
                     Overlay::SavePrompt { .. } => {
                         if data.is_empty() {
-                            BuilderEvent::Invalid
+                            commands.push(BuilderEvent::Invalid);
                         } else {
                             let path = PathBuf::from(&*data);
                             self.view.buffer.lock().unwrap().file_path = Some(path);
-                            BuilderEvent::Complete(Command::save_buffer())
+                            commands.push(BuilderEvent::Complete(Command::save_buffer()));
                         }
                     }
 
@@ -139,14 +145,16 @@ impl<'e, T: Frontend> Editor<'e, T> {
                         self.buffers.push(buffer.clone());
                         self.view.set_buffer(buffer.clone());
                         self.view.clear(&mut self.frontend);
-                        BuilderEvent::Complete(Command::noop())
+                        commands.push(BuilderEvent::Complete(Command::noop()));
                     }
 
-                    _ => BuilderEvent::Incomplete,
+                    _ => commands.push(BuilderEvent::Incomplete),
                 }
             }
-            None => BuilderEvent::Incomplete
+            None => commands.push(BuilderEvent::Incomplete)
         }
+
+        commands
     }
 
     /// Handle resize events
