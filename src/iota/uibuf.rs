@@ -27,7 +27,8 @@ pub enum CharColor {
     Red,
     Cyan,
     DarkGray,
-    // TODO: add other colors
+
+    Byte(usize),
 }
 
 impl UIBuffer {

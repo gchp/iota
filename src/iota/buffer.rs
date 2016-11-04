@@ -10,14 +10,14 @@ use std::convert::From;
 // external dependencies
 use gapbuffer::GapBuffer;
 
+#[cfg(feature="syntax-highlighting")] use syntect::parsing::syntax_definition::SyntaxDefinition;
+#[cfg(feature="syntax-highlighting")] use syntect::parsing::SyntaxSet;
+
 // local dependencies
 use log::{Log, Change, LogEntry};
 use input::Input;
 use iterators::Lines;
 use textobject::{TextObject, Kind, Offset, Anchor};
-
-#[cfg(feature="syntax-highlighting")]
-use syntax::lexer::SyntaxInstance;
 
 
 #[derive(PartialEq, Debug)]
@@ -78,7 +78,7 @@ pub struct Buffer {
     pub file_path: Option<PathBuf>,
 
     #[cfg(feature="syntax-highlighting")]
-    pub syntax: Option<SyntaxInstance>,
+    pub syntax: Option<SyntaxDefinition>,
 
     /// Whether or not the Buffer has unsaved changes
     pub dirty: bool,
@@ -108,6 +108,35 @@ impl Buffer {
         };
 
         buffer
+    }
+
+    #[cfg(feature="syntax-highlighting")]
+    pub fn new_with_syntax(path: PathBuf, ps: &SyntaxSet) -> Buffer {
+        let syntax_instance = match path.extension() {
+            Some(e) => {
+                if let Some(inst) = ps.find_syntax_by_extension(e.to_str().unwrap()) {
+                    Some(inst.clone())
+                } else {
+                    None
+                }
+            }
+            None => None,
+        };
+
+
+        match File::open(&path) {
+            Ok(file) => {
+                let mut buf = Buffer::from(file);
+                buf.file_path = Some(path);
+                buf.syntax = syntax_instance;
+                buf
+            }
+            Err(_) => {
+                let mut buf = Buffer::new();
+                buf.syntax = syntax_instance;
+                buf
+            }
+        }
     }
 
     /// Length of the text stored in this buffer.
@@ -633,29 +662,6 @@ impl BufferFrom for Stdin {}
 impl BufferFrom for File {}
 
 impl From<PathBuf> for Buffer {
-    #[cfg(feature="syntax-highlighting")]
-    fn from(path: PathBuf) -> Buffer {
-        let syntax_instance = match path.extension().unwrap().to_str().unwrap() {
-            "rs" => Some(SyntaxInstance::rust()),
-            "py" => Some(SyntaxInstance::python()),
-            _ => None,
-        };
-
-        match File::open(&path) {
-            Ok(file) => {
-                let mut buf = Buffer::from(file);
-                buf.file_path = Some(path);
-                buf.syntax = syntax_instance;
-                buf
-            }
-            Err(_) => {
-                let mut buf = Buffer::new();
-                buf.syntax = syntax_instance;
-                buf
-            }
-        }
-    }
-    #[cfg(not(feature="syntax-highlighting"))]
     fn from(path: PathBuf) -> Buffer {
         match File::open(&path) {
             Ok(file) => {

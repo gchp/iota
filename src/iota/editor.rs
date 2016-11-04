@@ -2,6 +2,14 @@ use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc::channel;
+use std::env;
+use std::rc::Rc;
+use std::fs::File;
+use std::io::Read;
+
+#[cfg(feature="syntax-highlighting")] use syntect::highlighting::ThemeSet;
+#[cfg(feature="syntax-highlighting")] use syntect::parsing::syntax_definition::SyntaxDefinition;
+#[cfg(feature="syntax-highlighting")] use syntect::parsing::SyntaxSet;
 
 use input::Input;
 use keyboard::Key;
@@ -29,7 +37,9 @@ pub struct Editor<'e, T: Frontend> {
 }
 
 impl<'e, T: Frontend> Editor<'e, T> {
+
     /// Create a new Editor instance from the given source
+    #[cfg(feature="syntax-highlighting")]
     pub fn new(source: Input, mode: Box<Mode + 'e>, frontend: T) -> Editor<'e, T> {
         let height = frontend.get_window_height();
         let width = frontend.get_window_width();
@@ -37,8 +47,63 @@ impl<'e, T: Frontend> Editor<'e, T> {
         let (snd, recv) = channel();
 
         let mut buffers = Vec::new();
-        let buffer = Buffer::from(source);
 
+        // TODO: load custom syntax files rather than using defaults
+        //       see below
+        let mut ps = SyntaxSet::load_defaults_nonewlines();
+
+        // let mut ps = SyntaxSet::new();
+        // let mut p = env::home_dir().unwrap();
+        // p.push(".config/sublime-text-3/Packages/User/Rust.sublime-syntax");
+        // let mut data = String::new();
+        // let mut f = File::open(&p).unwrap();
+        // let _ = f.read_to_string(&mut data);
+        // let definition = SyntaxDefinition::load_from_str(&data, false).unwrap();
+        // ps.add_syntax(definition);
+        ps.link_syntaxes();
+
+        let buffer = match source {
+            Input::Filename(path) => {
+                match path {
+                    Some(path) => Buffer::new_with_syntax(PathBuf::from(path), &ps),
+                    None       => Buffer::new(),
+                }
+            },
+            Input::Stdin(reader) => {
+                Buffer::from(reader)
+            }
+        };
+        buffers.push(Arc::new(Mutex::new(buffer)));
+        let ts = Rc::new({
+            let mut path = env::home_dir().unwrap();
+            path.push(".config/sublime-text-3/Packages/Base16/themes");
+            ThemeSet::load_from_folder(path).unwrap()
+        });
+        let view = View::new(buffers[0].clone(), ts.clone(), width, height);
+
+        Editor {
+            buffers: buffers,
+            view: view,
+            running: true,
+            frontend: frontend,
+            mode: mode,
+
+            command_queue: recv,
+            command_sender: snd,
+        }
+    }
+
+    /// Create a new Editor instance from the given source
+    #[cfg(not(feature="syntax-highlighting"))]
+    pub fn new(source: Input, mode: Box<Mode + 'e>, frontend: T) -> Editor<'e, T> {
+        let height = frontend.get_window_height();
+        let width = frontend.get_window_width();
+
+        let (snd, recv) = channel();
+
+        let mut buffers = Vec::new();
+
+        let buffer = Buffer::from(source);
         buffers.push(Arc::new(Mutex::new(buffer)));
 
         let view = View::new(buffers[0].clone(), width, height);

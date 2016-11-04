@@ -10,10 +10,14 @@
 #![feature(concat_idents)]
 #![feature(stmt_expr_attributes)]
 
+#[cfg(feature="syntax-highlighting")] extern crate syntect;
+
 extern crate rustbox;
 extern crate gapbuffer;
 extern crate tempdir;
+extern crate regex;
 extern crate unicode_width;
+#[macro_use] extern crate lazy_static;
 
 pub use editor::Editor;
 pub use input::Input;
@@ -35,6 +39,3 @@ mod overlay;
 mod command;
 mod textobject;
 mod iterators;
-
-#[cfg(feature="syntax-highlighting")]
-mod syntax;

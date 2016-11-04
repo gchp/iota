@@ -6,9 +6,13 @@ use std::io::Write;
 use std::fs::{File, rename};
 use std::sync::{Mutex, Arc};
 use std::time::SystemTime;
+use std::rc::Rc;
 
 use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
+
+#[cfg(feature="syntax-highlighting")] use syntect::highlighting::{ThemeSet, Style};
+#[cfg(feature="syntax-highlighting")] use syntect::easy::HighlightLines;
 
 use buffer::{Buffer, Mark};
 use uibuf::{UIBuffer, CharColor};
@@ -17,8 +21,6 @@ use overlay::{Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
 
-#[cfg(feature="syntax-highlighting")]
-use syntax::lexer::Token;
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -50,10 +52,40 @@ pub struct View {
     /// Message to be displayed in the status bar along with the time it
     /// was displayed.
     message: Option<(&'static str, SystemTime)>,
+
+    #[cfg(feature="syntax-highlighting")]
+    themes: Rc<ThemeSet>,
 }
 
 impl View {
 
+    #[cfg(feature="syntax-highlighting")]
+    pub fn new(buffer: Arc<Mutex<Buffer>>, themes: Rc<ThemeSet>, width: usize, height: usize) -> View {
+        let cursor = Mark::Cursor(0);
+        let top_line = Mark::DisplayMark(0);
+
+        {
+            let mut b = buffer.lock().unwrap();
+
+            b.set_mark(cursor, 0);
+            b.set_mark(top_line, 0);
+        }
+
+        return View {
+            buffer: buffer,
+            last_buffer: None,
+            top_line: top_line,
+            left_col: 0,
+            cursor: cursor,
+            uibuf: UIBuffer::new(width, height),
+            overlay: Overlay::None,
+            threshold: 5,
+            message: None,
+            themes: themes,
+        };
+    }
+
+    #[cfg(not(feature="syntax-highlighting"))]
     pub fn new(buffer: Arc<Mutex<Buffer>>, width: usize, height: usize) -> View {
         let cursor = Mark::Cursor(0);
         let top_line = Mark::DisplayMark(0);
@@ -65,7 +97,7 @@ impl View {
             b.set_mark(top_line, 0);
         }
 
-        View {
+        return View {
             buffer: buffer,
             last_buffer: None,
             top_line: top_line,
@@ -75,7 +107,7 @@ impl View {
             overlay: Overlay::None,
             threshold: 5,
             message: None,
-        }
+        };
     }
 
     pub fn set_buffer(&mut self, buffer: Arc<Mutex<Buffer>>) {
@@ -167,153 +199,69 @@ impl View {
             let buffer = self.buffer.lock().unwrap();
             let height = self.get_height() - 1;
 
-            match buffer.syntax {
-                Some(ref syntax) => {
-                    let height = self.get_height() - 1;
-                    let lines = buffer.lines_from(self.top_line).unwrap().take(height);
-                    let mut bytes = Vec::new();
-                    for l in lines { bytes.extend(l) }
-                    let text = String::from_utf8(bytes).unwrap();
-                    let mut tokens = syntax.get_stream(&*text).into_iter().peekable();
-                    let mut x_offset = 0;
-                    let mut y_offset = 0;
-                    while let Some(token) = tokens.next() {
-                        match token {
-                            Token::Ident(s) => {
-                                let (fg, bg) = match &*s {
-                                    st if syntax.is_keyword(st) => {
-                                        (CharColor::Magenta, CharColor::Black)
-                                    }
-                                    st if syntax.is_type(st) => {
-                                        (CharColor::Yellow, CharColor::Black)
-                                    }
-                                    "self" => {
-                                        (CharColor::Orange, CharColor::Black)
-                                    }
-                                    _ => {
-                                        if let Some(&Token::DoubleColon) = tokens.peek() {
-                                            (CharColor::Blue, CharColor::Black)
-                                        } else {
-                                            (CharColor::White, CharColor::Black)
-                                        }
-                                    }
-                                };
-                                for ch in s.chars() {
-                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
-                                    x_offset += 1;
-                                }
-                            }
-                            Token::Number(ch) => {
-                                self.uibuf.update_cell(x_offset, y_offset, ch, CharColor::Orange, CharColor::Black);
-                                x_offset += 1;
-                            }
-                            Token::String(s) => {
-                                let (fg, bg) = (CharColor::Green, CharColor::Black);
-                                for ch in s.chars() {
-                                    if ch == '\n' {
-                                        y_offset += 1;
-                                        x_offset = 0;
-                                        continue;
-                                    }
-                                    if ch == ' ' {
-                                        x_offset += 1;
-                                        continue;
-                                    }
-                                    if x_offset < self.uibuf.get_width() {
-                                        self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
-                                        x_offset += 1;
-                                    } else {
-                                        continue;
-                                    }
-                                }
-                            }
-                            Token::Special(s) => {
-                                let (fg, bg) = (CharColor::Red, CharColor::Black);
-                                for ch in s.chars() {
-                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
-                                    x_offset += 1;
-                                }
-                            }
-                            Token::FunctionCallDef(s) => {
-                                let (fg, bg) = (CharColor::Blue, CharColor::Black);
-                                for ch in s.chars() {
-                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
-                                    x_offset += 1;
-                                }
-                            }
-                            Token::SingleLineComment(s) => {
-                                let (fg, bg) = (CharColor::Gray, CharColor::Black);
-                                for ch in s.chars() {
-                                    if ch == ' ' {
-                                        x_offset += 1;
-                                        continue;
-                                    }
-                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
-                                    x_offset += 1;
-                                }
-                            }
-                            Token::DocComment(s) => {
-                                let (fg, bg) = (CharColor::Cyan, CharColor::Black);
-                                for ch in s.chars() {
-                                    if ch == ' ' {
-                                        x_offset += 1;
-                                        continue;
-                                    }
-                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
-                                    x_offset += 1;
-                                }
-                            }
-                            Token::Attribute(s) => {
-                                let (fg, bg) = (CharColor::Yellow, CharColor::Black);
-                                for ch in s.chars() {
-                                    if ch == ' ' {
-                                        x_offset += 1;
-                                        continue;
-                                    }
-                                    self.uibuf.update_cell(x_offset, y_offset, ch, fg, bg);
-                                    x_offset += 1;
-                                }
-                            }
-                            Token::DoubleColon => {
-                                let (fg, bg) = (CharColor::Red, CharColor::Black);
-                                self.uibuf.update_cell(x_offset, y_offset, ':', fg, bg);
-                                x_offset += 1;
-                                self.uibuf.update_cell(x_offset, y_offset, ':', fg, bg);
-                                x_offset += 1;
-                            }
-                            Token::Whitespace => { x_offset += 1; }
-                            Token::Newline => { x_offset = 0; y_offset += 1; }
+            // FIXME: don't use unwrap here
+            //        This will fail if for some reason the buffer doesnt have
+            //        the top_line mark
+            let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
+            for y_position in 0..height {
+                let line = lines.next().unwrap_or_else(Vec::new);
+                if let Some(ref syntax) = buffer.syntax {
+                    let idx = y_position;
+                    let width = self.uibuf.get_width() - 1;
+                    let line_str = String::from_utf8(line).unwrap();
+                    // TODO: don't expect this theme to be present
+                    let theme_name = "base16-default-dark";
+                    let mut h = HighlightLines::new(syntax, &self.themes.themes[theme_name]);
+                    let ranges: Vec<(Style, &str)> = h.highlight(&line_str);
+                    let mut x = 0;
+                    for (style, text) in ranges {
+                        let fg = format!("{0:02.x}{1:02.x}{2:02.x}",
+                                         style.foreground.r, style.foreground.g, style.foreground.b);
+                        let fg = CharColor::Byte(utils::rgb_to_short(&*fg));
+                        // TODO: figure out why this doesn't work as expected
+                        // let bg = format!("{0:02.x}{1:02.x}{2:02.x}",
+                        //     style.background.r, style.background.g, style.background.b);
+                        // let bg = CharColor::Byte(utils::rgb_to_short(&*bg));
+                        let bg = CharColor::Byte(0);
 
-                            token => {
-                                let inner_char = token.as_char();
-
-                                match inner_char {
-                                    Some(ch) => {
-                                        if x_offset < self.uibuf.get_width() {
-                                            self.uibuf.update_cell(x_offset, y_offset, ch, CharColor::White, CharColor::Black);
-                                            x_offset += 1;
-                                        } else {
-                                            continue;
-                                        }
-                                    }
-                                    None => {
-                                        panic!("Unhandled token: {:?}", token);
+                        for ch in text.chars().skip(self.left_col) {
+                            match ch {
+                                '\t' => {
+                                    let w = 4 - x % 4;
+                                    for _ in 0..w {
+                                        self.uibuf.update_cell(x, idx, ' ', fg, bg);
+                                        x += 1;
                                     }
                                 }
+                                '\n' => {}
+                                _ => {
+                                    self.uibuf.update_cell(x, idx, ch, fg, bg);
+                                    x += UnicodeWidthChar::width(ch).unwrap_or(1);
+                                }
                             }
-                        } 
+                            if x >= width {
+                                break;
+                            }
+                        }
+
+
                     }
-                }
-                None => {
-                    let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
-                    for y_position in 0..height {
-                        let line = lines.next().unwrap_or_else(Vec::new);
-                        draw_line(&mut self.uibuf, &line, y_position, self.left_col);
+                    // Replace any cells after end of line with ' '
+                    while x < width {
+                        self.uibuf.update_cell_content(x, idx, ' ');
+                        x += 1;
                     }
+
+                    // If the line is too long to fit on the screen, show an indicator
+                    let indicator = if line_str.len() > width + self.left_col { '→' } else { ' ' };
+                    self.uibuf.update_cell_content(width, idx, indicator);
+                } else {
+                    draw_line(&mut self.uibuf, &line, y_position, self.left_col);
                 }
             }
 
         }
+        
         match self.overlay {
             Overlay::None => self.draw_cursor(frontend),
             _ => {

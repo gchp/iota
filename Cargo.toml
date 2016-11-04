@@ -17,13 +17,16 @@ tempdir = "0.3.0"
 unicode-width = "0.1.1"
 libc = "0.1"
 clippy = {version = "*", optional = true}
+syntect = {version = "1.0", optional = true}
+regex = "0.1"
+lazy_static = "0.2"
 
 [dependencies.rustbox]
 git = "https://github.com/gchp/rustbox"
 
 [features]
 default=[]
-syntax-highlighting = []
+syntax-highlighting = ["syntect"]
 
 [lib]
 name = "iota"
