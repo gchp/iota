@@ -214,6 +214,7 @@ impl View {
                     let mut h = HighlightLines::new(syntax, &self.themes.themes[theme_name]);
                     let ranges: Vec<(Style, &str)> = h.highlight(&line_str);
                     let mut x = 0;
+
                     for (style, text) in ranges {
                         let fg = format!("{0:02.x}{1:02.x}{2:02.x}",
                                          style.foreground.r, style.foreground.g, style.foreground.b);
@@ -235,6 +236,9 @@ impl View {
                                 }
                                 '\n' => {}
                                 _ => {
+                                    if x >= width {
+                                        break;
+                                    }
                                     self.uibuf.update_cell(x, idx, ch, fg, bg);
                                     x += UnicodeWidthChar::width(ch).unwrap_or(1);
                                 }
