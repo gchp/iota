@@ -210,7 +210,7 @@ impl View {
                     let width = self.uibuf.get_width() - 1;
                     let line_str = String::from_utf8(line).unwrap();
                     // TODO: don't expect this theme to be present
-                    let theme_name = "base16-default-dark";
+                    let theme_name = "base16-ocean.dark";
                     let mut h = HighlightLines::new(syntax, &self.themes.themes[theme_name]);
                     let ranges: Vec<(Style, &str)> = h.highlight(&line_str);
                     let mut x = 0;
