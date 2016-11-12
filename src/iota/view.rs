@@ -210,7 +210,7 @@ impl View {
                     let width = self.uibuf.get_width() - 1;
                     let line_str = String::from_utf8(line).unwrap();
                     // TODO: don't expect this theme to be present
-                    let theme_name = "base16-ocean.dark";
+                    let theme_name = "base16-eighties.dark";
                     let mut h = HighlightLines::new(syntax, &self.themes.themes[theme_name]);
                     let ranges: Vec<(Style, &str)> = h.highlight(&line_str);
                     let mut x = 0;
@@ -219,11 +219,9 @@ impl View {
                         let fg = format!("{0:02.x}{1:02.x}{2:02.x}",
                                          style.foreground.r, style.foreground.g, style.foreground.b);
                         let fg = CharColor::Byte(utils::rgb_to_short(&*fg));
-                        // TODO: figure out why this doesn't work as expected
-                        // let bg = format!("{0:02.x}{1:02.x}{2:02.x}",
-                        //     style.background.r, style.background.g, style.background.b);
-                        // let bg = CharColor::Byte(utils::rgb_to_short(&*bg));
-                        let bg = CharColor::Byte(0);
+                        let bg = format!("{0:02.x}{1:02.x}{2:02.x}",
+                                         style.background.r, style.background.g, style.background.b);
+                        let bg = CharColor::Byte(utils::rgb_to_short(&*bg));
 
                         for ch in text.chars().skip(self.left_col) {
                             match ch {
@@ -234,7 +232,13 @@ impl View {
                                         x += 1;
                                     }
                                 }
-                                '\n' => {}
+                                '\n' => {
+                                    // Replace any cells after end of line with ' '
+                                    while x <= width {
+                                        self.uibuf.update_cell(x, idx, ' ', fg, bg);
+                                        x += 1;
+                                    }
+                                }
                                 _ => {
                                     if x >= width {
                                         break;
@@ -250,12 +254,6 @@ impl View {
 
 
                     }
-                    // Replace any cells after end of line with ' '
-                    while x < width {
-                        self.uibuf.update_cell_content(x, idx, ' ');
-                        x += 1;
-                    }
-
                     // If the line is too long to fit on the screen, show an indicator
                     let indicator = if line_str.len() > width + self.left_col { '→' } else { ' ' };
                     self.uibuf.update_cell_content(width, idx, indicator);
