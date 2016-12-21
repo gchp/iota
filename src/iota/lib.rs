@@ -10,6 +10,7 @@
 
 #[cfg(feature="syntax-highlighting")] extern crate syntect;
 
+
 extern crate rustbox;
 extern crate gapbuffer;
 extern crate tempdir;

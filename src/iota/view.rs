@@ -55,12 +55,15 @@ pub struct View {
 
     #[cfg(feature="syntax-highlighting")]
     themes: Rc<ThemeSet>,
+
+    #[cfg(feature="syntax-highlighting")]
+    theme_name: String
 }
 
 impl View {
 
     #[cfg(feature="syntax-highlighting")]
-    pub fn new(buffer: Arc<Mutex<Buffer>>, themes: Rc<ThemeSet>, width: usize, height: usize) -> View {
+    pub fn new(buffer: Arc<Mutex<Buffer>>, themes: Rc<ThemeSet>, theme_name: String, width: usize, height: usize) -> View {
         let cursor = Mark::Cursor(0);
         let top_line = Mark::DisplayMark(0);
 
@@ -82,6 +85,7 @@ impl View {
             threshold: 5,
             message: None,
             themes: themes,
+            theme_name: theme_name,
         };
     }
 
@@ -209,9 +213,7 @@ impl View {
                     let idx = y_position;
                     let width = self.uibuf.get_width() - 1;
                     let line_str = String::from_utf8(line).unwrap();
-                    // TODO: don't expect this theme to be present
-                    let theme_name = "base16-eighties.dark";
-                    let mut h = HighlightLines::new(syntax, &self.themes.themes[theme_name]);
+                    let mut h = HighlightLines::new(syntax, &self.themes.themes[&*self.theme_name]);
                     let ranges: Vec<(Style, &str)> = h.highlight(&line_str);
                     let mut x = 0;
 

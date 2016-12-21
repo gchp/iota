@@ -74,13 +74,21 @@ impl<'e, T: Frontend> Editor<'e, T> {
             }
         };
         buffers.push(Arc::new(Mutex::new(buffer)));
-        // let ts = Rc::new({
-        //     let mut path = env::home_dir().unwrap();
-        //     path.push(".config/sublime-text-3/Packages/Base16/themes");
-        //     ThemeSet::load_from_folder(path).unwrap()
-        // });
-        let ts = Rc::new(ThemeSet::load_defaults());
-        let view = View::new(buffers[0].clone(), ts.clone(), width, height);
+
+        // NOTE: this will only work on linux
+        // TODO: make this more cross-platform friendly
+        let mut subl_config = env::home_dir().unwrap();
+        subl_config.push(".config/sublime-text-3/Packages/Base16/");
+
+        let (theme_name, ts) = if subl_config.exists() {
+            (String::from("base16-default-dark"),
+            Rc::new(ThemeSet::load_from_folder(subl_config).unwrap()))
+        } else {
+            (String::from("base16-eighties.dark"),
+            Rc::new(ThemeSet::load_defaults()))
+        };
+
+        let view = View::new(buffers[0].clone(), ts.clone(), theme_name,  width, height);
 
         Editor {
             buffers: buffers,
