@@ -48,15 +48,6 @@ impl<'e, T: Frontend> Editor<'e, T> {
         // TODO: load custom syntax files rather than using defaults
         //       see below
         let mut ps = SyntaxSet::load_defaults_nonewlines();
-
-        // let mut ps = SyntaxSet::new();
-        // let mut p = env::home_dir().unwrap();
-        // p.push(".config/sublime-text-3/Packages/User/Rust.sublime-syntax");
-        // let mut data = String::new();
-        // let mut f = File::open(&p).unwrap();
-        // let _ = f.read_to_string(&mut data);
-        // let definition = SyntaxDefinition::load_from_str(&data, false).unwrap();
-        // ps.add_syntax(definition);
         ps.link_syntaxes();
 
         let buffer = match source {
