@@ -10,6 +10,7 @@ use std::rc::Rc;
 
 use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
+use overlay;
 
 #[cfg(feature="syntax-highlighting")] use syntect::highlighting::{ThemeSet, Style};
 #[cfg(feature="syntax-highlighting")] use syntect::easy::HighlightLines;
@@ -31,7 +32,7 @@ use textobject::{Anchor, TextObject, Kind, Offset};
 pub struct View {
     pub buffer: Arc<Mutex<Buffer>>,
     pub last_buffer: Option<Arc<Mutex<Buffer>>>,
-    pub overlay: Overlay,
+    pub overlay: Option<Box<Overlay>>,
 
     /// First character of the top line to be displayed
     top_line: Mark,
@@ -81,7 +82,7 @@ impl View {
             left_col: 0,
             cursor: cursor,
             uibuf: UIBuffer::new(width, height),
-            overlay: Overlay::None,
+            overlay: None,
             threshold: 5,
             message: None,
             themes: themes,
@@ -186,10 +187,14 @@ impl View {
 
         }
         match self.overlay {
-            Overlay::None => self.draw_cursor(frontend),
-            _ => {
-                self.overlay.draw(frontend, &mut self.uibuf);
-                self.overlay.draw_cursor(frontend);
+            Some(overlay) => {
+                overlay.draw(frontend, &mut self.uibuf);
+                if overlay.needs_cursor() {
+                    frontend.draw_cursor(overlay.cursor_x as isize, overlay.cursor_y as isize);
+                }
+            }
+            None => {
+                self.draw_cursor(frontend);
             }
         }
         self.draw_status(frontend);
@@ -267,10 +272,14 @@ impl View {
         }
         
         match self.overlay {
-            Overlay::None => self.draw_cursor(frontend),
-            _ => {
-                self.overlay.draw(frontend, &mut self.uibuf);
-                self.overlay.draw_cursor(frontend);
+            Some(ref mut overlay) => {
+                overlay.draw(&mut self.uibuf);
+                if overlay.needs_cursor() {
+                    frontend.draw_cursor(overlay.get_cursor_x(), overlay.get_cursor_y());
+                }
+            }
+            None => {
+                self.draw_cursor(frontend);
             }
         }
         self.draw_status(frontend);
@@ -321,22 +330,15 @@ impl View {
 
     pub fn set_overlay(&mut self, overlay_type: OverlayType) {
         match overlay_type {
-            OverlayType::Prompt => {
-                self.overlay = Overlay::Prompt {
-                    cursor_x: 1,
-                    prefix: ":",
-                    data: String::new(),
-                };
-            }
-
             OverlayType::SelectFile => {
                 let prefix = "Enter file path:";
 
-                self.overlay = Overlay::SelectFile {
+                self.overlay = Some(Box::new(overlay::SelectFilePrompt {
                     cursor_x: prefix.len(),
+                    cursor_y: self.uibuf.get_height() - 1,
                     prefix: prefix,
-                    data: String::new(),
-                };
+                    buffer: String::new(),
+                }));
             }
         }
     }
@@ -500,28 +502,31 @@ impl View {
     }
 
     pub fn try_save_buffer(&mut self) {
-        let mut should_save = false;
-        {
-            let buffer = self.buffer.lock().unwrap();
+        // let mut should_save = false;
+        // {
+        //     let buffer = self.buffer.lock().unwrap();
 
-            match buffer.file_path {
-                Some(_) => { should_save = true }
-                None => {
-                    let prefix = "Enter file name: ";
-                    self.overlay = Overlay::SavePrompt {
-                        cursor_x: prefix.len(),
-                        prefix: prefix,
-                        data: String::new(),
-                    };
-                },
-            }
-        }
+        //     match buffer.file_path {
+        //         Some(_) => { should_save = true }
+        //         None => {
+        //             let prefix = "Enter file name: ";
+        //             self.overlay = Overlay::SavePrompt {
+        //                 cursor_x: prefix.len(),
+        //                 prefix: prefix,
+        //                 data: String::new(),
+        //             };
+        //         },
+        //     }
+        // }
 
-        if should_save {
-            self.save_buffer();
-            let mut buffer = self.buffer.lock().unwrap();
-            buffer.dirty = false;
-        }
+        // if should_save {
+        //     self.save_buffer();
+        //     let mut buffer = self.buffer.lock().unwrap();
+        //     buffer.dirty = false;
+        // }
+        self.save_buffer();
+        let mut buffer = self.buffer.lock().unwrap();
+        buffer.dirty = false;
     }
 
     /// Whether or not the current buffer has unsaved changes

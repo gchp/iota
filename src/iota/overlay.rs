@@ -3,118 +3,73 @@ use unicode_width::UnicodeWidthChar;
 use uibuf::UIBuffer;
 use keyboard::Key;
 use frontends::Frontend;
+use command::BuilderEvent;
+use command::Command;
 
-/// State for the overlay
-pub enum OverlayEvent {
-    Finished(Option<String>),
-    Ok,
-}
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug)]
 pub enum OverlayType {
-    Prompt,
-    SelectFile,
+    SelectFile
 }
 
 
-/// An interface for user interaction
-///
-/// This can be a prompt, autocompletion list, anything thatn requires input
-/// from the user.
-pub enum Overlay {
-    Prompt {
-        cursor_x: usize,
-        data: String,
-        prefix: &'static str,
-    },
+pub trait Overlay {
+    fn draw(&self, uibuf: &mut UIBuffer);
+    fn handle_key_event(&mut self, key: Key) -> BuilderEvent;
 
-    SavePrompt {
-        cursor_x: usize,
-        data: String,
-        prefix: &'static str,
-    },
+    fn needs_cursor(&self) -> bool {
+        false
+    }
 
-    SelectFile {
-        cursor_x: usize,
-        data: String,
-        prefix: &'static str,
-    },
-
-    None,
+    fn get_cursor_x(&self) -> isize { 0 }
+    fn get_cursor_y(&self) -> isize { 0 }
 }
 
-impl Overlay {
-    pub fn draw<F: Frontend>(&self, frontend: &mut F, uibuf: &mut UIBuffer) {
-        match *self {
-            Overlay::SelectFile     {prefix, ref data, ..} |
-            Overlay::Prompt         {prefix, ref data, ..} |
-            Overlay::SavePrompt     {prefix, ref data, ..} => {
-                let height = frontend.get_window_height() - 1;
-                let offset = prefix.len();
+pub struct SelectFilePrompt {
+    pub buffer: String,
+    pub prefix: &'static str,
+    pub cursor_x: usize,
+    pub cursor_y: usize,
+}
 
-                // draw the given prefix
-                for (index, ch) in prefix.chars().enumerate() {
-                    uibuf.update_cell_content(index, height, ch);
-                }
+impl Overlay for SelectFilePrompt {
+    fn draw(&self, uibuf: &mut UIBuffer) {
+        let height = uibuf.get_height() - 1;
+        let offset = self.prefix.len();
 
-                // draw the overlay data
-                for (index, ch) in data.chars().enumerate() {
-                    uibuf.update_cell_content(index + offset, height, ch);
-                }
+        // draw the given prefix
+        for (index, ch) in self.prefix.chars().enumerate() {
+            uibuf.update_cell_content(index, height, ch);
+        }
 
-                uibuf.draw_range(frontend, height, height+1);
+        // draw the overlay data
+        for (index, ch) in self.buffer.chars().enumerate() {
+            uibuf.update_cell_content(index + offset, height, ch);
+        }
+
+        // uibuf.draw_range(frontend, height, height+1);
+    }
+
+    fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
+        match key {
+            Key::Char(c) => {
+                self.buffer.push(c);
+                // TODO: calculate proper char width
+                self.cursor_x += 1;
+                BuilderEvent::Complete(Command::noop())
             }
 
-            _ => {}
-        }
-    }
-
-    pub fn draw_cursor<F: Frontend>(&mut self, frontend: &mut F) {
-        match *self {
-            Overlay::SelectFile     {cursor_x, ..} |
-            Overlay::Prompt         {cursor_x, ..} |
-            Overlay::SavePrompt     {cursor_x, ..} => {
-                // Prompt is always on the bottom, so we can use the
-                // height given by the frontend here
-                let height = frontend.get_window_height() - 1;
-                frontend.draw_cursor(cursor_x as isize, height as isize)
-            },
-
-            _ => {}
-        }
-    }
-
-    pub fn handle_key_event(&mut self, key: Key) -> OverlayEvent {
-        match *self {
-            Overlay::SelectFile {ref mut cursor_x, ref mut data, ..} |
-            Overlay::Prompt     {ref mut cursor_x, ref mut data, ..} |
-            Overlay::SavePrompt {ref mut cursor_x, ref mut data, ..} => {
-                match key {
-                    Key::Esc => return OverlayEvent::Finished(None),
-                    Key::Backspace => {
-                        if let Some(c) = data.pop() {
-                            if let Some(width) = UnicodeWidthChar::width(c) {
-                                *cursor_x -= width;
-                            }
-                        }
-                    }
-                    Key::Enter => {
-                        // FIXME: dont clone
-                        let data = data.clone();
-                        return OverlayEvent::Finished(Some(data))
-                    }
-                    Key::Char(c) => {
-                        if let Some(width) = UnicodeWidthChar::width(c) {
-                            data.push(c);
-                            *cursor_x += width;
-                        }
-                    }
-                    _ => {}
-                }
+            Key::Enter | Key::Esc  => {
+                BuilderEvent::Complete(Command::clear_overlay())
             }
 
-            _ => {}
+            _ => {
+                BuilderEvent::Complete(Command::noop())
+            }
         }
-        OverlayEvent::Ok
     }
+
+    fn needs_cursor(&self) -> bool { true }
+    fn get_cursor_x(&self) -> isize { self.cursor_x as isize }
+    fn get_cursor_y(&self) -> isize { self.cursor_x as isize }
 }

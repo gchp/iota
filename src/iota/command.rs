@@ -18,6 +18,7 @@ pub enum Instruction {
     SetMode(ModeType),
     ShowMessage(&'static str),
     SwitchToLastBuffer,
+    ClearOverlay,
     None,
 }
 
@@ -141,6 +142,14 @@ impl Command {
                 kind: kind,
                 offset: offset
             })
+        }
+    }
+
+    pub fn clear_overlay() -> Command {
+        Command {
+            number: 0,
+            action: Action::Instruction(Instruction::ClearOverlay),
+            object: None,
         }
     }
 
@@ -441,7 +450,7 @@ fn default_keymap() -> KeyMap<Partial> {
     // actions
     keymap.bind_key(Key::Char('D'), Partial::Action(Action::Operation(Operation::DeleteObject)));
     keymap.bind_key(Key::Char('d'), Partial::Action(Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0)))));
-    keymap.bind_key(Key::Char(':'), Partial::Action(Action::Instruction(Instruction::SetOverlay(OverlayType::Prompt))));
+    // keymap.bind_key(Key::Char(':'), Partial::Action(Action::Instruction(Instruction::SetOverlay(OverlayType::Prompt))));
 
     keymap
 }
