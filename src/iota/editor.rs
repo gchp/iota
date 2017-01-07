@@ -303,15 +303,15 @@ impl<'e, T: Frontend> Editor<'e, T> {
             self.frontend.present();
             self.view.maybe_clear_message();
 
-            while let Ok(message) = self.command_queue.try_recv() {
-                self.handle_command(message)
-            }
-
             match self.frontend.poll_event() {
                 Some(EditorEvent::KeyEvent(key))         => self.handle_key_event(key),
                 Some(EditorEvent::Resize(width, height)) => self.handle_resize_event(width, height),
 
                 _ => {}
+            }
+
+            while let Ok(message) = self.command_queue.try_recv() {
+                self.handle_command(message)
             }
         }
     }
