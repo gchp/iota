@@ -596,7 +596,7 @@ impl Buffer {
     pub fn remove_from_mark_to_object(&mut self, mark: Mark, object: TextObject) -> Option<Vec<u8>> {
 
         let (start, end) = {
-            let mark_pos = self.marks.get(&mark).unwrap();
+            let mark_pos = &self.marks[&mark];
             let obj_pos = self.get_object_index(object).unwrap();
 
             if mark_pos.absolute < obj_pos.absolute {
@@ -680,7 +680,7 @@ impl<R: Read + BufferFrom> From<R> for Buffer {
     fn from(mut reader: R) -> Buffer {
         let mut buff = Buffer::new();
         let mut contents = String::new();
-        if let Ok(_) = reader.read_to_string(&mut contents) {
+        if reader.read_to_string(&mut contents).is_ok() {
             buff.text.extend(contents.bytes());
         }
         buff

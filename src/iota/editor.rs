@@ -4,11 +4,8 @@ use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc::channel;
 use std::env;
 use std::rc::Rc;
-use std::fs::File;
-use std::io::Read;
 
 #[cfg(feature="syntax-highlighting")] use syntect::highlighting::ThemeSet;
-#[cfg(feature="syntax-highlighting")] use syntect::parsing::syntax_definition::SyntaxDefinition;
 #[cfg(feature="syntax-highlighting")] use syntect::parsing::SyntaxSet;
 
 use input::Input;
@@ -319,9 +316,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                 self.handle_command(message)
             }
 
-            let event = self.frontend.poll_event();
-
-            match event {
+            match self.frontend.poll_event() {
                 Some(EditorEvent::KeyEvent(key))         => self.handle_key_event(key),
                 Some(EditorEvent::Resize(width, height)) => self.handle_resize_event(width, height),
 

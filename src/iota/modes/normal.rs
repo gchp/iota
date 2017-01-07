@@ -65,3 +65,9 @@ impl Mode for NormalMode {
         }
     }
 }
+
+impl Default for NormalMode {
+    fn default() -> Self {
+        Self::new()
+    }
+}

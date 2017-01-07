@@ -151,3 +151,9 @@ impl Mode for StandardMode {
 
     }
 }
+
+impl Default for StandardMode {
+    fn default() -> Self {
+        Self::new()
+    }
+}

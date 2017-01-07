@@ -74,7 +74,7 @@ impl View {
             b.set_mark(top_line, 0);
         }
 
-        return View {
+        View {
             buffer: buffer,
             last_buffer: None,
             top_line: top_line,
@@ -86,7 +86,7 @@ impl View {
             message: None,
             themes: themes,
             theme_name: theme_name,
-        };
+        }
     }
 
     #[cfg(not(feature="syntax-highlighting"))]

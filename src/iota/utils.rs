@@ -58,6 +58,7 @@ lazy_static! {
     static ref RE: Regex = Regex::new("(..)(..)(..)").unwrap();
 }
 
+#[cfg_attr(feature = "clippy", allow(needless_range_loop))]
 pub fn rgb_to_short(rgb: &str) -> usize {
 	let matches = RE.captures(rgb).unwrap();
 	let parts = vec!(
