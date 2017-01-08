@@ -1,5 +1,7 @@
 use unicode_width::UnicodeWidthChar;
+use std::path::PathBuf;
 
+use uibuf::CharColor;
 use uibuf::UIBuffer;
 use keyboard::Key;
 use frontends::Frontend;
@@ -25,6 +27,10 @@ pub trait Overlay {
     fn get_cursor_y(&self) -> isize { 0 }
 }
 
+use std::io;
+use std::fs::{self, DirEntry};
+use std::path::Path;
+
 pub struct SelectFilePrompt {
     pub buffer: String,
     pub prefix: &'static str,
@@ -35,7 +41,7 @@ pub struct SelectFilePrompt {
 impl Overlay for SelectFilePrompt {
     fn draw(&self, uibuf: &mut UIBuffer) {
         let height = uibuf.get_height() - 1;
-        let offset = self.prefix.len();
+        let offset = self.prefix.len() + 1;
 
         // draw the given prefix
         for (index, ch) in self.prefix.chars().enumerate() {
@@ -47,7 +53,46 @@ impl Overlay for SelectFilePrompt {
             uibuf.update_cell_content(index + offset, height, ch);
         }
 
-        // uibuf.draw_range(frontend, height, height+1);
+        if self.buffer.len() == 0 {
+            return
+        }
+
+        let path = PathBuf::from(&*self.buffer);
+        let mut entries = Vec::new();
+        if path.is_dir() {
+            match fs::read_dir(path) {
+                Ok(iter) => {
+                    for entry in iter {
+                        let entry = entry.unwrap();
+                        let p = entry.path();
+                        entries.push(p)
+                    }
+                }
+                Err(_) => {
+                    return
+                }
+            }
+        }
+
+        use std::io::stderr;
+        use std::io::Write;
+        let mut out = stderr();
+        writeln!(&mut out, "{:?}", entries);
+
+        let top_line_index = uibuf.get_height() - 8;
+        let left_side = self.prefix.len() + 1;
+        let right_side = left_side + 20;
+
+        for index in left_side..right_side {
+            uibuf.update_cell_content(index, top_line_index, '-');
+        }
+
+        for index in (top_line_index + 1)..height {
+            for i in left_side..(right_side + 1) {
+                let ch = if i == left_side || i == right_side { '|' } else { ' ' };
+                uibuf.update_cell(i, index, ch, CharColor::White, CharColor::Black);
+            }
+        }
     }
 
     fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
@@ -59,7 +104,11 @@ impl Overlay for SelectFilePrompt {
                 BuilderEvent::Complete(Command::noop())
             }
 
-            Key::Enter | Key::Esc  => {
+            Key::Enter => {
+                BuilderEvent::Complete(Command::clear_overlay())
+            }
+
+            Key::Esc => {
                 BuilderEvent::Complete(Command::clear_overlay())
             }
 

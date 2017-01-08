@@ -270,6 +270,8 @@ impl View {
             }
 
         }
+
+        self.draw_status();
         
         match self.overlay {
             Some(ref mut overlay) => {
@@ -282,12 +284,11 @@ impl View {
                 self.draw_cursor(frontend);
             }
         }
-        self.draw_status(frontend);
         self.uibuf.draw_everything(frontend);
     }
 
     #[cfg_attr(feature="clippy", allow(needless_range_loop))]
-    fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
+    fn draw_status(&mut self) {
         let buffer = self.buffer.lock().unwrap();
         let buffer_status = buffer.status_text();
         let mut cursor_status = buffer.get_mark_display_coords(self.cursor).unwrap_or((0,0));
@@ -316,7 +317,6 @@ impl View {
                 self.uibuf.update_cell_content(offset, height + 1, ch);
             }
         }
-        self.uibuf.draw_range(frontend, height, height+1);
     }
 
     fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
