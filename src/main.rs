@@ -11,7 +11,7 @@ use docopt::Docopt;
 use iota::{
     Editor, Input,
     StandardMode, NormalMode,
-    RustboxFrontend, Mode
+    Mode
 };
 use rustbox::{InitOptions, RustBox, InputMode, OutputMode};
 static USAGE: &'static str = "
@@ -63,9 +63,6 @@ fn main() {
         Result::Err(e) => panic!("{}", e),
     };
 
-    // initialise the frontend
-    let frontend = RustboxFrontend::new(&rb);
-
     // initialise the editor mode
     let mode: Box<Mode> = if args.flag_vi {
         Box::new(NormalMode::new())
@@ -74,6 +71,6 @@ fn main() {
     };
 
     // start the editor
-    let mut editor = Editor::new(source, mode, frontend);
+    let mut editor = Editor::new(source, mode, rb);
     editor.start();
 }

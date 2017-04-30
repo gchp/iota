@@ -1,8 +1,8 @@
 use unicode_width::UnicodeWidthChar;
+use rustbox::RustBox;
 
 use uibuf::UIBuffer;
 use keyboard::Key;
-use frontends::Frontend;
 
 /// State for the overlay
 pub enum OverlayEvent {
@@ -44,12 +44,12 @@ pub enum Overlay {
 }
 
 impl Overlay {
-    pub fn draw<F: Frontend>(&self, frontend: &mut F, uibuf: &mut UIBuffer) {
+    pub fn draw(&self, rb: &mut RustBox, uibuf: &mut UIBuffer) {
         match *self {
             Overlay::SelectFile     {prefix, ref data, ..} |
             Overlay::Prompt         {prefix, ref data, ..} |
             Overlay::SavePrompt     {prefix, ref data, ..} => {
-                let height = frontend.get_window_height() - 1;
+                let height = rb.height() - 1;
                 let offset = prefix.len();
 
                 // draw the given prefix
@@ -62,22 +62,22 @@ impl Overlay {
                     uibuf.update_cell_content(index + offset, height, ch);
                 }
 
-                uibuf.draw_range(frontend, height, height+1);
+                uibuf.draw_range(rb, height, height+1);
             }
 
             _ => {}
         }
     }
 
-    pub fn draw_cursor<F: Frontend>(&mut self, frontend: &mut F) {
+    pub fn draw_cursor(&mut self, rb: &mut RustBox) {
         match *self {
             Overlay::SelectFile     {cursor_x, ..} |
             Overlay::Prompt         {cursor_x, ..} |
             Overlay::SavePrompt     {cursor_x, ..} => {
                 // Prompt is always on the bottom, so we can use the
                 // height given by the frontend here
-                let height = frontend.get_window_height() - 1;
-                frontend.draw_cursor(cursor_x as isize, height as isize)
+                let height = rb.height() - 1;
+                rb.set_cursor(cursor_x as isize, height as isize)
             },
 
             _ => {}

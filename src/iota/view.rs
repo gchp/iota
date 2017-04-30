@@ -7,6 +7,7 @@ use std::fs::{File, rename};
 use std::sync::{Mutex, Arc};
 use std::time::SystemTime;
 use std::rc::Rc;
+use rustbox::{Color, RustBox};
 
 use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
@@ -15,8 +16,7 @@ use unicode_width::UnicodeWidthChar;
 #[cfg(feature="syntax-highlighting")] use syntect::easy::HighlightLines;
 
 use buffer::{Buffer, Mark};
-use uibuf::{UIBuffer, CharColor};
-use frontends::Frontend;
+use uibuf::{UIBuffer};
 use overlay::{Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
@@ -164,13 +164,13 @@ impl View {
     /// Clear the buffer
     ///
     /// Fills every cell in the UIBuffer with the space (' ') char.
-    pub fn clear<T: Frontend>(&mut self, frontend: &mut T) {
+    pub fn clear(&mut self, rb: &mut RustBox) {
         self.uibuf.fill(' ');
-        self.uibuf.draw_everything(frontend);
+        self.uibuf.draw_everything(rb);
     }
 
     #[cfg(not(feature = "syntax-highlighting"))]
-    pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
+    pub fn draw(&mut self, rb: &mut RustBox) {
         {
             let buffer = self.buffer.lock().unwrap();
             let height = self.get_height() - 1;
@@ -186,19 +186,19 @@ impl View {
 
         }
         match self.overlay {
-            Overlay::None => self.draw_cursor(frontend),
+            Overlay::None => self.draw_cursor(rb),
             _ => {
-                self.overlay.draw(frontend, &mut self.uibuf);
-                self.overlay.draw_cursor(frontend);
+                self.overlay.draw(rb, &mut self.uibuf);
+                self.overlay.draw_cursor(rb);
             }
         }
-        self.draw_status(frontend);
-        self.uibuf.draw_everything(frontend);
+        self.draw_status(rb);
+        self.uibuf.draw_everything(rb);
     }
 
     #[cfg(feature = "syntax-highlighting")]
-    pub fn draw<T: Frontend>(&mut self, frontend: &mut T) {
-        self.clear(frontend);
+    pub fn draw(&mut self, rb: &mut RustBox) {
+        self.clear(rb);
         {
             let buffer = self.buffer.lock().unwrap();
             let height = self.get_height() - 1;
@@ -220,10 +220,10 @@ impl View {
                     for (style, text) in ranges {
                         let fg = format!("{0:02.x}{1:02.x}{2:02.x}",
                                          style.foreground.r, style.foreground.g, style.foreground.b);
-                        let fg = CharColor::Byte(utils::rgb_to_short(&*fg));
+                        let fg = Color::Byte(utils::rgb_to_short(&*fg) as u16);
                         let bg = format!("{0:02.x}{1:02.x}{2:02.x}",
                                          style.background.r, style.background.g, style.background.b);
-                        let bg = CharColor::Byte(utils::rgb_to_short(&*bg));
+                        let bg = Color::Byte(utils::rgb_to_short(&*bg) as u16);
 
                         for ch in text.chars().skip(self.left_col) {
                             match ch {
@@ -265,20 +265,20 @@ impl View {
             }
 
         }
-        
+
         match self.overlay {
-            Overlay::None => self.draw_cursor(frontend),
+            Overlay::None => self.draw_cursor(rb),
             _ => {
-                self.overlay.draw(frontend, &mut self.uibuf);
-                self.overlay.draw_cursor(frontend);
+                self.overlay.draw(rb, &mut self.uibuf);
+                self.overlay.draw_cursor(rb);
             }
         }
-        self.draw_status(frontend);
-        self.uibuf.draw_everything(frontend);
+        self.draw_status(rb);
+        self.uibuf.draw_everything(rb);
     }
 
     #[cfg_attr(feature="clippy", allow(needless_range_loop))]
-    fn draw_status<T: Frontend>(&mut self, frontend: &mut T) {
+    fn draw_status(&mut self, rb: &mut RustBox) {
         let buffer = self.buffer.lock().unwrap();
         let buffer_status = buffer.status_text();
         let mut cursor_status = buffer.get_mark_display_coords(self.cursor).unwrap_or((0,0));
@@ -293,13 +293,13 @@ impl View {
             let ch: char = if index < status_text_len {
                 status_text[index] as char
             } else { ' ' };
-            self.uibuf.update_cell(index, height, ch, CharColor::Black, CharColor::DarkGray);
+            self.uibuf.update_cell(index, height, ch, Color::Black, Color::Byte(19));
         }
 
         if buffer.dirty {
             let data = ['[', '*', ']'];
             for (idx, ch) in data.iter().enumerate() {
-                self.uibuf.update_cell(status_text_len + idx + 1, height, *ch, CharColor::Black, CharColor::Red);
+                self.uibuf.update_cell(status_text_len + idx + 1, height, *ch, Color::Black, Color::Red);
             }
         }
         if let Some((message, _time)) = self.message {
@@ -307,14 +307,14 @@ impl View {
                 self.uibuf.update_cell_content(offset, height + 1, ch);
             }
         }
-        self.uibuf.draw_range(frontend, height, height+1);
+        self.uibuf.draw_range(rb, height, height+1);
     }
 
-    fn draw_cursor<T: Frontend>(&mut self, frontend: &mut T) {
+    fn draw_cursor(&mut self, rb: &mut RustBox) {
         let buffer = self.buffer.lock().unwrap();
         if let Some(top_line) = buffer.get_mark_display_coords(self.top_line) {
             if let Some((x, y)) = buffer.get_mark_display_coords(self.cursor) {
-                frontend.draw_cursor((x - self.left_col) as isize, y as isize - top_line.1 as isize);
+                rb.set_cursor((x - self.left_col) as isize, y as isize - top_line.1 as isize);
             }
         }
     }

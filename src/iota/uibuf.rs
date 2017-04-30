@@ -1,34 +1,11 @@
-use frontends::Frontend;
+use rustbox::RustBox;
+use rustbox::Style;
+use rustbox::Color;
 
 pub struct UIBuffer {
     width: usize,
     height: usize,
     rows: Vec<Vec<Cell>>
-}
-
-#[derive(Copy, Clone, PartialEq)]
-pub enum CharStyle {
-    Normal,
-    // TODO: add other styles
-    // Bold,
-    // Underline,
-}
-
-#[derive(Copy, Clone, PartialEq)]
-pub enum CharColor {
-    Blue,
-    Black,
-    Magenta,
-    Green,
-    Yellow,
-    White,
-    Orange,
-    Gray,
-    Red,
-    Cyan,
-    DarkGray,
-
-    Byte(usize),
 }
 
 impl UIBuffer {
@@ -42,19 +19,20 @@ impl UIBuffer {
         }
     }
 
-    pub fn draw_range<T: Frontend>(&mut self, frontend: &mut T, start: usize, stop: usize) {
+    pub fn draw_range(&mut self, rb: &mut RustBox, start: usize, stop: usize) {
         let rows = &mut self.rows[start..stop];
         for row in rows.iter_mut() {
             for cell in row.iter_mut().filter(|cell| cell.dirty) {
-                frontend.draw_char(cell.x, cell.y, cell.ch, cell.fg, cell.bg, CharStyle::Normal);
+                // self.rb.print_char(offset, linenum, style, fg, bg, ch);
+                rb.print_char(cell.x, cell.y, Style::empty(), cell.fg, cell.bg, cell.ch);
                 cell.dirty = false;
             }
         }
     }
 
-    pub fn draw_everything<T: Frontend>(&mut self, frontend: &mut T) {
+    pub fn draw_everything(&mut self, rb: &mut RustBox) {
         let height = self.height;
-        self.draw_range(frontend, 0, height);
+        self.draw_range(rb, 0, height);
     }
 
     pub fn get_width(&self) -> usize {
@@ -80,7 +58,7 @@ impl UIBuffer {
     }
 
     /// Update the `ch`, `fg`, and `bg` attributes of an indivudual cell
-    pub fn update_cell(&mut self, cell_num: usize, row_num: usize, ch: char, fg: CharColor, bg: CharColor) {
+    pub fn update_cell(&mut self, cell_num: usize, row_num: usize, ch: char, fg: Color, bg: Color) {
         self.get_cell_mut(cell_num, row_num).set(ch, fg, bg);
     }
 
@@ -91,8 +69,8 @@ impl UIBuffer {
 
 
 pub struct Cell {
-    pub bg: CharColor,
-    pub fg: CharColor,
+    pub bg: Color,
+    pub fg: Color,
     pub ch: char,
     pub x: usize,
     pub y: usize,
@@ -103,8 +81,8 @@ pub struct Cell {
 impl Cell {
     pub fn new() -> Cell {
         Cell {
-            bg: CharColor::Black,
-            fg: CharColor::White,
+            bg: Color::Black,
+            fg: Color::White,
             ch: ' ',
             x: 0,
             y: 0,
@@ -119,7 +97,7 @@ impl Cell {
         }
     }
 
-    pub fn set(&mut self, ch: char, fg: CharColor, bg: CharColor) {
+    pub fn set(&mut self, ch: char, fg: Color, bg: Color) {
         if self.ch != ch || self.fg != fg || self.bg != bg {
             self.dirty = true;
         }
@@ -150,7 +128,6 @@ impl Cell {
 #[cfg(test)]
 mod tests {
     use uibuf::UIBuffer;
-    use uibuf::CharColor;
 
     fn setup_uibuf() -> UIBuffer {
         UIBuffer::new(50, 50)
@@ -190,16 +167,11 @@ mod tests {
         let cell_num = 10;
         let row_num = 0;
         let ch = 'q';
-        let fg = CharColor::White;
-        let bg = CharColor::Blue;
 
         uibuf.update_cell(cell_num, row_num, ch, fg, bg);
 
         let cell = &uibuf.rows[row_num][cell_num];
         assert_eq!(cell.ch, ch);
-
-        // assert_eq!(cell.fg, fg);
-        // assert_eq!(cell.bg, bg);
     }
 
 }

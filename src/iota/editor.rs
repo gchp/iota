@@ -4,14 +4,15 @@ use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc::channel;
 use std::env;
 use std::rc::Rc;
+use std::char;
 
+use rustbox::{RustBox, Event};
 #[cfg(feature="syntax-highlighting")] use syntect::highlighting::ThemeSet;
 #[cfg(feature="syntax-highlighting")] use syntect::parsing::SyntaxSet;
 
 use input::Input;
 use keyboard::Key;
 use view::View;
-use frontends::{Frontend, EditorEvent};
 use modes::{Mode, ModeType, InsertMode, NormalMode};
 use overlay::{Overlay, OverlayEvent};
 use buffer::Buffer;
@@ -22,24 +23,24 @@ use command::{Action, BuilderEvent, Operation, Instruction};
 /// The main Editor structure
 ///
 /// This is the top-most structure in Iota.
-pub struct Editor<'e, T: Frontend> {
+pub struct Editor<'e> {
     buffers: Vec<Arc<Mutex<Buffer>>>,
     view: View,
     running: bool,
-    frontend: T,
+    rb: RustBox,
     mode: Box<Mode + 'e>,
 
     command_queue: Receiver<Command>,
     command_sender: Sender<Command>,
 }
 
-impl<'e, T: Frontend> Editor<'e, T> {
+impl<'e> Editor<'e> {
 
     /// Create a new Editor instance from the given source
     #[cfg(feature="syntax-highlighting")]
-    pub fn new(source: Input, mode: Box<Mode + 'e>, frontend: T) -> Editor<'e, T> {
-        let height = frontend.get_window_height();
-        let width = frontend.get_window_width();
+    pub fn new(source: Input, mode: Box<Mode + 'e>, rb: RustBox) -> Editor<'e> {
+        let height = rb.height();
+        let width = rb.width();
 
         let (snd, recv) = channel();
 
@@ -82,7 +83,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
             buffers: buffers,
             view: view,
             running: true,
-            frontend: frontend,
+            rb: rb,
             mode: mode,
 
             command_queue: recv,
@@ -92,9 +93,9 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
     /// Create a new Editor instance from the given source
     #[cfg(not(feature="syntax-highlighting"))]
-    pub fn new(source: Input, mode: Box<Mode + 'e>, frontend: T) -> Editor<'e, T> {
-        let height = frontend.get_window_height();
-        let width = frontend.get_window_width();
+    pub fn new(source: Input, mode: Box<Mode + 'e>, rb: RustBox) -> Editor<'e> {
+        let height = rb.height();
+        let width = rb.width();
 
         let (snd, recv) = channel();
 
@@ -108,7 +109,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
             buffers: buffers,
             view: view,
             running: true,
-            frontend: frontend,
+            rb: rb,
             mode: mode,
 
             command_queue: recv,
@@ -151,7 +152,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
         if remove_overlay {
             self.view.overlay = Overlay::None;
-            self.view.clear(&mut self.frontend);
+            self.view.clear(&mut self.rb);
         }
 
         if let BuilderEvent::Complete(c) = command {
@@ -200,7 +201,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
                         let buffer = Arc::new(Mutex::new(Buffer::from(path)));
                         self.buffers.push(buffer.clone());
                         self.view.set_buffer(buffer.clone());
-                        self.view.clear(&mut self.frontend);
+                        self.view.clear(&mut self.rb);
                         BuilderEvent::Complete(Command::noop())
                     }
 
@@ -220,7 +221,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
 
     /// Draw the current view to the frontend
     fn draw(&mut self) {
-        self.view.draw(&mut self.frontend);
+        self.view.draw(&mut self.rb);
     }
 
     /// Handle the given command, performing the associated action
@@ -264,7 +265,7 @@ impl<'e, T: Frontend> Editor<'e, T> {
             }
             Instruction::SwitchToLastBuffer => {
                 self.view.switch_last_buffer();
-                self.view.clear(&mut self.frontend);
+                self.view.clear(&mut self.rb);
             }
             Instruction::ShowMessage(msg) => {
                 self.view.show_message(msg)
@@ -300,12 +301,18 @@ impl<'e, T: Frontend> Editor<'e, T> {
     pub fn start(&mut self) {
         while self.running {
             self.draw();
-            self.frontend.present();
+            self.rb.present();
             self.view.maybe_clear_message();
 
-            match self.frontend.poll_event() {
-                Some(EditorEvent::KeyEvent(key))         => self.handle_key_event(key),
-                Some(EditorEvent::Resize(width, height)) => self.handle_resize_event(width, height),
+            match self.rb.poll_event(true) {
+                Ok(Event::KeyEventRaw(_, key, ch)) => {
+                    let k = match key {
+                        0 => char::from_u32(ch).map(Key::Char),
+                        a => Key::from_special_code(a),
+                    };
+                    self.handle_key_event(k)
+                },
+                Ok(Event::ResizeEvent(width, height)) => self.handle_resize_event(width as usize, height as usize),
 
                 _ => {}
             }
