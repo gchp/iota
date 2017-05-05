@@ -1,7 +1,6 @@
 use unicode_width::UnicodeWidthChar;
-use rustbox::RustBox;
+use rustbox::{Style, Color, RustBox};
 
-use uibuf::UIBuffer;
 use keyboard::Key;
 
 /// State for the overlay
@@ -44,7 +43,7 @@ pub enum Overlay {
 }
 
 impl Overlay {
-    pub fn draw(&self, rb: &mut RustBox, uibuf: &mut UIBuffer) {
+    pub fn draw(&self, rb: &mut RustBox) {
         match *self {
             Overlay::SelectFile     {prefix, ref data, ..} |
             Overlay::Prompt         {prefix, ref data, ..} |
@@ -54,15 +53,13 @@ impl Overlay {
 
                 // draw the given prefix
                 for (index, ch) in prefix.chars().enumerate() {
-                    uibuf.update_cell_content(index, height, ch);
+                    rb.print_char(index, height, Style::empty(), Color::White, Color::Black, ch);
                 }
 
                 // draw the overlay data
                 for (index, ch) in data.chars().enumerate() {
-                    uibuf.update_cell_content(index + offset, height, ch);
+                    rb.print_char(index + offset, height, Style::empty(), Color::White, Color::Black, ch);
                 }
-
-                uibuf.draw_range(rb, height, height+1);
             }
 
             _ => {}
