@@ -22,7 +22,7 @@ impl UIBuffer {
     pub fn draw_range(&mut self, rb: &mut RustBox, start: usize, stop: usize) {
         let rows = &mut self.rows[start..stop];
         for row in rows.iter_mut() {
-            for cell in row.iter_mut().filter(|cell| cell.dirty) {
+            for cell in row.iter_mut() {
                 // self.rb.print_char(offset, linenum, style, fg, bg, ch);
                 rb.print_char(cell.x, cell.y, Style::empty(), cell.fg, cell.bg, cell.ch);
                 cell.dirty = false;

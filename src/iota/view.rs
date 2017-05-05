@@ -7,7 +7,7 @@ use std::fs::{File, rename};
 use std::sync::{Mutex, Arc};
 use std::time::SystemTime;
 use std::rc::Rc;
-use rustbox::{Color, RustBox};
+use rustbox::{Color, RustBox, Style as RustBoxStyle};
 
 use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
@@ -16,7 +16,6 @@ use unicode_width::UnicodeWidthChar;
 #[cfg(feature="syntax-highlighting")] use syntect::easy::HighlightLines;
 
 use buffer::{Buffer, Mark};
-use uibuf::{UIBuffer};
 use overlay::{Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
@@ -33,6 +32,9 @@ pub struct View {
     pub last_buffer: Option<Arc<Mutex<Buffer>>>,
     pub overlay: Overlay,
 
+    height: usize,
+    width: usize,
+
     /// First character of the top line to be displayed
     top_line: Mark,
 
@@ -41,9 +43,6 @@ pub struct View {
 
     /// The current View's cursor - a reference into the Buffer
     cursor: Mark,
-
-    /// The UIBuffer to which the View is drawn
-    uibuf: UIBuffer,
 
     /// Number of lines from the top/bottom of the View after which vertical
     /// scrolling begins.
@@ -80,12 +79,13 @@ impl View {
             top_line: top_line,
             left_col: 0,
             cursor: cursor,
-            uibuf: UIBuffer::new(width, height),
             overlay: Overlay::None,
             threshold: 5,
             message: None,
             themes: themes,
             theme_name: theme_name,
+            height: height,
+            width: width,
         }
     }
 
@@ -107,10 +107,11 @@ impl View {
             top_line: top_line,
             left_col: 0,
             cursor: cursor,
-            uibuf: UIBuffer::new(width, height),
             overlay: Overlay::None,
             threshold: 5,
             message: None,
+            height: height,
+            width: width,
         };
     }
 
@@ -142,31 +143,31 @@ impl View {
     ///
     /// This is the height of the UIBuffer minus the status bar height.
     pub fn get_height(&self) -> usize {
-        let status_bar_height = 1;
-        let uibuf_height = self.uibuf.get_height();
-
-        uibuf_height - status_bar_height
+        self.height - 1
     }
 
     /// Get the width of the View.
     pub fn get_width(&self) -> usize {
-        self.uibuf.get_width()
+        self.width
     }
 
     /// Resize the view
     ///
     /// This involves simply changing the size of the associated UIBuffer
     pub fn resize(&mut self, width: usize, height: usize) {
-        let uibuf = UIBuffer::new(width, height);
-        self.uibuf = uibuf;
+        self.height = height;
+        self.width = width;
     }
 
     /// Clear the buffer
     ///
     /// Fills every cell in the UIBuffer with the space (' ') char.
     pub fn clear(&mut self, rb: &mut RustBox) {
-        self.uibuf.fill(' ');
-        self.uibuf.draw_everything(rb);
+        for row in 0..self.height {
+            for col in 0..self.width {
+                rb.print_char(col, row, RustBoxStyle::empty(), Color::White, Color::Black, ' ');
+            }
+        }
     }
 
     #[cfg(not(feature = "syntax-highlighting"))]
@@ -181,19 +182,18 @@ impl View {
             let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
             for y_position in 0..height {
                 let line = lines.next().unwrap_or_else(Vec::new);
-                draw_line(&mut self.uibuf, &line, y_position, self.left_col);
+                draw_line(rb, &line, y_position, self.left_col);
             }
 
         }
         match self.overlay {
             Overlay::None => self.draw_cursor(rb),
             _ => {
-                self.overlay.draw(rb, &mut self.uibuf);
+                self.overlay.draw(rb);
                 self.overlay.draw_cursor(rb);
             }
         }
         self.draw_status(rb);
-        self.uibuf.draw_everything(rb);
     }
 
     #[cfg(feature = "syntax-highlighting")]
@@ -202,6 +202,7 @@ impl View {
         {
             let buffer = self.buffer.lock().unwrap();
             let height = self.get_height() - 1;
+            let width = self.get_width() - 1;
 
             // FIXME: don't use unwrap here
             //        This will fail if for some reason the buffer doesnt have
@@ -211,7 +212,6 @@ impl View {
                 let line = lines.next().unwrap_or_else(Vec::new);
                 if let Some(ref syntax) = buffer.syntax {
                     let idx = y_position;
-                    let width = self.uibuf.get_width() - 1;
                     let line_str = String::from_utf8(line).unwrap();
                     let mut h = HighlightLines::new(syntax, &self.themes.themes[&*self.theme_name]);
                     let ranges: Vec<(Style, &str)> = h.highlight(&line_str);
@@ -230,14 +230,14 @@ impl View {
                                 '\t' => {
                                     let w = 4 - x % 4;
                                     for _ in 0..w {
-                                        self.uibuf.update_cell(x, idx, ' ', fg, bg);
+                                        rb.print_char(x, idx, RustBoxStyle::empty(), fg, bg, ' ');
                                         x += 1;
                                     }
                                 }
                                 '\n' => {
                                     // Replace any cells after end of line with ' '
                                     while x <= width {
-                                        self.uibuf.update_cell(x, idx, ' ', fg, bg);
+                                        rb.print_char(x, idx, RustBoxStyle::empty(), fg, bg, ' ');
                                         x += 1;
                                     }
                                 }
@@ -245,7 +245,7 @@ impl View {
                                     if x >= width {
                                         break;
                                     }
-                                    self.uibuf.update_cell(x, idx, ch, fg, bg);
+                                    rb.print_char(x, idx, RustBoxStyle::empty(), fg, bg, ch);
                                     x += UnicodeWidthChar::width(ch).unwrap_or(1);
                                 }
                             }
@@ -258,9 +258,9 @@ impl View {
                     }
                     // If the line is too long to fit on the screen, show an indicator
                     let indicator = if line_str.len() > width + self.left_col { '→' } else { ' ' };
-                    self.uibuf.update_cell_content(width, idx, indicator);
+                    rb.print_char(width, idx, RustBoxStyle::empty(), Color::White, Color::Black, indicator);
                 } else {
-                    draw_line(&mut self.uibuf, &line, y_position, self.left_col);
+                    draw_line(rb, &line, y_position, self.left_col);
                 }
             }
 
@@ -269,12 +269,11 @@ impl View {
         match self.overlay {
             Overlay::None => self.draw_cursor(rb),
             _ => {
-                self.overlay.draw(rb, &mut self.uibuf);
+                self.overlay.draw(rb);
                 self.overlay.draw_cursor(rb);
             }
         }
         self.draw_status(rb);
-        self.uibuf.draw_everything(rb);
     }
 
     #[cfg_attr(feature="clippy", allow(needless_range_loop))]
@@ -293,21 +292,21 @@ impl View {
             let ch: char = if index < status_text_len {
                 status_text[index] as char
             } else { ' ' };
-            self.uibuf.update_cell(index, height, ch, Color::Black, Color::Byte(19));
+            rb.print_char(index, height, RustBoxStyle::empty(), Color::Black, Color::Byte(19), ch);
+
         }
 
         if buffer.dirty {
             let data = ['[', '*', ']'];
             for (idx, ch) in data.iter().enumerate() {
-                self.uibuf.update_cell(status_text_len + idx + 1, height, *ch, Color::Black, Color::Red);
+                rb.print_char(status_text_len + idx + 1, height, RustBoxStyle::empty(), Color::Black, Color::Red, *ch);
             }
         }
         if let Some((message, _time)) = self.message {
             for (offset, ch) in message.chars().enumerate() {
-                self.uibuf.update_cell_content(offset, height + 1, ch);
+                rb.print_char(offset, height + 1, RustBoxStyle::empty(), Color::White, Color::Black, ch);
             }
         }
-        self.uibuf.draw_range(rb, height, height+1);
     }
 
     fn draw_cursor(&mut self, rb: &mut RustBox) {
@@ -531,8 +530,8 @@ impl View {
 
 }
 
-pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
-    let width = buf.get_width() - 1;
+pub fn draw_line(rb: &mut RustBox, line: &[u8], idx: usize, left: usize) {
+    let width = rb.width() - 1;
     let mut x = 0;
 
     for ch in line.iter().skip(left) {
@@ -541,13 +540,13 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
             '\t' => {
                 let w = 4 - x % 4;
                 for _ in 0..w {
-                    buf.update_cell_content(x, idx, ' ');
+                    rb.print_char(x, idx, RustBoxStyle::empty(), Color::White, Color::Black, ' ');
                     x += 1;
                 }
             }
             '\n' => {}
             _ => {
-                buf.update_cell_content(x, idx, ch);
+                rb.print_char(x, idx, RustBoxStyle::empty(), Color::White, Color::Black, ch);
                 x += UnicodeWidthChar::width(ch).unwrap_or(1);
             }
         }
@@ -558,13 +557,13 @@ pub fn draw_line(buf: &mut UIBuffer, line: &[u8], idx: usize, left: usize) {
 
     // Replace any cells after end of line with ' '
     while x < width {
-        buf.update_cell_content(x, idx, ' ');
+        rb.print_char(x, idx, RustBoxStyle::empty(), Color::White, Color::Black, ' ');
         x += 1;
     }
 
     // If the line is too long to fit on the screen, show an indicator
     let indicator = if line.len() > width + left { '→' } else { ' ' };
-    buf.update_cell_content(width, idx, indicator);
+    rb.print_char(width, idx, RustBoxStyle::empty(), Color::White, Color::Black, indicator);
 }
 
 #[cfg(test)]

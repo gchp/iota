@@ -29,7 +29,6 @@ mod editor;
 mod keyboard;
 mod keymap;
 mod view;
-mod uibuf;
 mod log;
 mod modes;
 mod overlay;
