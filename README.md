@@ -45,40 +45,13 @@ integration with Rust tooling. This could also be applied to other languages too
 
 ## Building
 
-Clone the project and run `make` or `cargo build --release`.
+Clone the project and run `cargo build --release`.
 
 **NOTE:** Iota needs to be built using the nightly toolchain for now, not stable.
 [Rustup](https://github.com/rust-lang-nursery/rustup.rs) is very useful for managing
 multiple rust versions.
 
 Once you have the source, run:
-
-```bash
-$ ./configure
-$ make
-```
-
-This will build a "release" version of iota using cargo. To configure a debug
-build you can run:
-
-```bash
-$ ./configure --debug
-$ make
-```
-
-You can also enable additional features using the configure script. Right now
-the only option available is for enabling syntax highlighting. This will be
-default in the future, but is optional for now while it is being finalized:
-
-```bash
-$ ./configure --enable-syntax-highlighting
-$ make
-```
-
-The configure script & Makefile are here just for convenience.You can also use
-cargo to build the project directly rather than using the configure & make combo.
-I find it easier to "configure and make" however as it saves having to explicitly
-type my cargo arguments every time.
 
 ## Usage
 
