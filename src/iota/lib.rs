@@ -8,9 +8,7 @@
 #![cfg_attr(feature="clippy", plugin(clippy))]
 #![warn(missing_docs)]
 
-#[cfg(feature="syntax-highlighting")] extern crate syntect;
-
-
+extern crate syntect;
 extern crate rustbox;
 extern crate gapbuffer;
 extern crate tempdir;
@@ -18,7 +16,7 @@ extern crate regex;
 extern crate unicode_width;
 #[macro_use] extern crate lazy_static;
 
-pub use editor::Editor;
+pub use editor::{Editor, Options};
 pub use input::Input;
 pub use modes::{StandardMode, NormalMode, Mode};
 

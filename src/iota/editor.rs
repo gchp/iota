@@ -7,8 +7,8 @@ use std::rc::Rc;
 use std::char;
 
 use rustbox::{RustBox, Event};
-#[cfg(feature="syntax-highlighting")] use syntect::highlighting::ThemeSet;
-#[cfg(feature="syntax-highlighting")] use syntect::parsing::SyntaxSet;
+use syntect::highlighting::ThemeSet;
+use syntect::parsing::SyntaxSet;
 
 use input::Input;
 use keyboard::Key;
@@ -20,6 +20,19 @@ use command::Command;
 use command::{Action, BuilderEvent, Operation, Instruction};
 
 
+pub struct Options {
+    pub syntax_enabled: bool,
+}
+
+impl Default for Options {
+    fn default() -> Options {
+        Options {
+            syntax_enabled: false,
+        }
+    }
+}
+
+
 /// The main Editor structure
 ///
 /// This is the top-most structure in Iota.
@@ -29,6 +42,7 @@ pub struct Editor<'e> {
     running: bool,
     rb: RustBox,
     mode: Box<Mode + 'e>,
+    options: Options,
 
     command_queue: Receiver<Command>,
     command_sender: Sender<Command>,
@@ -37,8 +51,7 @@ pub struct Editor<'e> {
 impl<'e> Editor<'e> {
 
     /// Create a new Editor instance from the given source
-    #[cfg(feature="syntax-highlighting")]
-    pub fn new(source: Input, mode: Box<Mode + 'e>, rb: RustBox) -> Editor<'e> {
+    pub fn new(source: Input, mode: Box<Mode + 'e>, rb: RustBox, opts: Options) -> Editor<'e> {
         let height = rb.height();
         let width = rb.width();
 
@@ -85,32 +98,7 @@ impl<'e> Editor<'e> {
             running: true,
             rb: rb,
             mode: mode,
-
-            command_queue: recv,
-            command_sender: snd,
-        }
-    }
-
-    /// Create a new Editor instance from the given source
-    #[cfg(not(feature="syntax-highlighting"))]
-    pub fn new(source: Input, mode: Box<Mode + 'e>, rb: RustBox) -> Editor<'e> {
-        let height = rb.height();
-        let width = rb.width();
-
-        let (snd, recv) = channel();
-
-        let mut buffers = Vec::new();
-
-        let buffer = Buffer::from(source);
-        buffers.push(Arc::new(Mutex::new(buffer)));
-
-        let view = View::new(buffers[0].clone(), width, height);
-        Editor {
-            buffers: buffers,
-            view: view,
-            running: true,
-            rb: rb,
-            mode: mode,
+            options: opts,
 
             command_queue: recv,
             command_sender: snd,
@@ -221,7 +209,7 @@ impl<'e> Editor<'e> {
 
     /// Draw the current view to the frontend
     fn draw(&mut self) {
-        self.view.draw(&mut self.rb);
+        self.view.draw(&mut self.rb, self.options.syntax_enabled);
     }
 
     /// Handle the given command, performing the associated action

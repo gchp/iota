@@ -9,9 +9,8 @@ use std::convert::From;
 
 // external dependencies
 use gapbuffer::GapBuffer;
-
-#[cfg(feature="syntax-highlighting")] use syntect::parsing::syntax_definition::SyntaxDefinition;
-#[cfg(feature="syntax-highlighting")] use syntect::parsing::SyntaxSet;
+use syntect::parsing::syntax_definition::SyntaxDefinition;
+use syntect::parsing::SyntaxSet;
 
 // local dependencies
 use log::{Log, Change, LogEntry};
@@ -77,7 +76,6 @@ pub struct Buffer {
     /// Location on disk where the current buffer should be written
     pub file_path: Option<PathBuf>,
 
-    #[cfg(feature="syntax-highlighting")]
     pub syntax: Option<SyntaxDefinition>,
 
     /// Whether or not the Buffer has unsaved changes
@@ -88,18 +86,8 @@ pub struct Buffer {
 impl Buffer {
     /// Constructor for empty buffer.
     pub fn new() -> Buffer {
-        #[cfg(feature="syntax-highlighting")]
         let buffer = Buffer {
             syntax: None,
-            file_path: None,
-            text: GapBuffer::new(),
-            marks: HashMap::new(),
-            log: Log::new(),
-            dirty: false,
-        };
-
-        #[cfg(not(feature="syntax-highlighting"))]
-        let buffer = Buffer {
             file_path: None,
             text: GapBuffer::new(),
             marks: HashMap::new(),
@@ -110,7 +98,6 @@ impl Buffer {
         buffer
     }
 
-    #[cfg(feature="syntax-highlighting")]
     pub fn new_with_syntax(path: PathBuf, ps: &SyntaxSet) -> Buffer {
         let syntax_instance = match path.extension() {
             Some(e) => {

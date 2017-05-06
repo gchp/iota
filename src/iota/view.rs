@@ -11,9 +11,8 @@ use rustbox::{Color, RustBox, Style as RustBoxStyle};
 
 use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
-
-#[cfg(feature="syntax-highlighting")] use syntect::highlighting::{ThemeSet, Style};
-#[cfg(feature="syntax-highlighting")] use syntect::easy::HighlightLines;
+use syntect::highlighting::{ThemeSet, Style};
+use syntect::easy::HighlightLines;
 
 use buffer::{Buffer, Mark};
 use overlay::{Overlay, OverlayType};
@@ -52,16 +51,13 @@ pub struct View {
     /// was displayed.
     message: Option<(&'static str, SystemTime)>,
 
-    #[cfg(feature="syntax-highlighting")]
     themes: Rc<ThemeSet>,
 
-    #[cfg(feature="syntax-highlighting")]
     theme_name: String
 }
 
 impl View {
 
-    #[cfg(feature="syntax-highlighting")]
     pub fn new(buffer: Arc<Mutex<Buffer>>, themes: Rc<ThemeSet>, theme_name: String, width: usize, height: usize) -> View {
         let cursor = Mark::Cursor(0);
         let top_line = Mark::DisplayMark(0);
@@ -87,32 +83,6 @@ impl View {
             height: height,
             width: width,
         }
-    }
-
-    #[cfg(not(feature="syntax-highlighting"))]
-    pub fn new(buffer: Arc<Mutex<Buffer>>, width: usize, height: usize) -> View {
-        let cursor = Mark::Cursor(0);
-        let top_line = Mark::DisplayMark(0);
-
-        {
-            let mut b = buffer.lock().unwrap();
-
-            b.set_mark(cursor, 0);
-            b.set_mark(top_line, 0);
-        }
-
-        return View {
-            buffer: buffer,
-            last_buffer: None,
-            top_line: top_line,
-            left_col: 0,
-            cursor: cursor,
-            overlay: Overlay::None,
-            threshold: 5,
-            message: None,
-            height: height,
-            width: width,
-        };
     }
 
     pub fn set_buffer(&mut self, buffer: Arc<Mutex<Buffer>>) {
@@ -170,34 +140,7 @@ impl View {
         }
     }
 
-    #[cfg(not(feature = "syntax-highlighting"))]
-    pub fn draw(&mut self, rb: &mut RustBox) {
-        {
-            let buffer = self.buffer.lock().unwrap();
-            let height = self.get_height() - 1;
-
-            // FIXME: don't use unwrap here
-            //        This will fail if for some reason the buffer doesnt have
-            //        the top_line mark
-            let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
-            for y_position in 0..height {
-                let line = lines.next().unwrap_or_else(Vec::new);
-                draw_line(rb, &line, y_position, self.left_col);
-            }
-
-        }
-        match self.overlay {
-            Overlay::None => self.draw_cursor(rb),
-            _ => {
-                self.overlay.draw(rb);
-                self.overlay.draw_cursor(rb);
-            }
-        }
-        self.draw_status(rb);
-    }
-
-    #[cfg(feature = "syntax-highlighting")]
-    pub fn draw(&mut self, rb: &mut RustBox) {
+    pub fn draw(&mut self, rb: &mut RustBox, syntax_enabled: bool) {
         self.clear(rb);
         {
             let buffer = self.buffer.lock().unwrap();
@@ -210,55 +153,59 @@ impl View {
             let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
             for y_position in 0..height {
                 let line = lines.next().unwrap_or_else(Vec::new);
-                if let Some(ref syntax) = buffer.syntax {
-                    let idx = y_position;
-                    let line_str = String::from_utf8(line).unwrap();
-                    let mut h = HighlightLines::new(syntax, &self.themes.themes[&*self.theme_name]);
-                    let ranges: Vec<(Style, &str)> = h.highlight(&line_str);
-                    let mut x = 0;
+                if syntax_enabled {
+                    if let Some(ref syntax) = buffer.syntax {
+                        let idx = y_position;
+                        let line_str = String::from_utf8(line).unwrap();
+                        let mut h = HighlightLines::new(syntax, &self.themes.themes[&*self.theme_name]);
+                        let ranges: Vec<(Style, &str)> = h.highlight(&line_str);
+                        let mut x = 0;
 
-                    for (style, text) in ranges {
-                        let fg = format!("{0:02.x}{1:02.x}{2:02.x}",
-                                         style.foreground.r, style.foreground.g, style.foreground.b);
-                        let fg = Color::Byte(utils::rgb_to_short(&*fg) as u16);
-                        let bg = format!("{0:02.x}{1:02.x}{2:02.x}",
-                                         style.background.r, style.background.g, style.background.b);
-                        let bg = Color::Byte(utils::rgb_to_short(&*bg) as u16);
+                        for (style, text) in ranges {
+                            let fg = format!("{0:02.x}{1:02.x}{2:02.x}",
+                                             style.foreground.r, style.foreground.g, style.foreground.b);
+                            let fg = Color::Byte(utils::rgb_to_short(&*fg) as u16);
+                            let bg = format!("{0:02.x}{1:02.x}{2:02.x}",
+                                             style.background.r, style.background.g, style.background.b);
+                            let bg = Color::Byte(utils::rgb_to_short(&*bg) as u16);
 
-                        for ch in text.chars().skip(self.left_col) {
-                            match ch {
-                                '\t' => {
-                                    let w = 4 - x % 4;
-                                    for _ in 0..w {
-                                        rb.print_char(x, idx, RustBoxStyle::empty(), fg, bg, ' ');
-                                        x += 1;
+                            for ch in text.chars().skip(self.left_col) {
+                                match ch {
+                                    '\t' => {
+                                        let w = 4 - x % 4;
+                                        for _ in 0..w {
+                                            rb.print_char(x, idx, RustBoxStyle::empty(), fg, bg, ' ');
+                                            x += 1;
+                                        }
+                                    }
+                                    '\n' => {
+                                        // Replace any cells after end of line with ' '
+                                        while x <= width {
+                                            rb.print_char(x, idx, RustBoxStyle::empty(), fg, bg, ' ');
+                                            x += 1;
+                                        }
+                                    }
+                                    _ => {
+                                        if x >= width {
+                                            break;
+                                        }
+                                        rb.print_char(x, idx, RustBoxStyle::empty(), fg, bg, ch);
+                                        x += UnicodeWidthChar::width(ch).unwrap_or(1);
                                     }
                                 }
-                                '\n' => {
-                                    // Replace any cells after end of line with ' '
-                                    while x <= width {
-                                        rb.print_char(x, idx, RustBoxStyle::empty(), fg, bg, ' ');
-                                        x += 1;
-                                    }
-                                }
-                                _ => {
-                                    if x >= width {
-                                        break;
-                                    }
-                                    rb.print_char(x, idx, RustBoxStyle::empty(), fg, bg, ch);
-                                    x += UnicodeWidthChar::width(ch).unwrap_or(1);
+                                if x >= width {
+                                    break;
                                 }
                             }
-                            if x >= width {
-                                break;
-                            }
+
+
                         }
-
-
+                        // If the line is too long to fit on the screen, show an indicator
+                        let indicator = if line_str.len() > width + self.left_col { '→' } else { ' ' };
+                        rb.print_char(width, idx, RustBoxStyle::empty(), Color::White, Color::Black, indicator);
+                    } else {
+                        draw_line(rb, &line, y_position, self.left_col);
                     }
-                    // If the line is too long to fit on the screen, show an indicator
-                    let indicator = if line_str.len() > width + self.left_col { '→' } else { ' ' };
-                    rb.print_char(width, idx, RustBoxStyle::empty(), Color::White, Color::Black, indicator);
                 } else {
                     draw_line(rb, &line, y_position, self.left_col);
                 }
