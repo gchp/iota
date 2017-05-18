@@ -517,13 +517,15 @@ pub fn draw_line(rb: &mut RustBox, line: &[u8], idx: usize, left: usize) {
 mod tests {
 
     use std::sync::{Arc, Mutex};
+    use std::rc::Rc;
 
     use view::View;
     use buffer::Buffer;
+    use syntect::highlighting::ThemeSet;
 
     fn setup_view(testcase: &'static str) -> View {
         let buffer = Arc::new(Mutex::new(Buffer::new()));
-        let mut view = View::new(buffer.clone(), 50, 50);
+        let mut view = View::new(buffer.clone(), Rc::new(ThemeSet::load_defaults()), "base16-ocean.dark".to_string(), 50, 50);
         for ch in testcase.chars() {
             view.insert_char(ch);
         }
