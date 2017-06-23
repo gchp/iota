@@ -517,13 +517,18 @@ pub fn draw_line(rb: &mut RustBox, line: &[u8], idx: usize, left: usize) {
 mod tests {
 
     use std::sync::{Arc, Mutex};
+    use std::rc::Rc;
+
+    use syntect::highlighting::ThemeSet;
 
     use view::View;
     use buffer::Buffer;
 
     fn setup_view(testcase: &'static str) -> View {
+        let theme_name = String::from("base16-eighties.dark");
+        let theme_set = Rc::new(ThemeSet::load_defaults());
         let buffer = Arc::new(Mutex::new(Buffer::new()));
-        let mut view = View::new(buffer.clone(), 50, 50);
+        let mut view = View::new(buffer.clone(), theme_set, theme_name, 50, 50);
         for ch in testcase.chars() {
             view.insert_char(ch);
         }
