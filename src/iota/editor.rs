@@ -20,7 +20,9 @@ use command::Command;
 use command::{Action, BuilderEvent, Operation, Instruction};
 
 
+/// Structure to handle flags and options passed to Iota
 pub struct Options {
+    /// True if syntax highlighting has been enabled
     pub syntax_enabled: bool,
 }
 
