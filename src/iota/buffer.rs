@@ -460,11 +460,11 @@ impl Buffer {
                 Anchor::Start => {
                     // move to the start of the nth_word before the mark
                     if let Some(new_index) = get_words_rev(mark_pos.absolute, nth_word, edger, text) {
-                        
+
                         let new_mark_pos = get_line_info(new_index, text).unwrap();
-                       
+
                         Some(new_mark_pos)
-                    } else {    
+                    } else {
                         Some(MarkPosition::start())
                     }
                 }
