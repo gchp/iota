@@ -17,7 +17,6 @@ tempdir = "0.3.0"
 unicode-width = "0.1.1"
 libc = "0.1"
 clippy = {version = "*", optional = true}
-syntect = "1.0"
 regex = "0.1"
 lazy_static = "0.2"
 
@@ -29,5 +28,6 @@ name = "iota"
 path = "src/iota/lib.rs"
 
 [[bin]]
+path = "src/main.rs"
 name = "iota"
 doc = false

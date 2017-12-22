@@ -4,3 +4,4 @@ target
 .cargo
 config.mk
 config.tmp
+/.vscode

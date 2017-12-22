@@ -2,13 +2,9 @@ use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc::channel;
-use std::env;
-use std::rc::Rc;
 use std::char;
 
 use rustbox::{RustBox, Event};
-use syntect::highlighting::ThemeSet;
-use syntect::parsing::SyntaxSet;
 
 use input::Input;
 use keyboard::Key;
@@ -20,19 +16,6 @@ use command::Command;
 use command::{Action, BuilderEvent, Operation, Instruction};
 
 
-pub struct Options {
-    pub syntax_enabled: bool,
-}
-
-impl Default for Options {
-    fn default() -> Options {
-        Options {
-            syntax_enabled: false,
-        }
-    }
-}
-
-
 /// The main Editor structure
 ///
 /// This is the top-most structure in Iota.
@@ -42,7 +25,6 @@ pub struct Editor<'e> {
     running: bool,
     rb: RustBox,
     mode: Box<Mode + 'e>,
-    options: Options,
 
     command_queue: Receiver<Command>,
     command_sender: Sender<Command>,
@@ -51,7 +33,7 @@ pub struct Editor<'e> {
 impl<'e> Editor<'e> {
 
     /// Create a new Editor instance from the given source
-    pub fn new(source: Input, mode: Box<Mode + 'e>, rb: RustBox, opts: Options) -> Editor<'e> {
+    pub fn new(source: Input, mode: Box<Mode + 'e>, rb: RustBox) -> Editor<'e> {
         let height = rb.height();
         let width = rb.width();
 
@@ -59,15 +41,10 @@ impl<'e> Editor<'e> {
 
         let mut buffers = Vec::new();
 
-        // TODO: load custom syntax files rather than using defaults
-        //       see below
-        let mut ps = SyntaxSet::load_defaults_nonewlines();
-        ps.link_syntaxes();
-
         let buffer = match source {
             Input::Filename(path) => {
                 match path {
-                    Some(path) => Buffer::new_with_syntax(PathBuf::from(path), &ps),
+                    Some(path) => Buffer::from(PathBuf::from(path)),
                     None       => Buffer::new(),
                 }
             },
@@ -77,20 +54,7 @@ impl<'e> Editor<'e> {
         };
         buffers.push(Arc::new(Mutex::new(buffer)));
 
-        // NOTE: this will only work on linux
-        // TODO: make this more cross-platform friendly
-        let mut subl_config = env::home_dir().unwrap();
-        subl_config.push(".config/sublime-text-3/Packages/Base16/");
-
-        let (theme_name, ts) = if subl_config.exists() {
-            (String::from("base16-default-dark"),
-            Rc::new(ThemeSet::load_from_folder(subl_config).unwrap()))
-        } else {
-            (String::from("base16-eighties.dark"),
-            Rc::new(ThemeSet::load_defaults()))
-        };
-
-        let view = View::new(buffers[0].clone(), ts.clone(), theme_name,  width, height);
+        let view = View::new(buffers[0].clone(), width, height);
 
         Editor {
             buffers: buffers,
@@ -98,7 +62,6 @@ impl<'e> Editor<'e> {
             running: true,
             rb: rb,
             mode: mode,
-            options: opts,
 
             command_queue: recv,
             command_sender: snd,
@@ -209,7 +172,7 @@ impl<'e> Editor<'e> {
 
     /// Draw the current view to the frontend
     fn draw(&mut self) {
-        self.view.draw(&mut self.rb, self.options.syntax_enabled);
+        self.view.draw(&mut self.rb);
     }
 
     /// Handle the given command, performing the associated action

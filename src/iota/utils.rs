@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use regex::Regex;
 
 static ANSI_COLORS: [[i32; 3]; 256] = [

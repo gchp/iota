@@ -9,8 +9,6 @@ use std::convert::From;
 
 // external dependencies
 use gapbuffer::GapBuffer;
-use syntect::parsing::syntax_definition::SyntaxDefinition;
-use syntect::parsing::SyntaxSet;
 
 // local dependencies
 use log::{Log, Change, LogEntry};
@@ -76,8 +74,6 @@ pub struct Buffer {
     /// Location on disk where the current buffer should be written
     pub file_path: Option<PathBuf>,
 
-    pub syntax: Option<SyntaxDefinition>,
-
     /// Whether or not the Buffer has unsaved changes
     pub dirty: bool,
 }
@@ -87,7 +83,6 @@ impl Buffer {
     /// Constructor for empty buffer.
     pub fn new() -> Buffer {
         let buffer = Buffer {
-            syntax: None,
             file_path: None,
             text: GapBuffer::new(),
             marks: HashMap::new(),
@@ -96,34 +91,6 @@ impl Buffer {
         };
 
         buffer
-    }
-
-    pub fn new_with_syntax(path: PathBuf, ps: &SyntaxSet) -> Buffer {
-        let syntax_instance = match path.extension() {
-            Some(e) => {
-                if let Some(inst) = ps.find_syntax_by_extension(e.to_str().unwrap()) {
-                    Some(inst.clone())
-                } else {
-                    None
-                }
-            }
-            None => None,
-        };
-
-
-        match File::open(&path) {
-            Ok(file) => {
-                let mut buf = Buffer::from(file);
-                buf.file_path = Some(path);
-                buf.syntax = syntax_instance;
-                buf
-            }
-            Err(_) => {
-                let mut buf = Buffer::new();
-                buf.syntax = syntax_instance;
-                buf
-            }
-        }
     }
 
     /// Length of the text stored in this buffer.

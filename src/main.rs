@@ -11,7 +11,7 @@ use docopt::Docopt;
 use iota::{
     Editor, Input,
     StandardMode, NormalMode,
-    Mode, Options,
+    Mode,
 };
 use rustbox::{InitOptions, RustBox, InputMode, OutputMode};
 static USAGE: &'static str = "
@@ -20,7 +20,6 @@ Usage: iota [<filename>] [options]
 
 Options:
     --vi                           Start Iota with vi-like modes
-    --enable-syntax-highlighting   Start Iota with syntax-highlighting enabled
     -h, --help                     Show this message.
 ";
 
@@ -29,7 +28,6 @@ Options:
 struct Args {
     arg_filename: Option<String>,
     flag_vi: bool,
-    flag_enable_syntax_highlighting: bool,
     flag_help: bool,
 }
 
@@ -72,11 +70,7 @@ fn main() {
          Box::new(StandardMode::new())
     };
 
-    let options = Options {
-        syntax_enabled: args.flag_enable_syntax_highlighting,
-    };
-
     // start the editor
-    let mut editor = Editor::new(source, mode, rb, options);
+    let mut editor = Editor::new(source, mode, rb);
     editor.start();
 }
