@@ -680,7 +680,10 @@ impl WordEdgeMatch {
 }
 
 fn get_words(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
-    (mark + 1..text.len() - 1)
+    let text_len = text.len();
+    if text_len == 0 { return None; }
+
+    (mark + 1..text_len - 1)
         .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
         .take(n_words)
         .last()
@@ -1147,6 +1150,23 @@ mod test {
         let mark_pos = MarkPosition::from((10, 7, 2));
 
         assert_eq!(mark_pos, get_line_info(10, &buffer.text).unwrap());
+    }
+
+    #[test]
+    fn get_move_word_forward_emtpy_buffer() {
+        let mut buffer = setup_buffer("");
+        let mark = Mark::Cursor(0);
+        buffer.set_mark(Mark::Cursor(0), 0);
+
+        let obj = TextObject {
+            kind: Kind::Word(Anchor::Start),
+            offset: Offset::Forward(1, mark),
+        };
+
+        buffer.set_mark_to_object(mark, obj);
+
+        assert_eq!(*buffer.marks.get(&mark).unwrap(), MarkPosition::from((0, 0, 0)));
+        assert_eq!(buffer.get_mark_display_coords(mark).unwrap(), (0, 0));
     }
 
 }
