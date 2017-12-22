@@ -413,38 +413,31 @@ impl Buffer {
         let edger = WordEdgeMatch::Whitespace;
 
         if let Some(mark_pos) = self.marks.get(&from_mark) {
-            // let (index, _) = *tuple;
             match anchor {
                 Anchor::Start => {
-                    // move to the start of nth_word from the mark
-                    if let Some(new_index) = get_words(mark_pos.absolute, nth_word, edger, text) {
-                        // let mut new_mark_pos = MarkPosition::start();
-                        // new_mark_pos.absolute = new_index;
-                        // new_mark_pos.line_start_offset = new_index - get_line(new_index, text).unwrap();
-                        let new_mark_pos = get_line_info(new_index, text).unwrap();
-
-                        Some(new_mark_pos)
-                    } else {
-                        // let mut new_mark_pos = MarkPosition::start();
-                        // new_mark_pos.absolute = last;
-                        // new_mark_pos.line_start_offset = last - get_line(last, text).unwrap();
-                        let new_mark_pos = get_line_info(last, text).unwrap();
-
-                        Some(new_mark_pos)
+                    match get_words(mark_pos.absolute, nth_word, edger, text) {
+                        Some(new_index) => {
+                            let new_mark_pos = get_line_info(new_index, text).unwrap();
+                            return Some(new_mark_pos);
+                        }
+                        None => {
+                            let new_mark_pos = get_line_info(last, text).unwrap();
+                            return Some(new_mark_pos);
+                        }
                     }
                 }
 
                 _ => {
-                    print!("Unhandled word anchor: {:?} ", anchor);
+                    eprint!("Unhandled word anchor: {:?} ", anchor);
                     let mut new_mark_pos = MarkPosition::start();
                     new_mark_pos.absolute = last;
 
-                    Some(new_mark_pos)
+                    return Some(new_mark_pos);
                 }
             }
-        } else {
-            None
         }
+
+        None
     }
 
     fn get_word_index_backward(&self, anchor: Anchor, nth_word: usize, from_mark: Mark) -> Option<MarkPosition> {
@@ -455,31 +448,30 @@ impl Buffer {
         let edger = WordEdgeMatch::Whitespace;
 
         if let Some(mark_pos) = self.marks.get(&from_mark) {
-            // let (index, _) = *tuple;
             match anchor {
                 Anchor::Start => {
                     // move to the start of the nth_word before the mark
-                    if let Some(new_index) = get_words_rev(mark_pos.absolute, nth_word, edger, text) {
-
-                        let new_mark_pos = get_line_info(new_index, text).unwrap();
-
-                        Some(new_mark_pos)
-                    } else {
-                        Some(MarkPosition::start())
+                    match get_words_rev(mark_pos.absolute, nth_word, edger, text) {
+                        Some(new_index) => {
+                            let new_mark_pos = get_line_info(new_index, text).unwrap();
+                            return Some(new_mark_pos);
+                        }
+                        None => {
+                            return Some(MarkPosition::start());
+                        }
                     }
                 }
 
                 _ => {
-                    print!("Unhandled word anchor: {:?} ", anchor);
+                    eprint!("Unhandled word anchor: {:?} ", anchor);
                     let mut new_mark_pos = MarkPosition::start();
                     new_mark_pos.absolute = last;
-
-                    Some(new_mark_pos)
+                    return Some(new_mark_pos);
                 }
             }
-        } else {
-            None
         }
+
+        None
     }
 
     fn get_word_index_absolute(&self, anchor: Anchor, word_number: usize) -> Option<MarkPosition> {
