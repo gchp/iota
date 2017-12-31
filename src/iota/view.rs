@@ -12,7 +12,7 @@ use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
 
 use buffer::{Buffer, Mark};
-use overlay::{Overlay, OverlayType};
+use overlay::{CommandPrompt, Overlay, OverlayType};
 use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
 
@@ -23,10 +23,10 @@ use textobject::{Anchor, TextObject, Kind, Offset};
 /// screen. It maintains the status bar for the current view, the "dirty status"
 /// which is whether the buffer has been modified or not and a number of other
 /// pieces of information.
-pub struct View {
+pub struct View<'v> {
     pub buffer: Arc<Mutex<Buffer>>,
     pub last_buffer: Option<Arc<Mutex<Buffer>>>,
-    pub overlay: Overlay,
+    pub overlay: Option<Box<Overlay + 'v>>,
 
     height: usize,
     width: usize,
@@ -49,9 +49,9 @@ pub struct View {
     message: Option<(&'static str, SystemTime)>,
 }
 
-impl View {
+impl<'v> View<'v> {
 
-    pub fn new(buffer: Arc<Mutex<Buffer>>, width: usize, height: usize) -> View {
+    pub fn new(buffer: Arc<Mutex<Buffer>>, width: usize, height: usize) -> View<'v> {
         let cursor = Mark::Cursor(0);
         let top_line = Mark::DisplayMark(0);
 
@@ -68,7 +68,7 @@ impl View {
             top_line: top_line,
             left_col: 0,
             cursor: cursor,
-            overlay: Overlay::None,
+            overlay: None,
             threshold: 5,
             message: None,
             height: height,
@@ -150,10 +150,10 @@ impl View {
         }
 
         match self.overlay {
-            Overlay::None => self.draw_cursor(rb),
-            _ => {
-                self.overlay.draw(rb);
-                self.overlay.draw_cursor(rb);
+            None => self.draw_cursor(rb),
+            Some(ref mut overlay) => {
+                overlay.draw(rb);
+                overlay.draw_cursor(rb);
             }
         }
         self.draw_status(rb);
@@ -203,22 +203,8 @@ impl View {
 
     pub fn set_overlay(&mut self, overlay_type: OverlayType) {
         match overlay_type {
-            OverlayType::Prompt => {
-                self.overlay = Overlay::Prompt {
-                    cursor_x: 1,
-                    prefix: ":",
-                    data: String::new(),
-                };
-            }
-
-            OverlayType::SelectFile => {
-                let prefix = "Enter file path:";
-
-                self.overlay = Overlay::SelectFile {
-                    cursor_x: prefix.len(),
-                    prefix: prefix,
-                    data: String::new(),
-                };
+            OverlayType::CommandPrompt => {
+                self.overlay = Some(Box::new(CommandPrompt::new()));
             }
         }
     }
@@ -387,15 +373,10 @@ impl View {
             let buffer = self.buffer.lock().unwrap();
 
             match buffer.file_path {
-                Some(_) => { should_save = true }
+                Some(_) => { should_save = true; }
                 None => {
-                    let prefix = "Enter file name: ";
-                    self.overlay = Overlay::SavePrompt {
-                        cursor_x: prefix.len(),
-                        prefix: prefix,
-                        data: String::new(),
-                    };
-                },
+                    self.message = Some(("No file name", SystemTime::now()));
+                }
             }
         }
 

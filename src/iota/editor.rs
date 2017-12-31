@@ -10,7 +10,6 @@ use input::Input;
 use keyboard::Key;
 use view::View;
 use modes::{Mode, ModeType, InsertMode, NormalMode};
-use overlay::{Overlay, OverlayEvent};
 use buffer::Buffer;
 use command::Command;
 use command::{Action, BuilderEvent, Operation, Instruction};
@@ -21,7 +20,7 @@ use command::{Action, BuilderEvent, Operation, Instruction};
 /// This is the top-most structure in Iota.
 pub struct Editor<'e> {
     buffers: Vec<Arc<Mutex<Buffer>>>,
-    view: View,
+    view: View<'e>,
     running: bool,
     rb: RustBox,
     mode: Box<Mode + 'e>,
@@ -85,81 +84,15 @@ impl<'e> Editor<'e> {
             None => return
         };
 
-        let mut remove_overlay = false;
         let command = match self.view.overlay {
-            Overlay::None => self.mode.handle_key_event(key),
-            _             => {
-                let event = self.view.overlay.handle_key_event(key);
-                match event {
-                    OverlayEvent::Finished(response) => {
-                        remove_overlay = true;
-                        self.handle_overlay_response(response)
-                    }
-
-                    _ => { BuilderEvent::Incomplete }
-                }
-            }
+            None                  => self.mode.handle_key_event(key),
+            Some(ref mut overlay) => overlay.handle_key_event(key),
         };
 
-        if remove_overlay {
-            self.view.overlay = Overlay::None;
-            self.view.clear(&mut self.rb);
-        }
-
         if let BuilderEvent::Complete(c) = command {
+            self.view.overlay = None;
+            self.view.clear(&mut self.rb);
             let _ = self.command_sender.send(c);
-        }
-    }
-
-    /// Translate the response from an Overlay to a Command wrapped in a BuilderEvent
-    ///
-    /// In most cases, we will just want to convert the response directly to
-    /// a Command, however in some cases we will want to perform other actions
-    /// first, such as in the case of Overlay::SavePrompt.
-    fn handle_overlay_response(&mut self, response: Option<String>) -> BuilderEvent {
-        // FIXME: This entire method neext to be updated
-        match response {
-            Some(data) => {
-                match self.view.overlay {
-
-                    // FIXME: this is just a temporary fix
-                    Overlay::Prompt { ref data, .. } => {
-                        match &**data {
-                            // FIXME: need to find a better system for these commands
-                            //        They should be chainable
-                            //          ie: wq - save & quit
-                            //        They should also take arguments
-                            //          ie w file.txt - write buffer to file.txt
-                            "q" | "quit" => BuilderEvent::Complete(Command::exit_editor()),
-                            "w" | "write" => BuilderEvent::Complete(Command::save_buffer()),
-
-                            _ => BuilderEvent::Incomplete
-                        }
-                    }
-
-                    Overlay::SavePrompt { .. } => {
-                        if data.is_empty() {
-                            BuilderEvent::Invalid
-                        } else {
-                            let path = PathBuf::from(&*data);
-                            self.view.buffer.lock().unwrap().file_path = Some(path);
-                            BuilderEvent::Complete(Command::save_buffer())
-                        }
-                    }
-
-                    Overlay::SelectFile { .. } => {
-                        let path = PathBuf::from(data);
-                        let buffer = Arc::new(Mutex::new(Buffer::from(path)));
-                        self.buffers.push(buffer.clone());
-                        self.view.set_buffer(buffer.clone());
-                        self.view.clear(&mut self.rb);
-                        BuilderEvent::Complete(Command::noop())
-                    }
-
-                    _ => BuilderEvent::Incomplete,
-                }
-            }
-            None => BuilderEvent::Incomplete
         }
     }
 

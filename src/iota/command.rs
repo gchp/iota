@@ -441,7 +441,7 @@ fn default_keymap() -> KeyMap<Partial> {
     // actions
     keymap.bind_key(Key::Char('D'), Partial::Action(Action::Operation(Operation::DeleteObject)));
     keymap.bind_key(Key::Char('d'), Partial::Action(Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0)))));
-    keymap.bind_key(Key::Char(':'), Partial::Action(Action::Instruction(Instruction::SetOverlay(OverlayType::Prompt))));
+    keymap.bind_key(Key::Char(':'), Partial::Action(Action::Instruction(Instruction::SetOverlay(OverlayType::CommandPrompt))));
 
     keymap
 }

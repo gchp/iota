@@ -3,7 +3,6 @@ use keymap::{KeyMap, KeyMapState};
 use buffer::Mark;
 use command::{BuilderEvent, Operation, Instruction, Command, Action};
 use textobject::{Anchor, Kind, TextObject, Offset};
-use overlay::OverlayType;
 
 use super::Mode;
 
@@ -89,11 +88,11 @@ impl StandardMode {
                 offset: Offset::Forward(1, Mark::Cursor(0))
             })
         });
-        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('f')], Command {
-            number: 1,
-            action: Action::Instruction(Instruction::SetOverlay(OverlayType::SelectFile)),
-            object: None
-        });
+        // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('f')], Command {
+        //     number: 1,
+        //     action: Action::Instruction(Instruction::SetOverlay(OverlayType::SelectFile)),
+        //     object: None
+        // });
         keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('b')], Command {
             number: 1,
             action: Action::Instruction(Instruction::SwitchToLastBuffer),
