@@ -149,6 +149,8 @@ impl<'v> View<'v> {
 
         }
 
+        self.draw_status(rb);
+
         match self.overlay {
             None => self.draw_cursor(rb),
             Some(ref mut overlay) => {
@@ -156,7 +158,6 @@ impl<'v> View<'v> {
                 overlay.draw_cursor(rb);
             }
         }
-        self.draw_status(rb);
     }
 
     #[cfg_attr(feature="clippy", allow(needless_range_loop))]
