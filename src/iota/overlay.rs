@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::cmp;
 
-use unicode_width::UnicodeWidthChar;
+use unicode_width::UnicodeWidthStr;
 use rustbox::{Style, Color, RustBox};
 
 use command::{Command, BuilderEvent};
@@ -20,7 +20,6 @@ pub trait Overlay {
 }
 
 pub struct CommandPrompt {
-    cursor_x: usize,
     data: String,
     prefix: String,
     commands: HashMap<String, Command>,
@@ -35,7 +34,6 @@ impl CommandPrompt {
         commands.insert("write".into(), Command::save_buffer());
 
         CommandPrompt {
-            cursor_x: 1,
             data: String::new(),
             prefix: String::from(":"),
             commands: commands,
@@ -116,19 +114,16 @@ impl Overlay for CommandPrompt {
         // Prompt is always on the bottom, so we can use the
         // height given by the frontend here
         let height = rb.height() - 1;
-        rb.set_cursor(self.cursor_x as isize, height as isize)
+        let prefix_len = UnicodeWidthStr::width(self.prefix.as_str());
+        let data_len = UnicodeWidthStr::width(self.data.as_str());
+        let cursor_x = prefix_len + data_len;
+        rb.set_cursor(cursor_x as isize, height as isize);
     }
 
     fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
         match key {
             Key::Esc => return BuilderEvent::Complete(Command::noop()),
-            Key::Backspace => {
-                if let Some(c) = self.data.pop() {
-                    if let Some(width) = UnicodeWidthChar::width(c) {
-                        self.cursor_x -= width;
-                    }
-                }
-            }
+            Key::Backspace => { self.data.pop(); },
             Key::Enter => {
                 match self.commands.get(&self.data) {
                     Some(command) => {
@@ -157,15 +152,9 @@ impl Overlay for CommandPrompt {
                         keys[self.selected_index - 1].clone()
                     };
                     self.data = command;
-                    self.cursor_x = self.data.len() + 1;
                 }
             }
-            Key::Char(c) => {
-                if let Some(width) = UnicodeWidthChar::width(c) {
-                    self.data.push(c);
-                    self.cursor_x += width;
-                }
-            }
+            Key::Char(c) => { self.data.push(c) },
             _ => {}
         }
         return BuilderEvent::Incomplete;
