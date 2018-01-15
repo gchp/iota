@@ -67,8 +67,12 @@ ifconfig | ./target/release/iota
 
 You can move the cursor around with the arrow keys.
 
-To save, press `Ctrl-s`.
-To exit, press `Ctrl-q`.
+The following keyboard bindings are also available:
+
+- `Ctrl-s` save
+- `Ctrl-q` quit
+- `Ctrl-z` undo
+- `Ctrl-y` redo
 
 Iota currently supports both Vi and Emacs style keybindings for simple movement.
 
@@ -94,7 +98,7 @@ just yet. The following works:
 - while in insert mode:
     - `ESC` normal mode
 
-Alternatively, you can use the following emacs-style keys:
+Alternatively, you can use the following emacs-style keys by using the `--emacs` flag:
 
 - `Ctrl-p` move up
 - `Ctrl-n` move down

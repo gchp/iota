@@ -1,49 +1,48 @@
 use keyboard::Key;
 use keymap::{KeyMap, KeyMapState};
 use buffer::Mark;
-use command::{BuilderEvent, Operation, Command, Action};
+use command::{BuilderEvent, Operation, Instruction, Command, Action};
 use textobject::{Anchor, Kind, TextObject, Offset};
 
 use super::Mode;
 
 
-
-/// Standard mode is Iota's default mode.
+/// Emacs mode uses Emacs-like keybindings.
 ///
-/// Standard mode uses non-vi-like keybindings.
-/// Unlike Normal, Command and Visual modes which are all used together, Standard
-/// mode is used on its own.
-///
-/// Standard mode allows Iota to be used in a non-modal way, similar to mainstream
-/// editors like Atom or Sublime.
-pub struct StandardMode {
+pub struct EmacsMode {
     keymap: KeyMap<Command>,
     match_in_progress: bool,
 }
 
-impl StandardMode {
+impl EmacsMode {
 
-    /// Create a new instance of StandardMode
-    pub fn new() -> StandardMode {
-        StandardMode {
-            keymap: StandardMode::key_defaults(),
+    /// Create a new instance of EmacsMode
+    pub fn new() -> EmacsMode {
+        EmacsMode {
+            keymap: EmacsMode::key_defaults(),
             match_in_progress: false,
         }
     }
 
-    /// Creates a KeyMap with default StandardMode key bindings
+    /// Creates a KeyMap with default EmacsMode key bindings
     fn key_defaults() -> KeyMap<Command> {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
-        keymap.bind_key(Key::Ctrl('q'), Command::exit_editor());
-        keymap.bind_key(Key::Ctrl('s'), Command::save_buffer());
+        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], Command::exit_editor());
+        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('s')], Command::save_buffer());
 
         // Cursor movement
         keymap.bind_key(Key::Up, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
         keymap.bind_key(Key::Down, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
         keymap.bind_key(Key::Left, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
         keymap.bind_key(Key::Right, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
+        keymap.bind_key(Key::Ctrl('p'), Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Ctrl('n'), Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
+        keymap.bind_key(Key::Ctrl('b'), Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
+        keymap.bind_key(Key::Ctrl('f'), Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
+        keymap.bind_key(Key::Ctrl('e'), Command::movement(Offset::Forward(0, Mark::Cursor(0)), Kind::Line(Anchor::End)));
+        keymap.bind_key(Key::Ctrl('a'), Command::movement(Offset::Backward(0, Mark::Cursor(0)), Kind::Line(Anchor::Start)));
 
         // Editing
         keymap.bind_key(Key::Tab, Command::insert_tab());
@@ -72,10 +71,24 @@ impl StandardMode {
                 offset: Offset::Backward(1, Mark::Cursor(0))
             })
         });
-
-        // History
-        keymap.bind_key(Key::Ctrl('z'), Command::undo());
-        keymap.bind_key(Key::Ctrl('y'), Command::redo());
+        keymap.bind_key(Key::Ctrl('d'), Command {
+            number: 1,
+            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Char,
+                offset: Offset::Forward(1, Mark::Cursor(0))
+            })
+        });
+        // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('f')], Command {
+        //     number: 1,
+        //     action: Action::Instruction(Instruction::SetOverlay(OverlayType::SelectFile)),
+        //     object: None
+        // });
+        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('b')], Command {
+            number: 1,
+            action: Action::Instruction(Instruction::SwitchToLastBuffer),
+            object: None
+        });
 
         keymap
     }
@@ -108,8 +121,8 @@ impl StandardMode {
 
 }
 
-impl Mode for StandardMode {
-    /// Given a key, pass it through the StandardMode KeyMap and return the associated Command, if any.
+impl Mode for EmacsMode {
+    /// Given a key, pass it through the EmacsMode KeyMap and return the associated Command, if any.
     /// If no match is found, treat it as an InsertChar command.
     fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
         if self.match_in_progress {
@@ -125,7 +138,7 @@ impl Mode for StandardMode {
     }
 }
 
-impl Default for StandardMode {
+impl Default for EmacsMode {
     fn default() -> Self {
         Self::new()
     }
