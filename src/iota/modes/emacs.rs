@@ -29,8 +29,6 @@ impl EmacsMode {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
-        keymap.bind_key(Key::Ctrl('q'), Command::exit_editor());
-        keymap.bind_key(Key::Ctrl('s'), Command::save_buffer());
         keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], Command::exit_editor());
         keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('s')], Command::save_buffer());
 
@@ -91,10 +89,6 @@ impl EmacsMode {
             action: Action::Instruction(Instruction::SwitchToLastBuffer),
             object: None
         });
-
-        // History
-        keymap.bind_key(Key::Ctrl('z'), Command::undo());
-        keymap.bind_key(Key::Ctrl('y'), Command::redo());
 
         keymap
     }
