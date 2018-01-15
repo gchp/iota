@@ -17,7 +17,7 @@ extern crate unicode_width;
 
 pub use editor::Editor;
 pub use input::Input;
-pub use modes::{StandardMode, NormalMode, Mode};
+pub use modes::{StandardMode, NormalMode, EmacsMode, Mode};
 
 mod input;
 mod utils;

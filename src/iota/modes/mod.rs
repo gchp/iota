@@ -4,10 +4,12 @@ use command::BuilderEvent;
 pub use self::standard::StandardMode;
 pub use self::normal::NormalMode;
 pub use self::insert::InsertMode;
+pub use self::emacs::EmacsMode;
 
 mod standard;
 mod normal;
 mod insert;
+mod emacs;
 
 #[derive(Copy, Clone, Debug)]
 pub enum ModeType {

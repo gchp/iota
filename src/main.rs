@@ -10,7 +10,7 @@ use std::io::stdin;
 use docopt::Docopt;
 use iota::{
     Editor, Input,
-    StandardMode, NormalMode,
+    StandardMode, NormalMode, EmacsMode,
     Mode,
 };
 use rustbox::{InitOptions, RustBox, InputMode, OutputMode};
@@ -19,6 +19,7 @@ Usage: iota [<filename>] [options]
        iota --help
 
 Options:
+    --emacs                        Start Iota with emacs-like mode
     --vi                           Start Iota with vi-like modes
     -h, --help                     Show this message.
 ";
@@ -27,6 +28,7 @@ Options:
 #[derive(RustcDecodable, Debug)]
 struct Args {
     arg_filename: Option<String>,
+    flag_emacs: bool,
     flag_vi: bool,
     flag_help: bool,
 }
@@ -66,6 +68,8 @@ fn main() {
     // initialise the editor mode
     let mode: Box<Mode> = if args.flag_vi {
         Box::new(NormalMode::new())
+    } else if args.flag_emacs {
+        Box::new(EmacsMode::new())    
     } else {
          Box::new(StandardMode::new())
     };
