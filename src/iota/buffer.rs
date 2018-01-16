@@ -511,7 +511,7 @@ impl Buffer {
     /// Adds a new mark or overwrites an existing mark.
     pub fn set_mark_to_object(&mut self, mark: Mark, obj: TextObject) {
         if let Some(mark_pos) = self.get_object_index(obj) {
-            self.marks.insert(mark, mark_pos);
+            self.set_mark(mark, mark_pos.absolute);
         }
     }
 
