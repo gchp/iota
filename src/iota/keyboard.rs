@@ -1,3 +1,8 @@
+use std::char;
+use std::time::Duration;
+
+use rustbox::{RustBox, Event};
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Key {
     Tab,
@@ -9,6 +14,10 @@ pub enum Key {
     Down,
     Up,
     Delete,
+    Home,
+    End,
+    CtrlLeft,
+    CtrlRight,
 
     Char(char),
     Ctrl(char),
@@ -42,8 +51,49 @@ impl Key {
             65515 => Some(Key::Left),
             65516 => Some(Key::Down),
             65517 => Some(Key::Up),
+            65520 => Some(Key::End),
+            65521 => Some(Key::Home),
             65522 => Some(Key::Delete),
             _     => None,
+        }
+    }
+
+    pub fn from_chord(rb: &mut RustBox, start: u16) -> Option<Key> {
+        let chord = Key::get_chord(rb, start);
+
+        match chord.as_str() {
+            "\x1b[1;5C" => Some(Key::CtrlRight),
+            "\x1b[1;5D" => Some(Key::CtrlLeft),
+            _ => Key::from_special_code(start)
+        }
+    }
+
+    pub fn get_chord(rb: &mut RustBox, start: u16) -> String {
+            // Copy any data waiting to a string
+            // There may be a cleaner way to do this?
+            let mut chord = char::from_u32(start as u32).unwrap().to_string();
+            loop {
+                match rb.peek_event(Duration::from_secs(0), true) {
+                    Ok(Event::KeyEventRaw(_, _, ch)) => {
+                        chord.push(char::from_u32(ch).unwrap())
+                    },
+                    _ => break,
+                }
+            }
+    
+            chord
+        }
+    
+    pub fn from_event(rb: &mut RustBox, event: Event) -> Option<Key> {
+        match event {
+            Event::KeyEventRaw(_, k, ch) => {
+                match k {
+                    0 => char::from_u32(ch).map(Key::Char),
+                    0x1b => Key::from_chord(rb, 0x1b),
+                    a => Key::from_special_code(a)
+                }
+            },
+            _ => None
         }
     }
 }
