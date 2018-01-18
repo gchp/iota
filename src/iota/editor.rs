@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc::channel;
-use std::char;
 
 use rustbox::{RustBox, Event};
 
@@ -78,7 +77,9 @@ impl<'e> Editor<'e> {
     ///
     /// If there is no active Overlay, the key event is sent to the current
     /// Mode, which returns a Command which we dispatch to handle_command.
-    fn handle_key_event(&mut self, key: Option<Key>) {
+    fn handle_key_event(&mut self, event: Event) {
+        let key = Key::from_event(&mut self.rb, event);
+ 
         let key = match key {
             Some(k) => k,
             None => return
@@ -189,15 +190,8 @@ impl<'e> Editor<'e> {
             self.view.maybe_clear_message();
 
             match self.rb.poll_event(true) {
-                Ok(Event::KeyEventRaw(_, key, ch)) => {
-                    let k = match key {
-                        0 => char::from_u32(ch).map(Key::Char),
-                        a => Key::from_special_code(a),
-                    };
-                    self.handle_key_event(k)
-                },
                 Ok(Event::ResizeEvent(width, height)) => self.handle_resize_event(width as usize, height as usize),
-
+                Ok(key_event) => self.handle_key_event(key_event),
                 _ => {}
             }
 
