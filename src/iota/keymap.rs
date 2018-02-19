@@ -4,14 +4,14 @@ use keyboard::Key;
 
 pub enum Trie<T: Copy> {
     Leaf(T),
-    Node(HashMap<Key, Box<Trie<T>>>)
+    Node(HashMap<Key, Trie<T>>)
 }
 
 impl<T: Copy> Trie<T> {
     fn new() -> Trie<T> {
         Trie::Node(HashMap::new())
     }
-    fn lookup_key(&self, key: Key) -> Option<&Box<Trie<T>>> {
+    fn lookup_key(&self, key: Key) -> Option<&Trie<T>> {
         match *self {
             Trie::Leaf(_) => None,
             Trie::Node(ref map) => map.get(&key)
@@ -22,9 +22,9 @@ impl<T: Copy> Trie<T> {
 
         for key in keys.iter() {
             if let Some(node) = current.lookup_key(*key) {
-                match **node {
-                    Trie::Leaf(_) => return Some(&(**node)),
-                    Trie::Node(_) => current = &(**node)
+                match *node {
+                    Trie::Leaf(_) => return Some(&(*node)),
+                    Trie::Node(_) => current = &(*node)
                 }
             } else {
                 return None
@@ -40,7 +40,7 @@ impl<T: Copy> Trie<T> {
                 self.bind_key(key, value);
             }
             Trie::Node(ref mut map) => {
-                map.insert(key, Box::new(Trie::Leaf(value)));
+                map.insert(key, Trie::Leaf(value));
             }
         }
     }
@@ -58,7 +58,7 @@ impl<T: Copy> Trie<T> {
                     let keys = &keys[1..];
                     match map.entry(key) {
                         Entry::Vacant(v) => {
-                            let mut node = Box::new(Trie::new());
+                            let mut node = Trie::new();
                             node.bind_keys(keys, value);
                             v.insert(node);
                         },

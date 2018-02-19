@@ -46,7 +46,7 @@ impl CommandPrompt {
     fn get_filtered_command_names(&self) -> Vec<&String> {
         let mut keys: Vec<&String> = self.commands
             .keys()
-            .filter(|ref item| (&item).starts_with(&self.data) )
+            .filter(|item| item.starts_with(&self.data) )
             .collect();
         keys.sort();
         keys.reverse();
@@ -157,6 +157,6 @@ impl Overlay for CommandPrompt {
             Key::Char(c) => { self.data.push(c) },
             _ => {}
         }
-        return BuilderEvent::Incomplete;
+        BuilderEvent::Incomplete
     }
 }

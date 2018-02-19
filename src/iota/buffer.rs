@@ -82,15 +82,13 @@ pub struct Buffer {
 impl Buffer {
     /// Constructor for empty buffer.
     pub fn new() -> Buffer {
-        let buffer = Buffer {
+        Buffer {
             file_path: None,
             text: GapBuffer::new(),
             marks: HashMap::new(),
             log: Log::new(),
             dirty: false,
-        };
-
-        buffer
+        }
     }
 
     /// Length of the text stored in this buffer.

@@ -73,9 +73,9 @@ pub fn rgb_to_short(rgb: &str) -> usize {
     let mut best_distance = 255 * 255 * 3 + 1;
     for i in 16..255 {
         let ansi_color = ANSI_COLORS[i];
-        let dr = ansi_color[0] - parts[0] as i32;
-        let dg = ansi_color[1] - parts[1] as i32;
-        let db = ansi_color[2] - parts[2] as i32;
+        let dr = ansi_color[0] - i32::from(parts[0]);
+        let dg = ansi_color[1] - i32::from(parts[1]);
+        let db = ansi_color[2] - i32::from(parts[2]);
         let distance = dr * dr + dg * dg + db * db;
 
         if distance < best_distance {

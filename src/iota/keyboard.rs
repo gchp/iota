@@ -71,18 +71,13 @@ impl Key {
     pub fn get_chord(rb: &mut RustBox, start: u16) -> String {
             // Copy any data waiting to a string
             // There may be a cleaner way to do this?
-            let mut chord = char::from_u32(start as u32).unwrap().to_string();
-            loop {
-                match rb.peek_event(Duration::from_secs(0), true) {
-                    Ok(Event::KeyEventRaw(_, _, ch)) => {
-                        chord.push(char::from_u32(ch).unwrap())
-                    },
-                    _ => break,
-                }
+            let mut chord = char::from_u32(u32::from(start)).unwrap().to_string();
+            while let Ok(Event::KeyEventRaw(_, _, ch)) = rb.peek_event(Duration::from_secs(0), true) {
+                chord.push(char::from_u32(ch).unwrap())
             }
-    
+
             chord
-        }
+    }
     
     pub fn from_event(rb: &mut RustBox, event: Event) -> Option<Key> {
         match event {
