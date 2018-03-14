@@ -7,9 +7,9 @@ pub struct Lines<'a> {
 }
 
 impl<'a> Iterator for Lines<'a> {
-    type Item = Vec<char>;
+    type Item = String;
 
-    fn next(&mut self) -> Option<Vec<char>> {
+    fn next(&mut self) -> Option<String> {
         if self.tail == self.head { return None; }
         let old_tail = self.tail;
         //update tail to either the first char after the next \n or to self.head

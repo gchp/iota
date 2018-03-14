@@ -731,7 +731,7 @@ mod test {
 
     fn setup_buffer(testcase: &'static str) -> Buffer {
         let mut buffer = Buffer::new();
-        buffer.text.extend(testcase.bytes());
+        buffer.text.extend(testcase.chars());
         buffer.set_mark(Mark::Cursor(0), 0);
         buffer
     }
@@ -1063,9 +1063,9 @@ mod test {
     #[test]
     fn test_insert() {
         let mut buffer = setup_buffer("");
-        buffer.insert_char(Mark::Cursor(0), b'A');
+        buffer.insert_char(Mark::Cursor(0), 'A');
         assert_eq!(buffer.len(), 2);
-        assert_eq!(buffer.lines().next().unwrap(), [b'A']);
+        assert_eq!(buffer.lines().next().unwrap(), "A");
     }
 
     #[test]
@@ -1079,7 +1079,7 @@ mod test {
         buffer.remove_from_mark_to_object(mark, obj);
 
         assert_eq!(buffer.len(), 4);
-        assert_eq!(buffer.lines().next().unwrap(), [b'B', b'C', b'D']);
+        assert_eq!(buffer.lines().next().unwrap(), "BCD");
     }
 
     #[test]
@@ -1096,9 +1096,9 @@ mod test {
         let buffer = setup_buffer("Test\nA\nTest");
         let mut lines = buffer.lines();
 
-        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't',b'\n']);
-        assert_eq!(lines.next().unwrap(), [b'A',b'\n']);
-        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't']);
+        assert_eq!(lines.next().unwrap(), "Test\n");
+        assert_eq!(lines.next().unwrap(), "A\n");
+        assert_eq!(lines.next().unwrap(), "Test");
     }
 
     #[test]
@@ -1107,8 +1107,8 @@ mod test {
         buffer.set_mark(Mark::Cursor(0), 6);
         let mut lines = buffer.lines_from(Mark::Cursor(0)).unwrap();
 
-        assert_eq!(lines.next().unwrap(), [b'\n']);
-        assert_eq!(lines.next().unwrap(), [b'T',b'e',b's',b't']);
+        assert_eq!(lines.next().unwrap(), "\n");
+        assert_eq!(lines.next().unwrap(), "Test");
     }
 
     #[test]

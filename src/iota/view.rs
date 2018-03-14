@@ -156,8 +156,8 @@ impl<'v> View<'v> {
             //        the top_line mark
             let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
             for y_position in 0..height {
-                let line = lines.next().unwrap_or_else(Vec::new);
-                draw_line(rb, &line, y_position, self.left_col);
+                let line = lines.next().unwrap();
+                draw_line(rb, line, y_position, self.left_col);
             }
 
         }
@@ -376,9 +376,7 @@ impl<'v> View<'v> {
 
         //TODO (lee): Is iteration still necessary in this format?
         for line in buffer.lines() {
-            let content: String = line.into_iter().collect();
-        
-            let result = file.write_all(content.into_bytes().as_slice());
+            let result = file.write_all(line.into_bytes().as_slice());
 
             if result.is_err() {
                 // TODO(greg): figure out what to do here.
@@ -418,12 +416,11 @@ impl<'v> View<'v> {
 
 }
 
-pub fn draw_line(rb: &mut RustBox, line: &[char], idx: usize, left: usize) {
+pub fn draw_line(rb: &mut RustBox, line: String, idx: usize, left: usize) {
     let width = rb.width() - 1;
     let mut x = 0;
 
-    for ch in line.iter().skip(left) {
-        let ch = *ch as char;
+    for ch in line.chars().skip(left) {
         match ch {
             '\t' => {
                 let w = 4 - x % 4;
@@ -482,7 +479,7 @@ mod tests {
 
         {
             let mut buffer = view.buffer.lock().unwrap();
-            assert_eq!(buffer.lines().next().unwrap(), b"ttest\n");
+            assert_eq!(buffer.lines().next().unwrap(), "ttest\n");
         }
     }
 }
