@@ -144,6 +144,7 @@ impl Buffer {
             Kind::Char => self.get_char_index(obj.offset),
             Kind::Line(anchor) => self.get_line_index(obj.offset, anchor),
             Kind::Word(anchor) => self.get_word_index(obj.offset, anchor),
+            Kind::Selection(anchor) => self.get_line_index(obj.offset, anchor),
         }
     }
 

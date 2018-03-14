@@ -76,6 +76,19 @@ impl<'v> View<'v> {
         }
     }
 
+    pub fn selection_start() -> TextObject {
+        TextObject {
+            kind: Kind::Selection(Anchor::Start),
+            offset: Offset::Backward(0, Mark::Cursor(0)),
+        }
+    }
+    pub fn selection_end() -> TextObject {
+        TextObject {
+            kind: Kind::Selection(Anchor::End),
+            offset: Offset::Forward(1, Mark::Cursor(0)),
+        }
+    }
+
     pub fn set_buffer(&mut self, buffer: Arc<Mutex<Buffer>>) {
         self.last_buffer = Some(self.buffer.clone());
 
@@ -294,20 +307,10 @@ impl<'v> View<'v> {
 
     pub fn cut_selection(&mut self) {
         // TODO: Implement proper selection? Lines are used for now.
-        let sel_start = TextObject {
-            kind: Kind::Line(Anchor::Start),
-            offset: Offset::Backward(0, Mark::Cursor(0)),
-        };
-
-        let sel_end = TextObject {
-            kind: Kind::Line(Anchor::End),
-            offset: Offset::Forward(1, Mark::Cursor(0)),
-        };
-
-        self.move_mark(Mark::Cursor(0), sel_start);
+        self.move_mark(Mark::Cursor(0), View::selection_start());
 
         // TODO: Implement copy/paste buffer
-        self.delete_from_mark_to_object(Mark::Cursor(0), sel_end);
+        self.delete_from_mark_to_object(Mark::Cursor(0), View::selection_end());
     }
 
     /// Insert a chacter into the buffer & update cursor position accordingly.
