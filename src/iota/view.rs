@@ -315,12 +315,12 @@ impl<'v> View<'v> {
 
     /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {
-        self.buffer.lock().unwrap().insert_char(self.cursor, ch);
+        let len = self.buffer.lock().unwrap().insert_char(self.cursor, ch);
         // NOTE: the last param to char_width here may not be correct
-        if let Some(ch_width) = utils::char_width(ch, false, 4, 1) {
+        if len.unwrap() > 0 {
             let obj = TextObject {
                 kind: Kind::Char,
-                offset: Offset::Forward(ch_width, Mark::Cursor(0))
+                offset: Offset::Forward(len.unwrap(), Mark::Cursor(0))
             };
             self.move_mark(Mark::Cursor(0), obj)
         }
