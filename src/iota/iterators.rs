@@ -1,20 +1,20 @@
 use gapbuffer::GapBuffer;
 
 pub struct Lines<'a> {
-    pub buffer: &'a GapBuffer<u8>,
+    pub buffer: &'a GapBuffer<char>,
     pub tail: usize,
     pub head: usize,
 }
 
 impl<'a> Iterator for Lines<'a> {
-    type Item = Vec<u8>;
+    type Item = Vec<char>;
 
-    fn next(&mut self) -> Option<Vec<u8>> {
+    fn next(&mut self) -> Option<Vec<char>> {
         if self.tail == self.head { return None; }
         let old_tail = self.tail;
         //update tail to either the first char after the next \n or to self.head
         self.tail = (old_tail..self.head).filter(|i| { *i + 1 == self.head
-                                                       || self.buffer[*i] == b'\n' })
+                                                       || self.buffer[*i] == '\n' })
                                          .take(1)
                                          .next()
                                          .unwrap() + 1;

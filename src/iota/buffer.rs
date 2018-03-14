@@ -15,6 +15,7 @@ use log::{Log, Change, LogEntry};
 use input::Input;
 use iterators::Lines;
 use textobject::{TextObject, Kind, Offset, Anchor};
+use utils;
 
 
 #[derive(PartialEq, Debug)]
@@ -63,7 +64,7 @@ pub enum WordEdgeMatch {
 
 pub struct Buffer {
     /// Current buffers text
-    text: GapBuffer<u8>,
+    text: GapBuffer<char>,
 
     /// Table of marked indices in the text
     marks: HashMap<Mark, MarkPosition>,
@@ -169,7 +170,7 @@ impl Buffer {
                     let new_absolute_position = mark_pos.absolute + offset;
                     if new_absolute_position < last {
                         // if the new position is past the end of the line, do nothing
-                        if text[mark_pos.absolute] == b'\n' {
+                        if text[mark_pos.absolute] == '\n' {
                             return None;
                         }
 
@@ -244,7 +245,7 @@ impl Buffer {
     fn get_line_index_absolute(&self, anchor: Anchor, line_number: usize) -> Option<MarkPosition> {
         let text = &self.text;
 
-        let nlines = (0..text.len()).filter(|i| text[*i] == b'\n')
+        let nlines = (0..text.len()).filter(|i| text[*i] == '\n')
                                     .take(line_number + 1)
                                     .collect::<Vec<usize>>();
         match anchor {
@@ -279,7 +280,7 @@ impl Buffer {
     fn get_line_index_backward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<MarkPosition> {
         let text = &self.text;
         if let Some(mark_pos) = self.marks.get(&from_mark) {
-            let nlines = (0..mark_pos.absolute).rev().filter(|i| text[*i] == b'\n')
+            let nlines = (0..mark_pos.absolute).rev().filter(|i| text[*i] == '\n')
                                          .take(offset + 1)
                                          .collect::<Vec<usize>>();
 
@@ -335,7 +336,7 @@ impl Buffer {
         let text = &self.text;
         let last = self.len() - 1;
         if let Some(mark_pos) = self.marks.get(&from_mark) {
-            let nlines = (mark_pos.absolute..text.len()).filter(|i| text[*i] == b'\n')
+            let nlines = (mark_pos.absolute..text.len()).filter(|i| text[*i] == '\n')
                                             .take(offset + 1)
                                             .collect::<Vec<usize>>();
             if nlines.is_empty() { return None }
@@ -528,7 +529,7 @@ impl Buffer {
     }
 
     // Remove the chars in the range from start to end
-    pub fn remove_range(&mut self, start: usize, end: usize) -> Option<Vec<u8>> {
+    pub fn remove_range(&mut self, start: usize, end: usize) -> Option<Vec<char>> {
         self.dirty = true;
         let text = &mut self.text;
         let mut transaction = self.log.start(start);
@@ -537,13 +538,13 @@ impl Buffer {
             .filter_map(|idx| text.remove(idx).map(|ch| (idx, ch)))
             .inspect(|&(idx, ch)| transaction.log(Change::Remove(idx, ch), idx))
             .map(|(_, ch)| ch)
-            .collect::<Vec<u8>>();
+            .collect::<Vec<char>>();
         vec.reverse();
         Some(vec)
     }
 
     // Remove the chars between mark and object
-    pub fn remove_from_mark_to_object(&mut self, mark: Mark, object: TextObject) -> Option<Vec<u8>> {
+    pub fn remove_from_mark_to_object(&mut self, mark: Mark, object: TextObject) -> Option<Vec<char>> {
 
         let (start, end) = {
             let mark_pos = &self.marks[&mark];
@@ -558,7 +559,7 @@ impl Buffer {
         self.remove_range(start, end)
     }
 
-    pub fn remove_object(&mut self, object: TextObject) -> Option<Vec<u8>> {
+    pub fn remove_object(&mut self, object: TextObject) -> Option<Vec<char>> {
         let object_start = TextObject { kind: object.kind.with_anchor(Anchor::Start), offset: object.offset };
         let object_end = TextObject { kind: object.kind.with_anchor(Anchor::End), offset: object.offset };
 
@@ -572,13 +573,15 @@ impl Buffer {
     }
 
     /// Insert a char at the mark.
-    pub fn insert_char(&mut self, mark: Mark, ch: u8) {
+    pub fn insert_char(&mut self, mark: Mark, ch: char) -> Option<usize> {
         if let Some(mark_pos) = self.marks.get(&mark) {
             self.text.insert(mark_pos.absolute, ch);
             let mut transaction = self.log.start(mark_pos.absolute);
             transaction.log(Change::Insert(mark_pos.absolute, ch), mark_pos.absolute);
-            self.dirty = true;
+            self.dirty = true;   
         }
+        
+        utils::char_width(ch as char, false, 4, 1)
     }
 
     /// Redo most recently undone action.
@@ -631,7 +634,7 @@ impl<R: Read + BufferFrom> From<R> for Buffer {
         let mut buff = Buffer::new();
         let mut contents = String::new();
         if reader.read_to_string(&mut contents).is_ok() {
-            buff.text.extend(contents.bytes());
+            buff.text.extend(contents.chars());
         }
         buff
     }
@@ -657,9 +660,9 @@ impl From<Input> for Buffer {
 impl WordEdgeMatch {
     /// If c1 -> c2 is the start of a word.
     /// If end of word matching is wanted then pass the chars in reversed.
-    fn is_word_edge(&self, c1: &u8, c2: &u8) -> bool {
+    fn is_word_edge(&self, c1: &char, c2: &char) -> bool {
         // FIXME: unicode support - issue #69
-        match (self, *c1 as char, *c2 as char) {
+        match (self, *c1, *c2) {
             (_, '\n', '\n') => true, // Blank lines are always counted as a word
             (&WordEdgeMatch::Whitespace, c1, c2) => c1.is_whitespace() && !c2.is_whitespace(),
             // (&WordEdgeMatch::Alphabet, c1, c2) if c1.is_whitespace() => !c2.is_whitespace(),
@@ -670,7 +673,7 @@ impl WordEdgeMatch {
     }
 }
 
-fn get_words(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
+fn get_words(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<char>) -> Option<usize> {
     let text_len = text.len();
     if text_len == 0 { return None; }
 
@@ -680,7 +683,7 @@ fn get_words(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer
         .last()
 }
 
-fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<u8>) -> Option<usize> {
+fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBuffer<char>) -> Option<usize> {
     (1..mark)
         .rev()
         .filter(|idx| edger.is_word_edge(&text[*idx - 1], &text[*idx]))
@@ -688,9 +691,9 @@ fn get_words_rev(mark: usize, n_words: usize, edger: WordEdgeMatch, text: &GapBu
         .last()
 }
 
-fn get_line_info(mark: usize, text: &GapBuffer<u8>) -> Option<MarkPosition> {
+fn get_line_info(mark: usize, text: &GapBuffer<char>) -> Option<MarkPosition> {
     let val = cmp::min(mark, text.len());
-    let line_starts: Vec<usize> = (0..val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == b'\n').collect();
+    let line_starts: Vec<usize> = (0..val + 1).rev().filter(|idx| *idx == 0 || text[*idx - 1] == '\n').collect();
 
 
     if line_starts.is_empty() {
@@ -706,7 +709,7 @@ fn get_line_info(mark: usize, text: &GapBuffer<u8>) -> Option<MarkPosition> {
 }
 
 /// Performs a transaction on the passed in buffer.
-fn commit(transaction: &LogEntry, text: &mut GapBuffer<u8>) {
+fn commit(transaction: &LogEntry, text: &mut GapBuffer<char>) {
     for change in &transaction.changes {
         match *change {
             Change::Insert(idx, ch) => {

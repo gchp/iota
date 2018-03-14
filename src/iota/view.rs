@@ -315,7 +315,7 @@ impl<'v> View<'v> {
 
     /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {
-        self.buffer.lock().unwrap().insert_char(self.cursor, ch as u8);
+        self.buffer.lock().unwrap().insert_char(self.cursor, ch);
         // NOTE: the last param to char_width here may not be correct
         if let Some(ch_width) = utils::char_width(ch, false, 4, 1) {
             let obj = TextObject {
@@ -376,7 +376,9 @@ impl<'v> View<'v> {
 
         //TODO (lee): Is iteration still necessary in this format?
         for line in buffer.lines() {
-            let result = file.write_all(&*line);
+            let content: String = line.into_iter().collect();
+        
+            let result = file.write_all(content.into_bytes().as_slice());
 
             if result.is_err() {
                 // TODO(greg): figure out what to do here.
@@ -416,7 +418,7 @@ impl<'v> View<'v> {
 
 }
 
-pub fn draw_line(rb: &mut RustBox, line: &[u8], idx: usize, left: usize) {
+pub fn draw_line(rb: &mut RustBox, line: &[char], idx: usize, left: usize) {
     let width = rb.width() - 1;
     let mut x = 0;
 
