@@ -47,7 +47,7 @@ impl StandardMode {
 
         keymap.bind_key(Key::CtrlRight, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Word(Anchor::Start)));
         keymap.bind_key(Key::CtrlLeft, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Word(Anchor::Start)));
-    
+
         keymap.bind_key(Key::End, Command::movement(Offset::Forward(0, Mark::Cursor(0)), Kind::Line(Anchor::End)));
         keymap.bind_key(Key::Home, Command::movement(Offset::Backward(0, Mark::Cursor(0)), Kind::Line(Anchor::Start)));
 
@@ -78,6 +78,8 @@ impl StandardMode {
                 offset: Offset::Backward(1, Mark::Cursor(0))
             })
         });
+
+        keymap.bind_key(Key::Ctrl('x'), Command::cut_selection());
 
         // History
         keymap.bind_key(Key::Ctrl('z'), Command::undo());

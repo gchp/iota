@@ -31,6 +31,7 @@ pub enum Operation {
     Insert(char), // insert text
     DeleteObject,         // delete some object
     DeleteFromMark(Mark), // delete from some mark to an object
+    CutSelection, // cut the selection from the buffer to the clipboard
 
     Undo,         // rewind buffer transaction log
     Redo,         // replay buffer transaction log
@@ -112,6 +113,15 @@ impl Command {
             number: 4,
             action: Action::Operation(Operation::Insert(' ')),
             object: None,
+        }
+    }
+
+    /// Shortcut to create CutSelection command
+    pub fn cut_selection() -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::CutSelection),
+            object: None
         }
     }
 
