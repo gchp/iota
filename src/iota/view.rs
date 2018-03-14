@@ -13,7 +13,6 @@ use unicode_width::UnicodeWidthChar;
 
 use buffer::{Buffer, Mark};
 use overlay::{CommandPrompt, Overlay, OverlayType};
-use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
 
 
@@ -315,7 +314,12 @@ impl<'v> View<'v> {
 
     /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {
-        let len = self.buffer.lock().unwrap().insert_char(self.cursor, ch);
+        self.insert_string(ch.to_string())
+    }
+
+    /// Insert a string into the buffer & update cursor position accordingly.
+    pub fn insert_string(&mut self, s: String) {
+        let len = self.buffer.lock().unwrap().insert_string(self.cursor, s);
         // NOTE: the last param to char_width here may not be correct
         if len.unwrap() > 0 {
             let obj = TextObject {
@@ -478,8 +482,19 @@ mod tests {
         view.insert_char('t');
 
         {
-            let mut buffer = view.buffer.lock().unwrap();
+            let buffer = view.buffer.lock().unwrap();
             assert_eq!(buffer.lines().next().unwrap(), "ttest\n");
+        }
+    }
+
+    #[test]
+    fn test_insert_string() {
+        let mut view = setup_view("test\nsecond");
+        view.insert_string(String::from("test!"));
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), "test!test\n");
         }
     }
 }

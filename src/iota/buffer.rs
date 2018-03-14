@@ -584,6 +584,17 @@ impl Buffer {
         utils::char_width(ch as char, false, 4, 1)
     }
 
+    /// Insert a string at the mark.
+    pub fn insert_string(&mut self, mark: Mark, s: String) -> Option<usize> {
+        let mut len = 0;
+
+        for ch in s.chars().rev() { 
+            len += self.insert_char(mark, ch).unwrap();
+        }
+
+        Some(len)
+    }
+
     /// Redo most recently undone action.
     pub fn redo(&mut self) -> Option<&LogEntry> {
         if let Some(transaction) = self.log.redo() {
