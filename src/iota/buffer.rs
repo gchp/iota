@@ -1069,6 +1069,14 @@ mod test {
     }
 
     #[test]
+    fn test_insert_unicode() {
+        let mut buffer = setup_buffer("");
+        buffer.insert_char(Mark::Cursor(0), '∉');
+        assert_eq!(buffer.len(), 2);
+        assert_eq!(buffer.lines().next().unwrap(), "∉");
+    }
+
+    #[test]
     fn test_remove() {
         let mut buffer = setup_buffer("ABCD");
         let mark = Mark::Cursor(0);
