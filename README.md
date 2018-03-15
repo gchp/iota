@@ -73,6 +73,11 @@ The following keyboard bindings are also available:
 - `Ctrl-q` quit
 - `Ctrl-z` undo
 - `Ctrl-y` redo
+- `Ctrl-Left` move one word left
+- `Ctrl-Right` move one word right
+- `Ctrl-Up` move this line up
+- `Ctrl-Down` move this line down
+- `Ctrl-x` remove current line
 
 Iota currently supports both Vi and Emacs style keybindings for simple movement.
 
