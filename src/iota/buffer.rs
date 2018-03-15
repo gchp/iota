@@ -580,7 +580,7 @@ impl Buffer {
     /// Insert a char at the mark.
     pub fn insert_char(&mut self, mark: Mark, ch: char) -> Option<usize> {
         if ch == '\t' {
-            for i in 0..4 {
+            for _ in 0..4 {
                 self.insert_char(mark, ' ');
             }
         
