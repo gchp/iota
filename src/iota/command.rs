@@ -32,6 +32,7 @@ pub enum Operation {
     DeleteObject,         // delete some object
     DeleteFromMark(Mark), // delete from some mark to an object
     CutSelection, // cut the selection from the buffer to the clipboard
+    MoveSelection(bool), //Move the current selection up or down
 
     Undo,         // rewind buffer transaction log
     Redo,         // replay buffer transaction log
@@ -121,6 +122,14 @@ impl Command {
         Command {
             number: 1,
             action: Action::Operation(Operation::CutSelection),
+            object: None
+        }
+    }
+
+    pub fn move_selection(down: bool) -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::MoveSelection(down)),
             object: None
         }
     }

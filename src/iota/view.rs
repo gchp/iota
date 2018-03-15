@@ -308,15 +308,40 @@ impl<'v> View<'v> {
         ret
     }
 
-    pub fn cut_selection(&mut self) {
+    pub fn delete_selection(&mut self) -> Option<Vec<char>> {
         // TODO: Implement proper selection? Lines are used for now.
         self.move_mark(Mark::Cursor(0), View::selection_start());
 
         // TODO: Implement copy/paste buffer
-        let content = self.delete_from_mark_to_object(Mark::Cursor(0), View::selection_end());
+        self.delete_from_mark_to_object(Mark::Cursor(0), View::selection_end())
+    }
 
-        self.insert_string(String::from("TEST"));
-        self.insert_string(content.unwrap().into_iter().collect());
+    pub fn cut_selection(&mut self) {
+        // TODO Store the deleted content
+        self.delete_selection();
+    }
+
+    pub fn move_selection(&mut self, down: bool) {
+        if down {
+            self.move_mark(Mark::Cursor(0), TextObject {
+                kind: Kind::Selection(Anchor::Same),
+                offset: Offset::Forward(1, Mark::Cursor(0)),
+            });
+            
+            let content = self.delete_selection();
+
+            self.move_mark(Mark::Cursor(0), TextObject {
+                kind: Kind::Selection(Anchor::Same),
+                offset: Offset::Backward(1, Mark::Cursor(0)),
+            });
+            
+            self.insert_string(content.unwrap().into_iter().collect());
+
+            self.move_mark(Mark::Cursor(0), TextObject {
+                kind: Kind::Selection(Anchor::Same),
+                offset: Offset::Forward(1, Mark::Cursor(0)),
+            });
+        };
     } 
 
     /// Insert a chacter into the buffer & update cursor position accordingly.

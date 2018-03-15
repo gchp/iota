@@ -175,6 +175,9 @@ impl<'e> Editor<'e> {
             Operation::CutSelection => {
                 self.view.cut_selection();
             }
+            Operation::MoveSelection(down) => {
+                self.view.move_selection(down);
+            }
             Operation::DeleteFromMark(m) => {
                 if command.object.is_some() {
                     self.view.delete_from_mark_to_object(m, command.object.unwrap());

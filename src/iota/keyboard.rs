@@ -18,6 +18,8 @@ pub enum Key {
     End,
     CtrlLeft,
     CtrlRight,
+    CtrlUp,
+    CtrlDown,
 
     Char(char),
     Ctrl(char),
@@ -62,6 +64,8 @@ impl Key {
         let chord = Key::get_chord(rb, start);
 
         match chord.as_str() {
+            "\x1b[1;5A" => Some(Key::CtrlUp),
+            "\x1b[1;5B" => Some(Key::CtrlDown),
             "\x1b[1;5C" => Some(Key::CtrlRight),
             "\x1b[1;5D" => Some(Key::CtrlLeft),
             _ => Key::from_special_code(start)
