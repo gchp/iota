@@ -155,8 +155,8 @@ impl<'v> View<'v> {
             //        the top_line mark
             let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
             for y_position in 0..height {
-                let line = lines.next().unwrap();
-                draw_line(rb, line, y_position, self.left_col);
+                let line = lines.next();
+                draw_line(rb, line.unwrap_or(String::from("")), y_position, self.left_col);
             }
 
         }
@@ -324,17 +324,22 @@ impl<'v> View<'v> {
     pub fn move_selection(&mut self, down: bool) {
         if down {
             self.move_mark(Mark::Cursor(0), TextObject {
-                kind: Kind::Selection(Anchor::Same),
+                kind: Kind::Selection(Anchor::End),
+                offset: Offset::Forward(0, Mark::Cursor(0)),
+            });
+
+            self.move_mark(Mark::Cursor(0), TextObject {
+                kind: Kind::Char,
                 offset: Offset::Forward(1, Mark::Cursor(0)),
             });
-            
+
             let content = self.delete_selection();
-            
+                                    
             self.move_mark(Mark::Cursor(0), TextObject {
                 kind: Kind::Selection(Anchor::Start),
                 offset: Offset::Backward(1, Mark::Cursor(0)),
             });
-            
+
             self.insert_string(content.unwrap().into_iter().collect());
         } else {
             let content = self.delete_selection();
@@ -553,6 +558,17 @@ mod tests {
     #[test]
     fn test_move_selection() {
         let mut view = setup_view("test\nsecond\nthird");
+        view.move_selection(true);
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), "second\n");
+        }
+    }
+    
+    #[test]
+    fn test_move_selection_small() {
+        let mut view = setup_view("test\nsecond\n");
         view.move_selection(true);
 
         {
