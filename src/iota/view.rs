@@ -77,13 +77,13 @@ impl<'v> View<'v> {
 
     pub fn selection_start() -> TextObject {
         TextObject {
-            kind: Kind::Selection(Anchor::Start),
+            kind: Kind::Line(Anchor::Start),
             offset: Offset::Backward(0, Mark::Cursor(0)),
         }
     }
     pub fn selection_end() -> TextObject {
         TextObject {
-            kind: Kind::Selection(Anchor::End),
+            kind: Kind::Line(Anchor::Same), //Anchor::Start makes more sense, but isn't implemented
             offset: Offset::Forward(1, Mark::Cursor(0)),
         }
     }
@@ -331,15 +331,24 @@ impl<'v> View<'v> {
             let content = self.delete_selection();
 
             self.move_mark(Mark::Cursor(0), TextObject {
-                kind: Kind::Selection(Anchor::Same),
+                kind: Kind::Selection(Anchor::Start),
+                offset: Offset::Backward(1, Mark::Cursor(0)),
+            });
+            
+            self.insert_string(content.unwrap().into_iter().collect());
+        } else {
+            let content = self.delete_selection();
+
+            self.move_mark(Mark::Cursor(0), TextObject {
+                kind: Kind::Selection(Anchor::Start),
                 offset: Offset::Backward(1, Mark::Cursor(0)),
             });
             
             self.insert_string(content.unwrap().into_iter().collect());
 
             self.move_mark(Mark::Cursor(0), TextObject {
-                kind: Kind::Selection(Anchor::Same),
-                offset: Offset::Forward(1, Mark::Cursor(0)),
+                kind: Kind::Selection(Anchor::Start),
+                offset: Offset::Backward(1, Mark::Cursor(0)),
             });
         };
     } 

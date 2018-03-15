@@ -2,7 +2,7 @@
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/gchp/iota?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-a is a terminal-based text-editor written in Rust.
+Iota is a terminal-based text-editor written in Rust.
 
 Here's what it looks like right now, editing itself.
 
