@@ -275,9 +275,15 @@ impl Buffer {
     fn get_line_index_backward(&self, anchor: Anchor, offset: usize, from_mark: Mark) -> Option<MarkPosition> {
         let text = &self.text;
         if let Some(mark_pos) = self.marks.get(&from_mark) {
-            let nlines = (0..mark_pos.absolute).rev().filter(|i| text[*i] == '\n')
-                                         .take(offset + 1)
-                                         .collect::<Vec<usize>>();
+            let mut nlines = (0..mark_pos.absolute).rev().filter(|i| text[*i] == '\n').collect::<Vec<usize>>();
+
+            let size = if nlines.len() < offset + 1{
+                0
+            } else {
+                nlines.len() - offset + 1
+            };
+
+            nlines.resize(size, 0);
 
             match anchor {
                 // Get the index of the start of the desired line

@@ -329,7 +329,7 @@ impl<'v> View<'v> {
             });
             
             let content = self.delete_selection();
-
+            
             self.move_mark(Mark::Cursor(0), TextObject {
                 kind: Kind::Selection(Anchor::Start),
                 offset: Offset::Backward(1, Mark::Cursor(0)),
@@ -536,6 +536,28 @@ mod tests {
         {
             let buffer = view.buffer.lock().unwrap();
             assert_eq!(buffer.lines().next().unwrap(), "test!test\n");
+        }
+    }
+
+    #[test]
+    fn test_delete_selection() {
+        let mut view = setup_view("test\nsecond");
+        view.delete_selection();
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), "second");
+        }
+    }
+    
+    #[test]
+    fn test_move_selection() {
+        let mut view = setup_view("test\nsecond\nthird");
+        view.move_selection(true);
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), "second\n");
         }
     }
 }
