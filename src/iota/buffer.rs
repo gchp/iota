@@ -169,11 +169,6 @@ impl Buffer {
                 if let Some(mark_pos) = self.marks.get(&from_mark) {
                     let new_absolute_position = mark_pos.absolute + offset;
                     if new_absolute_position < last {
-                        // if the new position is past the end of the line, do nothing
-                        if text[mark_pos.absolute] == '\n' {
-                            return None;
-                        }
-
                         // FIXME: it would be nice if we could avoid using get_line_info here...
                         let new_mark_pos = get_line_info(new_absolute_position, text).unwrap();
                         return Some(new_mark_pos)
@@ -581,7 +576,7 @@ impl Buffer {
             self.dirty = true;   
         }
         
-        utils::char_width(ch as char, false, 4, 1)
+        utils::char_width(ch, false, 4, 1)
     }
 
     /// Insert a string at the mark.
@@ -1080,11 +1075,36 @@ mod test {
     }
 
     #[test]
+    fn test_insert_tab() {
+        let mut buffer = setup_buffer("test");
+        buffer.insert_char(Mark::Cursor(0), '\t');
+        assert_eq!(buffer.lines().next().unwrap(), "\ttest");
+        assert_eq!(buffer.len(), 6); //FIXME Tabs should convert to spaces
+    }
+
+    #[test]
+    fn test_insert_newline() {
+        let mut buffer = setup_buffer("test");
+        let len = buffer.insert_char(Mark::Cursor(0), '\n');
+        assert_eq!(buffer.lines().next().unwrap(), "\n");
+        assert_eq!(buffer.len(), 6);
+        assert_eq!(len.unwrap(), 1);
+    }
+
+    #[test]
     fn test_insert_unicode() {
         let mut buffer = setup_buffer("");
         buffer.insert_char(Mark::Cursor(0), '∉');
         assert_eq!(buffer.len(), 2);
         assert_eq!(buffer.lines().next().unwrap(), "∉");
+    }
+
+    #[test]
+    fn test_insert_string() {
+        let mut buffer = setup_buffer("");
+        let len = buffer.insert_string(Mark::Cursor(0), String::from("insertme"));
+        assert_eq!(buffer.lines().next().unwrap(), "insertme");
+        assert_eq!(len.unwrap(), 8);
     }
 
     #[test]
