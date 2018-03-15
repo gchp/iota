@@ -294,14 +294,18 @@ impl<'v> View<'v> {
         self.buffer.lock().unwrap().remove_object(object);
     }
 
-    pub fn delete_from_mark_to_object(&mut self, mark: Mark, object: TextObject) {
+    pub fn delete_from_mark_to_object(&mut self, mark: Mark, object: TextObject) -> Option<Vec<char>> {
         let mut buffer = self.buffer.lock().unwrap();
+        let mut ret: Option<Vec<char>> = None;
+        
         if let Some(mark_pos) = buffer.get_object_index(object) {
             if let Some(midx) = buffer.get_mark_idx(mark) {
-                buffer.remove_from_mark_to_object(mark, object);
+                ret = buffer.remove_from_mark_to_object(mark, object);
                 buffer.set_mark(mark, cmp::min(mark_pos.absolute, midx));
             }
         }
+
+        ret
     }
 
     pub fn cut_selection(&mut self) {
@@ -309,8 +313,11 @@ impl<'v> View<'v> {
         self.move_mark(Mark::Cursor(0), View::selection_start());
 
         // TODO: Implement copy/paste buffer
-        self.delete_from_mark_to_object(Mark::Cursor(0), View::selection_end());
-    }
+        let content = self.delete_from_mark_to_object(Mark::Cursor(0), View::selection_end());
+
+        self.insert_string(String::from("TEST"));
+        self.insert_string(content.unwrap().into_iter().collect());
+    } 
 
     /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {

@@ -177,7 +177,7 @@ impl<'e> Editor<'e> {
             }
             Operation::DeleteFromMark(m) => {
                 if command.object.is_some() {
-                    self.view.delete_from_mark_to_object(m, command.object.unwrap())
+                    self.view.delete_from_mark_to_object(m, command.object.unwrap());
                 }
             }
             Operation::Undo => { self.view.undo() }
