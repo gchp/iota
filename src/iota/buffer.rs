@@ -569,14 +569,22 @@ impl Buffer {
 
     /// Insert a char at the mark.
     pub fn insert_char(&mut self, mark: Mark, ch: char) -> Option<usize> {
-        if let Some(mark_pos) = self.marks.get(&mark) {
-            self.text.insert(mark_pos.absolute, ch);
-            let mut transaction = self.log.start(mark_pos.absolute);
-            transaction.log(Change::Insert(mark_pos.absolute, ch), mark_pos.absolute);
-            self.dirty = true;   
-        }
+        if ch == '\t' {
+            for i in 0..4 {
+                self.insert_char(mark, ' ');
+            }
         
-        utils::char_width(ch, false, 4, 1)
+            Some(4)
+        } else {  
+            if let Some(mark_pos) = self.marks.get(&mark) {
+                self.text.insert(mark_pos.absolute, ch);
+                let mut transaction = self.log.start(mark_pos.absolute);
+                transaction.log(Change::Insert(mark_pos.absolute, ch), mark_pos.absolute);
+                self.dirty = true;   
+            }
+            
+            utils::char_width(ch, false, 4, 1)
+        }
     }
 
     /// Insert a string at the mark.
@@ -1078,8 +1086,8 @@ mod test {
     fn test_insert_tab() {
         let mut buffer = setup_buffer("test");
         buffer.insert_char(Mark::Cursor(0), '\t');
-        assert_eq!(buffer.lines().next().unwrap(), "\ttest");
-        assert_eq!(buffer.len(), 6); //FIXME Tabs should convert to spaces
+        assert_eq!(buffer.lines().next().unwrap(), "    test");
+        assert_eq!(buffer.len(), 9);
     }
 
     #[test]

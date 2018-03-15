@@ -111,8 +111,8 @@ impl Command {
     // FIXME: shouldn't need this method
     pub fn insert_tab() -> Command {
         Command {
-            number: 4,
-            action: Action::Operation(Operation::Insert(' ')),
+            number: 1,
+            action: Action::Operation(Operation::Insert('\t')),
             object: None,
         }
     }
