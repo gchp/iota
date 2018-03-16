@@ -8,6 +8,9 @@ use std::sync::{Mutex, Arc};
 use std::time::SystemTime;
 use rustbox::{Color, RustBox, Style as RustBoxStyle};
 
+extern crate clipboard;
+use self::clipboard::{ClipboardProvider, ClipboardContext};
+
 use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
 
@@ -312,13 +315,20 @@ impl<'v> View<'v> {
         // TODO: Implement proper selection? Lines are used for now.
         self.move_mark(Mark::Cursor(0), View::selection_start());
 
-        // TODO: Implement copy/paste buffer
         self.delete_from_mark_to_object(Mark::Cursor(0), View::selection_end())
     }
 
     pub fn cut_selection(&mut self) {
         // TODO Store the deleted content
-        self.delete_selection();
+        let content = self.delete_selection();
+
+        let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+        ctx.set_contents(content.unwrap().into_iter().collect());
+    }
+
+    pub fn paste(&mut self) {
+        let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
+        self.insert_string(ctx.get_contents().unwrap());
     }
 
     pub fn move_selection(&mut self, down: bool) {

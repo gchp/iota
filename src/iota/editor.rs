@@ -172,6 +172,9 @@ impl<'e> Editor<'e> {
                     self.view.delete_object(obj);
                 }
             }
+            Operation::Paste => {
+                self.view.paste();
+            }
             Operation::CutSelection => {
                 self.view.cut_selection();
             }
