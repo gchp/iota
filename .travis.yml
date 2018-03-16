@@ -2,9 +2,10 @@ language: rust
 os:
     - linux
     - osx
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y xorg-dev
+addons:
+    apt:
+      packages:
+        - xorg-dev
 script:
     - cargo build --verbose
     - cargo test --verbose
