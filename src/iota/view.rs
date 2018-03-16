@@ -151,7 +151,6 @@ impl<'v> View<'v> {
         {
             let buffer = self.buffer.lock().unwrap();
             let height = self.get_height() - 1;
-            let width = self.get_width() - 1;
 
             // FIXME: don't use unwrap here
             //        This will fail if for some reason the buffer doesnt have
@@ -327,7 +326,7 @@ impl<'v> View<'v> {
 
     pub fn paste(&mut self) {
         let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-        self.insert_string(ctx.get_contents().unwrap());
+        self.insert_string(ctx.get_contents().unwrap_or(String::from("")));
     }
 
     pub fn move_selection(&mut self, down: bool) {
@@ -514,10 +513,7 @@ pub fn draw_line(rb: &mut RustBox, line: String, idx: usize, left: usize) {
 
 #[cfg(test)]
 mod tests {
-
     use std::sync::{Arc, Mutex};
-    use std::rc::Rc;
-
     use view::View;
     use buffer::Buffer;
 
@@ -563,6 +559,33 @@ mod tests {
         {
             let buffer = view.buffer.lock().unwrap();
             assert_eq!(buffer.lines().next().unwrap(), "second");
+        }
+    }
+    
+    #[test]
+    fn test_cut_selection() {
+        let mut view = setup_view("test\nsecond");
+        view.cut_selection();
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), "second");
+        }
+    }
+    
+    #[test]
+    fn test_paste() {
+        let mut view = setup_view("first\nsecond");
+        view.cut_selection();
+        view.paste();
+        view.paste();
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            let mut lines = buffer.lines();
+            assert_eq!(lines.next().unwrap(), "first\n");
+            assert_eq!(lines.next().unwrap(), "first\n");
+            assert_eq!(lines.next().unwrap(), "second");
         }
     }
     

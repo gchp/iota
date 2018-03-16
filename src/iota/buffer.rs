@@ -1082,7 +1082,7 @@ mod test {
     #[test]
     fn test_insert() {
         let mut buffer = setup_buffer("");
-        buffer.insert_char(Mark::Cursor(0), 'A');
+        buffer.insert_string(Mark::Cursor(0), String::from("A"));
         assert_eq!(buffer.len(), 2);
         assert_eq!(buffer.lines().next().unwrap(), "A");
     }
@@ -1090,7 +1090,7 @@ mod test {
     #[test]
     fn test_insert_tab() {
         let mut buffer = setup_buffer("test");
-        buffer.insert_char(Mark::Cursor(0), '\t');
+        buffer.insert_string(Mark::Cursor(0), '\t'.to_string());
         assert_eq!(buffer.lines().next().unwrap(), "    test");
         assert_eq!(buffer.len(), 9);
     }
@@ -1098,7 +1098,7 @@ mod test {
     #[test]
     fn test_insert_newline() {
         let mut buffer = setup_buffer("test");
-        let len = buffer.insert_char(Mark::Cursor(0), '\n');
+        let len = buffer.insert_string(Mark::Cursor(0), '\n'.to_string());
         assert_eq!(buffer.lines().next().unwrap(), "\n");
         assert_eq!(buffer.len(), 6);
         assert_eq!(len.unwrap(), 1);
@@ -1107,9 +1107,9 @@ mod test {
     #[test]
     fn test_insert_unicode() {
         let mut buffer = setup_buffer("");
-        buffer.insert_char(Mark::Cursor(0), '∉');
-        assert_eq!(buffer.len(), 2);
-        assert_eq!(buffer.lines().next().unwrap(), "∉");
+        buffer.insert_string(Mark::Cursor(0), String::from("Съешь же ещё этих мягких французских булок, да выпей чаю"));
+        assert_eq!(buffer.lines().next().unwrap(), "Съешь же ещё этих мягких французских булок, да выпей чаю");
+        assert_eq!(buffer.len(), 57);
     }
 
     #[test]
