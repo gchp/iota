@@ -577,34 +577,29 @@ impl Buffer {
         None
     }
 
-    /// Insert a char at the mark.
-    pub fn insert_char(&mut self, mark: Mark, ch: char) -> Option<usize> {
-        if ch == '\t' {
-            for _ in 0..4 {
-                self.insert_char(mark, ' ');
-            }
-        
-            Some(4)
-        } else {  
-            if let Some(mark_pos) = self.marks.get(&mark) {
-                self.text.insert(mark_pos.absolute, ch);
-                let mut transaction = self.log.start(mark_pos.absolute);
-                transaction.log(Change::Insert(mark_pos.absolute, ch), mark_pos.absolute);
-                self.dirty = true;   
-            }
-            
-            utils::char_width(ch, false, 4, 1)
-        }
-    }
-
     /// Insert a string at the mark.
     pub fn insert_string(&mut self, mark: Mark, s: String) -> Option<usize> {
         let mut len = 0;
 
-        for ch in s.chars().rev() { 
-            len += self.insert_char(mark, ch).unwrap();
+        let mut transaction = self.log.start(self.marks.get(&mark).unwrap().absolute);
+        if let Some(mark_pos) = self.marks.get(&mark) {            
+            for ch in s.chars().rev() {
+                if ch == '\t' {
+                    for _ in 0..4 {
+                        self.text.insert(mark_pos.absolute, ' ');
+                        transaction.log(Change::Insert(mark_pos.absolute, ch), mark_pos.absolute);
+                    }
+                    len += 4;
+                } else {
+                    self.text.insert(mark_pos.absolute, ch);
+    
+                    len += utils::char_width(ch, false, 4, 1).unwrap();
+                    transaction.log(Change::Insert(mark_pos.absolute, ch), mark_pos.absolute);
+                }
+            }
         }
 
+        self.dirty = true;   
         Some(len)
     }
 
