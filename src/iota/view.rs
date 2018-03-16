@@ -319,7 +319,6 @@ impl<'v> View<'v> {
     }
 
     pub fn cut_selection(&mut self) {
-        // TODO Store the deleted content
         let content = self.delete_selection();
 
         let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
@@ -332,6 +331,8 @@ impl<'v> View<'v> {
     }
 
     pub fn move_selection(&mut self, down: bool) {
+        // FIXME: This should probably be one undo/redo transaction.
+        //        Currently, this creates a remove followed by an insert.
         if down {
             self.move_mark(Mark::Cursor(0), TextObject {
                 kind: Kind::Selection(Anchor::End),
