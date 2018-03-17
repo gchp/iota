@@ -300,36 +300,35 @@ impl<'v> View<'v> {
         self.buffer.lock().unwrap().remove_object(object);
     }
 
-    pub fn delete_from_mark_to_object(&mut self, mark: Mark, object: TextObject) -> Option<Vec<char>> {
+    pub fn delete_from_mark_to_object(&mut self, mark: Mark, object: TextObject) {
         let mut buffer = self.buffer.lock().unwrap();
-        let mut ret: Option<Vec<char>> = None;
-        
         if let Some(mark_pos) = buffer.get_object_index(object) {
             if let Some(midx) = buffer.get_mark_idx(mark) {
-                ret = buffer.remove_from_mark_to_object(mark, object);
+                buffer.remove_from_mark_to_object(mark, object);
                 buffer.set_mark(mark, cmp::min(mark_pos.absolute, midx));
             }
         }
-
-        ret
     }
 
-    pub fn delete_selection(&mut self) -> Option<Vec<char>> {
+    pub fn delete_selection(&mut self) {
         // TODO: Implement proper selection? Lines are used for now.
         self.move_mark(Mark::Cursor(0), View::selection_start());
 
-        self.delete_from_mark_to_object(Mark::Cursor(0), View::selection_end())
+        self.delete_from_mark_to_object(Mark::Cursor(0), View::selection_end());
     }
 
-    pub fn copy_selection(&mut self) {
-        // TODO: We shouldn't need to actually move the cursor here
+    pub fn get_selection(&mut self) -> Option<Vec<char>> {
         let mut buffer = self.buffer.lock().unwrap();
-        
+
         let start = buffer.get_object_index(View::selection_start()).unwrap().absolute;
         let end = buffer.get_object_index(View::selection_end()).unwrap().absolute;
 
-        let content = buffer.get_range(start, end).unwrap();
+        buffer.get_range(start, end)
+    }
 
+    pub fn copy_selection(&mut self) {
+        let content = self.get_selection().unwrap();
+        
         let clipboard = ClipboardProvider::new();
 
         if clipboard.is_ok() {
@@ -372,7 +371,8 @@ impl<'v> View<'v> {
                 offset: Offset::Forward(1, Mark::Cursor(0)),
             });
 
-            let content = self.delete_selection();
+            let content = self.get_selection();
+            self.delete_selection();
                                     
             self.move_mark(Mark::Cursor(0), TextObject {
                 kind: Kind::Selection(Anchor::Start),
@@ -381,7 +381,8 @@ impl<'v> View<'v> {
 
             self.insert_string(content.unwrap().into_iter().collect());
         } else {
-            let content = self.delete_selection();
+            let content = self.get_selection();
+            self.delete_selection();
 
             self.move_mark(Mark::Cursor(0), TextObject {
                 kind: Kind::Selection(Anchor::Start),
@@ -581,40 +582,20 @@ mod tests {
     }
 
     #[test]
-    fn test_delete_selection() {
-        let mut view = setup_view("test\nsecond");
-        view.delete_selection();
-
-        {
-            let buffer = view.buffer.lock().unwrap();
-            assert_eq!(buffer.lines().next().unwrap(), "second");
-        }
-    }
-    
-    #[test]
-    fn test_cut_selection() {
-        let mut view = setup_view("test\nsecond");
+    fn test_cut_copy_paste() {
+        // It's important to keep clipboard tests together
+        // The clipboard is a shared resource, and the test runner is multithreaded
+        let mut view = setup_view("first\nsecond\n");
         view.cut_selection();
-
-        {
-            let buffer = view.buffer.lock().unwrap();
-            assert_eq!(buffer.lines().next().unwrap(), "second");
-        }
-    }
-    
-    #[test]
-    fn test_copy_paste() {
-        let mut view = setup_view("first\nsecond");
+        view.paste();
         view.copy_selection();
         view.paste();
 
-        {
-            let buffer = view.buffer.lock().unwrap();
-            let mut lines = buffer.lines();
-            assert_eq!(lines.next().unwrap(), "first\n");
-            assert_eq!(lines.next().unwrap(), "first\n");
-            assert_eq!(lines.next().unwrap(), "second");
-        }
+        let buffer = view.buffer.lock().unwrap();
+        let mut lines = buffer.lines();
+        assert_eq!(lines.next().unwrap(), "first\n");
+        assert_eq!(lines.next().unwrap(), "second\n");
+        assert_eq!(lines.next().unwrap(), "second\n");
     }
     
     #[test]
