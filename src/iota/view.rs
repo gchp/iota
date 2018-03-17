@@ -328,7 +328,7 @@ impl<'v> View<'v> {
 
         if clipboard.is_ok() {
             let mut ctx: ClipboardContext = clipboard.unwrap();
-            ctx.set_contents(content.unwrap().into_iter().collect());
+            ctx.set_contents(content.unwrap().into_iter().collect()).ok();
         } else {
             self.clipboard = content.unwrap().into_iter().collect();
         }
