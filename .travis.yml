@@ -2,10 +2,6 @@ language: rust
 os:
     - linux
     - osx
-addons:
-    apt:
-      packages:
-        - xorg-dev
 script:
     - cargo build --verbose
     - cargo test --verbose

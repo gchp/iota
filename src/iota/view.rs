@@ -30,6 +30,9 @@ pub struct View<'v> {
     pub last_buffer: Option<Arc<Mutex<Buffer>>>,
     pub overlay: Option<Box<Overlay + 'v>>,
 
+    /// Used to store clipboard if system clipboard is not available
+    clipboard: String,
+
     height: usize,
     width: usize,
 
@@ -75,6 +78,7 @@ impl<'v> View<'v> {
             message: None,
             height: height,
             width: width,
+            clipboard: String::from(""),
         }
     }
 
@@ -320,13 +324,27 @@ impl<'v> View<'v> {
     pub fn cut_selection(&mut self) {
         let content = self.delete_selection();
 
-        let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-        ctx.set_contents(content.unwrap().into_iter().collect());
+        let clipboard = ClipboardProvider::new();
+
+        if clipboard.is_ok() {
+            let mut ctx: ClipboardContext = clipboard.unwrap();
+            ctx.set_contents(content.unwrap().into_iter().collect());
+        } else {
+            self.clipboard = content.unwrap().into_iter().collect();
+        }
     }
 
     pub fn paste(&mut self) {
-        let mut ctx: ClipboardContext = ClipboardProvider::new().unwrap();
-        self.insert_string(ctx.get_contents().unwrap_or(String::from("")));
+        let clipboard = ClipboardProvider::new();
+    
+        let content = if clipboard.is_ok() {
+            let mut ctx: ClipboardContext = clipboard.unwrap();
+            ctx.get_contents().unwrap_or(String::from(""))
+        } else {
+            self.clipboard.clone()
+        };
+
+        self.insert_string(content)
     }
 
     pub fn move_selection(&mut self, down: bool) {
