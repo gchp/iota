@@ -172,6 +172,24 @@ impl<'e> Editor<'e> {
                     self.view.delete_object(obj);
                 }
             }
+            Operation::Paste => {
+                self.view.paste();
+            }
+            Operation::DeleteSelection => {
+                self.view.delete_selection();
+            }
+            Operation::DuplicateSelection => {
+                self.view.duplicate_selection();
+            }
+            Operation::CutSelection => {
+                self.view.cut_selection();
+            }
+            Operation::CopySelection => {
+                self.view.copy_selection();
+            }
+            Operation::MoveSelection(down) => {
+                self.view.move_selection(down);
+            }
             Operation::DeleteFromMark(m) => {
                 if command.object.is_some() {
                     self.view.delete_from_mark_to_object(m, command.object.unwrap())

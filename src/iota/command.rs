@@ -31,6 +31,12 @@ pub enum Operation {
     Insert(char), // insert text
     DeleteObject,         // delete some object
     DeleteFromMark(Mark), // delete from some mark to an object
+    DuplicateSelection, // duplicate the selection
+    DeleteSelection, // delete the selection
+    CutSelection, // cut the selection from the buffer to the clipboard
+    CopySelection, // copy the selection to the clipboard
+    Paste, // insert the clipboard
+    MoveSelection(bool), //Move the current selection up or down
 
     Undo,         // rewind buffer transaction log
     Redo,         // replay buffer transaction log
@@ -109,9 +115,62 @@ impl Command {
     // FIXME: shouldn't need this method
     pub fn insert_tab() -> Command {
         Command {
-            number: 4,
-            action: Action::Operation(Operation::Insert(' ')),
+            number: 1,
+            action: Action::Operation(Operation::Insert('\t')),
             object: None,
+        }
+    }
+
+    /// Shortcut to create DeleteSelection command
+    pub fn delete_selection() -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::DeleteSelection),
+            object: None
+        }
+    }
+
+    /// Shortcut to create DuplicateSelection command
+    pub fn duplicate_selection() -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::DuplicateSelection),
+            object: None
+        }
+    }
+
+    /// Shortcut to create CutSelection command
+    pub fn cut_selection() -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::CutSelection),
+            object: None
+        }
+    }
+
+    /// Shortcut to create Paste command
+    pub fn paste() -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::Paste),
+            object: None
+        }
+    }
+
+    /// Shortcut to create CopySelection command
+    pub fn copy_selection() -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::CopySelection),
+            object: None
+        }
+    }
+
+    pub fn move_selection(down: bool) -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::MoveSelection(down)),
+            object: None
         }
     }
 

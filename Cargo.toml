@@ -19,6 +19,7 @@ libc = "0.1"
 clippy = {version = "*", optional = true}
 regex = "0.1"
 lazy_static = "0.2"
+clipboard = "0.4.6"
 
 [dependencies.rustbox]
 git = "https://github.com/gchp/rustbox"

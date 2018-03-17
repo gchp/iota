@@ -8,12 +8,14 @@ use std::sync::{Mutex, Arc};
 use std::time::SystemTime;
 use rustbox::{Color, RustBox, Style as RustBoxStyle};
 
+extern crate clipboard;
+use self::clipboard::{ClipboardProvider, ClipboardContext};
+
 use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
 
 use buffer::{Buffer, Mark};
 use overlay::{CommandPrompt, Overlay, OverlayType};
-use utils;
 use textobject::{Anchor, TextObject, Kind, Offset};
 
 
@@ -27,6 +29,9 @@ pub struct View<'v> {
     pub buffer: Arc<Mutex<Buffer>>,
     pub last_buffer: Option<Arc<Mutex<Buffer>>>,
     pub overlay: Option<Box<Overlay + 'v>>,
+
+    /// Used to store clipboard if system clipboard is not available
+    clipboard: String,
 
     height: usize,
     width: usize,
@@ -73,6 +78,20 @@ impl<'v> View<'v> {
             message: None,
             height: height,
             width: width,
+            clipboard: String::from(""),
+        }
+    }
+
+    pub fn selection_start() -> TextObject {
+        TextObject {
+            kind: Kind::Line(Anchor::Start),
+            offset: Offset::Backward(0, Mark::Cursor(0)),
+        }
+    }
+    pub fn selection_end() -> TextObject {
+        TextObject {
+            kind: Kind::Line(Anchor::Same), //Anchor::Start makes more sense, but isn't implemented
+            offset: Offset::Forward(1, Mark::Cursor(0)),
         }
     }
 
@@ -136,15 +155,14 @@ impl<'v> View<'v> {
         {
             let buffer = self.buffer.lock().unwrap();
             let height = self.get_height() - 1;
-            let width = self.get_width() - 1;
 
             // FIXME: don't use unwrap here
             //        This will fail if for some reason the buffer doesnt have
             //        the top_line mark
             let mut lines = buffer.lines_from(self.top_line).unwrap().take(height);
             for y_position in 0..height {
-                let line = lines.next().unwrap_or_else(Vec::new);
-                draw_line(rb, &line, y_position, self.left_col);
+                let line = lines.next();
+                draw_line(rb, line.unwrap_or(String::from("")), y_position, self.left_col);
             }
 
         }
@@ -292,14 +310,112 @@ impl<'v> View<'v> {
         }
     }
 
+    pub fn delete_selection(&mut self) {
+        // TODO: Implement proper selection? Lines are used for now.
+        self.move_mark(Mark::Cursor(0), View::selection_start());
+
+        self.delete_from_mark_to_object(Mark::Cursor(0), View::selection_end());
+    }
+
+    pub fn get_selection(&mut self) -> Option<Vec<char>> {
+        let mut buffer = self.buffer.lock().unwrap();
+
+        let start = buffer.get_object_index(View::selection_start()).unwrap().absolute;
+        let end = buffer.get_object_index(View::selection_end()).unwrap().absolute;
+
+        buffer.get_range(start, end)
+    }
+
+    pub fn copy_selection(&mut self) {
+        let content = self.get_selection().unwrap();
+        
+        let clipboard = ClipboardProvider::new();
+
+        if clipboard.is_ok() {
+            let mut ctx: ClipboardContext = clipboard.unwrap();
+            ctx.set_contents(content.into_iter().collect()).ok();
+        } else {
+            self.clipboard = content.into_iter().collect();
+        }
+    }
+
+    pub fn duplicate_selection(&mut self) {
+        let content = self.get_selection();
+        self.insert_string(content.unwrap().into_iter().collect());
+    }
+
+    pub fn cut_selection(&mut self) {
+        self.copy_selection();
+        self.delete_selection();
+    }
+
+    pub fn paste(&mut self) {
+        let clipboard = ClipboardProvider::new();
+    
+        let content = if clipboard.is_ok() {
+            let mut ctx: ClipboardContext = clipboard.unwrap();
+            ctx.get_contents().unwrap_or(String::from(""))
+        } else {
+            self.clipboard.clone()
+        };
+
+        self.insert_string(content)
+    }
+
+    pub fn move_selection(&mut self, down: bool) {
+        // FIXME: This should probably be one undo/redo transaction.
+        //        Currently, this creates a remove followed by an insert.
+        if down {
+            self.move_mark(Mark::Cursor(0), TextObject {
+                kind: Kind::Selection(Anchor::End),
+                offset: Offset::Forward(0, Mark::Cursor(0)),
+            });
+
+            self.move_mark(Mark::Cursor(0), TextObject {
+                kind: Kind::Char,
+                offset: Offset::Forward(1, Mark::Cursor(0)),
+            });
+
+            let content = self.get_selection();
+            self.delete_selection();
+                                    
+            self.move_mark(Mark::Cursor(0), TextObject {
+                kind: Kind::Selection(Anchor::Start),
+                offset: Offset::Backward(1, Mark::Cursor(0)),
+            });
+
+            self.insert_string(content.unwrap().into_iter().collect());
+        } else {
+            let content = self.get_selection();
+            self.delete_selection();
+
+            self.move_mark(Mark::Cursor(0), TextObject {
+                kind: Kind::Selection(Anchor::Start),
+                offset: Offset::Backward(1, Mark::Cursor(0)),
+            });
+            
+            self.insert_string(content.unwrap().into_iter().collect());
+
+            self.move_mark(Mark::Cursor(0), TextObject {
+                kind: Kind::Selection(Anchor::Start),
+                offset: Offset::Backward(1, Mark::Cursor(0)),
+            });
+        };
+    } 
+
     /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {
-        self.buffer.lock().unwrap().insert_char(self.cursor, ch as u8);
+        self.insert_string(ch.to_string())
+    }
+
+    /// Insert a string into the buffer & update cursor position accordingly.
+    pub fn insert_string(&mut self, s: String) {
+        let len = self.buffer.lock().unwrap().insert_string(self.cursor, s);
         // NOTE: the last param to char_width here may not be correct
-        if let Some(ch_width) = utils::char_width(ch, false, 4, 1) {
+        if len.unwrap() > 0 {
             let obj = TextObject {
                 kind: Kind::Char,
-                offset: Offset::Forward(ch_width, Mark::Cursor(0))
+                offset: Offset::Forward(len.unwrap(), Mark::Cursor(0))
             };
             self.move_mark(Mark::Cursor(0), obj)
         }
@@ -355,7 +471,7 @@ impl<'v> View<'v> {
 
         //TODO (lee): Is iteration still necessary in this format?
         for line in buffer.lines() {
-            let result = file.write_all(&*line);
+            let result = file.write_all(line.into_bytes().as_slice());
 
             if result.is_err() {
                 // TODO(greg): figure out what to do here.
@@ -395,12 +511,11 @@ impl<'v> View<'v> {
 
 }
 
-pub fn draw_line(rb: &mut RustBox, line: &[u8], idx: usize, left: usize) {
+pub fn draw_line(rb: &mut RustBox, line: String, idx: usize, left: usize) {
     let width = rb.width() - 1;
     let mut x = 0;
 
-    for ch in line.iter().skip(left) {
-        let ch = *ch as char;
+    for ch in line.chars().skip(left) {
         match ch {
             '\t' => {
                 let w = 4 - x % 4;
@@ -433,10 +548,7 @@ pub fn draw_line(rb: &mut RustBox, line: &[u8], idx: usize, left: usize) {
 
 #[cfg(test)]
 mod tests {
-
     use std::sync::{Arc, Mutex};
-    use std::rc::Rc;
-
     use view::View;
     use buffer::Buffer;
 
@@ -458,8 +570,83 @@ mod tests {
         view.insert_char('t');
 
         {
-            let mut buffer = view.buffer.lock().unwrap();
-            assert_eq!(buffer.lines().next().unwrap(), b"ttest\n");
+            let buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), "ttest\n");
+        }
+    }
+
+    #[test]
+    fn test_insert_string() {
+        let mut view = setup_view("test\nsecond");
+        view.insert_string(String::from("test!"));
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), "test!test\n");
+        }
+    }
+
+    #[test]
+    fn test_cut_copy_paste() {
+        // It's important to keep clipboard tests together
+        // The clipboard is a shared resource, and the test runner is multithreaded
+        let mut view = setup_view("first\nsecond\n");
+        view.cut_selection();
+        view.paste();
+        view.copy_selection();
+        view.paste();
+
+        let buffer = view.buffer.lock().unwrap();
+        let mut lines = buffer.lines();
+        assert_eq!(lines.next().unwrap(), "first\n");
+        assert_eq!(lines.next().unwrap(), "second\n");
+        assert_eq!(lines.next().unwrap(), "second\n");
+    }
+    
+    #[test]
+    fn test_duplicate_selection() {
+        let mut view = setup_view("first\nsecond\nthird");
+        view.duplicate_selection();
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            let mut lines = buffer.lines();
+            assert_eq!(lines.next().unwrap(), "first\n");
+            assert_eq!(lines.next().unwrap(), "first\n");
+            assert_eq!(lines.next().unwrap(), "second\n");
+        }
+    }
+    
+    #[test]
+    fn test_delete_selection() {
+        let mut view = setup_view("first\nsecond\nthird");
+        view.delete_selection();
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), "second\n");
+        }
+    }
+    
+    #[test]
+    fn test_move_selection() {
+        let mut view = setup_view("test\nsecond\nthird");
+        view.move_selection(true);
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), "second\n");
+        }
+    }
+    
+    #[test]
+    fn test_move_selection_small() {
+        let mut view = setup_view("test\nsecond\n");
+        view.move_selection(true);
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), "second\n");
         }
     }
 }

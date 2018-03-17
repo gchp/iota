@@ -6,17 +6,17 @@ use std::mem;
 /// Represents a modification of data.
 pub enum Change {
     ///Character insertion.
-    Insert(usize, u8),
+    Insert(usize, char),
     ///Character removal.
-    Remove(usize, u8),
+    Remove(usize, char),
 }
 
 impl Change {
     /// Reverses a change, consuming it in the process
     pub fn reverse(self) -> Change {
         match self {
-            Change::Insert(usize, u8) => Change::Remove(usize, u8),
-            Change::Remove(usize, u8) => Change::Insert(usize, u8),
+            Change::Insert(usize, char) => Change::Remove(usize, char),
+            Change::Remove(usize, char) => Change::Insert(usize, char),
         }
     }
 }

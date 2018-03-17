@@ -18,6 +18,8 @@ pub enum Key {
     End,
     CtrlLeft,
     CtrlRight,
+    CtrlUp,
+    CtrlDown,
 
     Char(char),
     Ctrl(char),
@@ -35,12 +37,20 @@ impl Key {
             7     => Some(Key::Ctrl('g')),
             8     => Some(Key::Ctrl('h')),
             9     => Some(Key::Tab),
+            10    => Some(Key::Ctrl('j')),
+            11    => Some(Key::Ctrl('k')),
+            12    => Some(Key::Ctrl('l')),
             13    => Some(Key::Enter),
             14    => Some(Key::Ctrl('n')),
+            15    => Some(Key::Ctrl('o')),
             16    => Some(Key::Ctrl('p')),
             17    => Some(Key::Ctrl('q')),
             18    => Some(Key::Ctrl('r')),
             19    => Some(Key::Ctrl('s')),
+            20    => Some(Key::Ctrl('t')),
+            21    => Some(Key::Ctrl('u')),
+            22    => Some(Key::Ctrl('v')),
+            23    => Some(Key::Ctrl('w')),
             24    => Some(Key::Ctrl('x')),
             25    => Some(Key::Ctrl('y')),
             26    => Some(Key::Ctrl('z')),
@@ -62,6 +72,8 @@ impl Key {
         let chord = Key::get_chord(rb, start);
 
         match chord.as_str() {
+            "\x1b[1;5A" => Some(Key::CtrlUp),
+            "\x1b[1;5B" => Some(Key::CtrlDown),
             "\x1b[1;5C" => Some(Key::CtrlRight),
             "\x1b[1;5D" => Some(Key::CtrlLeft),
             _ => Key::from_special_code(start)

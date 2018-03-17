@@ -8,6 +8,7 @@ pub enum Kind {
     Line(Anchor),
 
     Word(Anchor),
+    Selection(Anchor),
     // Sentence(Anchor),
     // Paragraph(Anchor),
 
@@ -22,12 +23,13 @@ impl Kind {
             Kind::Char => Kind::Char,
             Kind::Line(_) => Kind::Line(anchor),
             Kind::Word(_) => Kind::Word(anchor),
+            Kind::Selection(_) => Kind::Line(anchor),
         }
     }
     pub fn get_anchor(&self) -> Anchor {
         match *self {
             Kind::Char => Default::default(),
-            Kind::Line(a) | Kind::Word(a) => a,
+            Kind::Line(a) | Kind::Word(a) | Kind::Selection(a) => a,
         }
     }
 }
