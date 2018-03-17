@@ -175,6 +175,9 @@ impl<'e> Editor<'e> {
             Operation::Paste => {
                 self.view.paste();
             }
+            Operation::DeleteSelection => {
+                self.view.delete_selection();
+            }
             Operation::DuplicateSelection => {
                 self.view.duplicate_selection();
             }

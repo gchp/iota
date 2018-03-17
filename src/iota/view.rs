@@ -618,6 +618,17 @@ mod tests {
     }
     
     #[test]
+    fn test_delete_selection() {
+        let mut view = setup_view("first\nsecond\nthird");
+        view.delete_selection();
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            assert_eq!(buffer.lines().next().unwrap(), "second\n");
+        }
+    }
+    
+    #[test]
     fn test_move_selection() {
         let mut view = setup_view("test\nsecond\nthird");
         view.move_selection(true);

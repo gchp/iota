@@ -71,6 +71,8 @@ The following keyboard bindings are also available:
 
 - `Ctrl-s` save
 - `Ctrl-q` quit
+- `Ctrl-k` delete current line
+- `Ctrl-d` duplicate current line
 - `Ctrl-x` cut current line
 - `Ctrl-c` copy current line
 - `Ctrl-v` paste
