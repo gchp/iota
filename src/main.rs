@@ -14,7 +14,6 @@ use iota::{
     Mode,
 };
 use rustbox::{InitOptions, RustBox, InputMode, OutputMode};
-
 static USAGE: &'static str = "
 Usage: iota [<filename>] [options]
        iota --help
