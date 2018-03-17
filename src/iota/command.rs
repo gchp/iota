@@ -32,6 +32,7 @@ pub enum Operation {
     DeleteObject,         // delete some object
     DeleteFromMark(Mark), // delete from some mark to an object
     CutSelection, // cut the selection from the buffer to the clipboard
+    CopySelection, // copy the selection to the clipboard
     Paste, // insert the clipboard
     MoveSelection(bool), //Move the current selection up or down
 
@@ -127,11 +128,20 @@ impl Command {
         }
     }
 
-    /// Shortcut to create CutSelection command
+    /// Shortcut to create Paste command
     pub fn paste() -> Command {
         Command {
             number: 1,
             action: Action::Operation(Operation::Paste),
+            object: None
+        }
+    }
+
+    /// Shortcut to create CopySelection command
+    pub fn copy_selection() -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::CopySelection),
             object: None
         }
     }

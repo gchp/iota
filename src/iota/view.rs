@@ -321,17 +321,28 @@ impl<'v> View<'v> {
         self.delete_from_mark_to_object(Mark::Cursor(0), View::selection_end())
     }
 
-    pub fn cut_selection(&mut self) {
-        let content = self.delete_selection();
+    pub fn copy_selection(&mut self) {
+        // TODO: We shouldn't need to actually move the cursor here
+        let mut buffer = self.buffer.lock().unwrap();
+        
+        let start = buffer.get_object_index(View::selection_start()).unwrap().absolute;
+        let end = buffer.get_object_index(View::selection_end()).unwrap().absolute;
+
+        let content = buffer.get_range(start, end).unwrap();
 
         let clipboard = ClipboardProvider::new();
 
         if clipboard.is_ok() {
             let mut ctx: ClipboardContext = clipboard.unwrap();
-            ctx.set_contents(content.unwrap().into_iter().collect()).ok();
+            ctx.set_contents(content.into_iter().collect()).ok();
         } else {
-            self.clipboard = content.unwrap().into_iter().collect();
+            self.clipboard = content.into_iter().collect();
         }
+    }
+
+    pub fn cut_selection(&mut self) {
+        self.copy_selection();
+        self.delete_selection();
     }
 
     pub fn paste(&mut self) {
@@ -592,10 +603,9 @@ mod tests {
     }
     
     #[test]
-    fn test_paste() {
+    fn test_copy_paste() {
         let mut view = setup_view("first\nsecond");
-        view.cut_selection();
-        view.paste();
+        view.copy_selection();
         view.paste();
 
         {

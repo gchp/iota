@@ -564,6 +564,17 @@ impl Buffer {
         self.remove_range(start, end)
     }
 
+    // Get the chars in the range from start to end
+    // TODO: This needs out of bounds handling
+    pub fn get_range(&mut self, start: usize, end: usize) -> Option<Vec<char>> {
+        let mut vec = (start..end)
+            .rev()
+            .map(|idx| *self.text.get(idx).unwrap())
+            .collect::<Vec<char>>();
+        vec.reverse();
+        Some(vec)
+    }
+
     pub fn remove_object(&mut self, object: TextObject) -> Option<Vec<char>> {
         let object_start = TextObject { kind: object.kind.with_anchor(Anchor::Start), offset: object.offset };
         let object_end = TextObject { kind: object.kind.with_anchor(Anchor::End), offset: object.offset };
@@ -1118,6 +1129,14 @@ mod test {
         let len = buffer.insert_string(Mark::Cursor(0), String::from("insertme"));
         assert_eq!(buffer.lines().next().unwrap(), "insertme");
         assert_eq!(len.unwrap(), 8);
+    }
+
+    #[test]
+    fn test_get_range() {
+        let mut buffer = setup_buffer("some content");
+
+        assert_eq!(buffer.get_range(0,4).unwrap().len(), 4);
+        assert_eq!(buffer.get_range(0,4).unwrap(), vec!['s','o','m','e']);
     }
 
     #[test]

@@ -178,6 +178,9 @@ impl<'e> Editor<'e> {
             Operation::CutSelection => {
                 self.view.cut_selection();
             }
+            Operation::CopySelection => {
+                self.view.copy_selection();
+            }
             Operation::MoveSelection(down) => {
                 self.view.move_selection(down);
             }
