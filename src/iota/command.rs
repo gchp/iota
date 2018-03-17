@@ -31,6 +31,7 @@ pub enum Operation {
     Insert(char), // insert text
     DeleteObject,         // delete some object
     DeleteFromMark(Mark), // delete from some mark to an object
+    DuplicateSelection, // duplicate the selection
     CutSelection, // cut the selection from the buffer to the clipboard
     CopySelection, // copy the selection to the clipboard
     Paste, // insert the clipboard
@@ -116,6 +117,15 @@ impl Command {
             number: 1,
             action: Action::Operation(Operation::Insert('\t')),
             object: None,
+        }
+    }
+
+    /// Shortcut to create CutSelection command
+    pub fn duplicate_selection() -> Command {
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::DuplicateSelection),
+            object: None
         }
     }
 

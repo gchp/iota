@@ -339,6 +339,11 @@ impl<'v> View<'v> {
         }
     }
 
+    pub fn duplicate_selection(&mut self) {
+        let content = self.get_selection();
+        self.insert_string(content.unwrap().into_iter().collect());
+    }
+
     pub fn cut_selection(&mut self) {
         self.copy_selection();
         self.delete_selection();
@@ -596,6 +601,20 @@ mod tests {
         assert_eq!(lines.next().unwrap(), "first\n");
         assert_eq!(lines.next().unwrap(), "second\n");
         assert_eq!(lines.next().unwrap(), "second\n");
+    }
+    
+    #[test]
+    fn test_duplicate_selection() {
+        let mut view = setup_view("first\nsecond\nthird");
+        view.duplicate_selection();
+
+        {
+            let buffer = view.buffer.lock().unwrap();
+            let mut lines = buffer.lines();
+            assert_eq!(lines.next().unwrap(), "first\n");
+            assert_eq!(lines.next().unwrap(), "first\n");
+            assert_eq!(lines.next().unwrap(), "second\n");
+        }
     }
     
     #[test]

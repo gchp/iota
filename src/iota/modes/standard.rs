@@ -79,6 +79,7 @@ impl StandardMode {
             })
         });
 
+        keymap.bind_key(Key::Ctrl('d'), Command::duplicate_selection());
         keymap.bind_key(Key::Ctrl('x'), Command::cut_selection());
         keymap.bind_key(Key::Ctrl('c'), Command::copy_selection());
         keymap.bind_key(Key::Ctrl('v'), Command::paste());
