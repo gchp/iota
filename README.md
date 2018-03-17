@@ -71,13 +71,15 @@ The following keyboard bindings are also available:
 
 - `Ctrl-s` save
 - `Ctrl-q` quit
+- `Ctrl-x` cut current line
+- `Ctrl-c` copy current line
+- `Ctrl-v` paste
 - `Ctrl-z` undo
 - `Ctrl-y` redo
 - `Ctrl-Left` move one word left
 - `Ctrl-Right` move one word right
 - `Ctrl-Up` move this line up
 - `Ctrl-Down` move this line down
-- `Ctrl-x` remove current line
 
 Iota currently supports both Vi and Emacs style keybindings for simple movement.
 
