@@ -5,7 +5,7 @@ use command::Command;
 use keyboard::Key;
 
 pub enum Trie {
-    Leaf(Command),
+    Leaf(String),
     Node(HashMap<Key, Trie>)
 }
 
@@ -35,7 +35,7 @@ impl Trie {
 
         Some(&(*current))
     }
-    fn bind_key(&mut self, key: Key, value: Command) {
+    fn bind_key(&mut self, key: Key, value: String) {
         match *self {
             Trie::Leaf(_) => {
                 *self = Trie::new();
@@ -46,7 +46,7 @@ impl Trie {
             }
         }
     }
-    fn bind_keys(&mut self, keys: &[Key], value: Command) {
+    fn bind_keys(&mut self, keys: &[Key], value: String) {
         if keys.len() == 1 {
             self.bind_key(keys[0], value);
         } else if keys.len() > 1 {
@@ -74,7 +74,7 @@ impl Trie {
 }
 
 pub enum KeyMapState {
-    Match(Command),     // found a match
+    Match(String),     // found a match
     Continue,     // needs another key to disambiguate
     None          // no match
 }
@@ -108,10 +108,10 @@ impl KeyMap {
             _ => { self.path.clear(); KeyMapState::None }
         };
         match self.state {
-            KeyMapState::Match(value) => {
+            KeyMapState::Match(ref value) => {
                 self.state = KeyMapState::None;
                 self.path.clear();
-                KeyMapState::Match(value)
+                KeyMapState::Match(value.to_string())
             },
             KeyMapState::Continue => KeyMapState::Continue,
             KeyMapState::None => KeyMapState::None,
@@ -119,12 +119,12 @@ impl KeyMap {
     }
 
     /// Insert or overwrite a key-sequence binding
-    pub fn bind_keys(&mut self, keys: &[Key], value: Command) {
+    pub fn bind_keys(&mut self, keys: &[Key], value: String) {
         self.root.bind_keys(&*keys, value);
     }
 
     /// Insert or overwrite a key binding
-    pub fn bind_key(&mut self, key: Key, value: Command) {
+    pub fn bind_key(&mut self, key: Key, value: String) {
         self.root.bind_key(key, value);
     }
 }

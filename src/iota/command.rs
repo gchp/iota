@@ -5,7 +5,6 @@ use modes::ModeType;
 
 /// Instructions for the Editor.
 /// These do NOT alter the text, but may change editor/view state
-#[derive(Copy, Clone, Debug)]
 pub enum Instruction {
     SaveBuffer,
     //FindFile,
@@ -24,7 +23,6 @@ pub enum Instruction {
 /// Note that these differ from `log::Change` in that they are higher-level
 /// operations dependent on state (cursor/mark locations, etc.), as opposed
 /// to concrete operations on absolute indexes (insert 'a' at index 158, etc.)
-#[derive(Copy, Clone, Debug)]
 pub enum Operation {
     Insert(char), // insert text
     DeleteObject,         // delete some object
@@ -34,14 +32,12 @@ pub enum Operation {
     Redo,         // replay buffer transaction log
 }
 
-#[derive(Copy, Clone, Debug)]
 pub enum Action {
     Operation(Operation),
     Instruction(Instruction),
 }
 
 /// A complete, actionable command
-#[derive(Copy, Clone, Debug)]
 pub struct Command {
     pub number: i32,        // numeric paramter, line number, repeat count, etc.
     pub action: Action,     // what to do
@@ -151,9 +147,35 @@ impl Command {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+pub struct BuilderArgs {
+    char_args: Vec<char>,
+    pub number: Option<i32>,
+}
+
+impl BuilderArgs {
+    pub fn new() -> BuilderArgs {
+        BuilderArgs {
+            char_args: Vec::new(),
+            number: None,
+        }
+    }
+
+    pub fn with_char_arg(mut self, c: char) -> BuilderArgs {
+        self.char_args.push(c);
+
+        self
+    }
+
+    pub fn with_number(mut self, n: i32) -> BuilderArgs {
+        self.number = Some(n);
+
+        self
+    }
+}
+
+
 pub enum BuilderEvent {
     Invalid,            // cannot find a valid interpretation
     Incomplete,         // needs more information
-    Complete(Command),  // command is finished
+    Complete(String, Option<BuilderArgs>),  // command is finished
 }

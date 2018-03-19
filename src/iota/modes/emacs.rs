@@ -1,7 +1,7 @@
 use keyboard::Key;
 use keymap::{KeyMap, KeyMapState};
 use buffer::Mark;
-use command::{BuilderEvent, Operation, Instruction, Command, Action};
+use command::{BuilderEvent, BuilderArgs, Operation, Instruction, Command, Action};
 use textobject::{Anchor, Kind, TextObject, Offset};
 
 use super::Mode;
@@ -29,66 +29,35 @@ impl EmacsMode {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
-        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], Command::exit_editor());
-        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('s')], Command::save_buffer());
+        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], "editor::exit".into());
+        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('s')], "editor::save_buffer".into());
 
         // Cursor movement
-        keymap.bind_key(Key::Up, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Down, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Left, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Right, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Ctrl('p'), Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Ctrl('n'), Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Ctrl('b'), Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Ctrl('f'), Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Ctrl('e'), Command::movement(Offset::Forward(0, Mark::Cursor(0)), Kind::Line(Anchor::End)));
-        keymap.bind_key(Key::Ctrl('a'), Command::movement(Offset::Backward(0, Mark::Cursor(0)), Kind::Line(Anchor::Start)));
+        keymap.bind_key(Key::Up, "buffer::move_cursor_backward_line".into());
+        keymap.bind_key(Key::Down, "buffer::move_cursor_forward_line".into());
+        keymap.bind_key(Key::Left, "buffer::move_cursor_forward_char".into());
+        keymap.bind_key(Key::Right, "buffer::move_cursor_backward_char".into());
+        keymap.bind_key(Key::Ctrl('p'), "buffer::move_cursor_backward_line".into());
+        keymap.bind_key(Key::Ctrl('n'), "buffer::move_cursor_forward_line".into());
+        keymap.bind_key(Key::Ctrl('f'), "buffer::move_cursor_forward_char".into());
+        keymap.bind_key(Key::Ctrl('b'), "buffer::move_cursor_backward_char".into());
+
+        keymap.bind_key(Key::Ctrl('e'), "buffer::move_cursor_line_end".into());
+        keymap.bind_key(Key::Ctrl('a'), "buffer::move_cursor_line_start".into());
 
         // Editing
-        keymap.bind_key(Key::Tab, Command::insert_tab());
-        keymap.bind_key(Key::Enter, Command::insert_char('\n'));
-        keymap.bind_key(Key::Backspace, Command {
-            number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Backward(1, Mark::Cursor(0))
-            })
-        });
-        keymap.bind_key(Key::Delete, Command {
-            number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Forward(1, Mark::Cursor(0))
-            })
-        });
-        keymap.bind_key(Key::Ctrl('h'), Command {
-            number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Backward(1, Mark::Cursor(0))
-            })
-        });
-        keymap.bind_key(Key::Ctrl('d'), Command {
-            number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Forward(1, Mark::Cursor(0))
-            })
-        });
+        keymap.bind_key(Key::Tab, "buffer::insert_tab".into());
+        keymap.bind_key(Key::Enter, "buffer::insert_newline".into());
+        keymap.bind_key(Key::Backspace, "buffer::delete_backward_char".into());
+        keymap.bind_key(Key::Delete, "buffer::delete_forward_char".into());
+        keymap.bind_key(Key::Ctrl('h'), "buffer::delete_backward_char".into());
+        keymap.bind_key(Key::Ctrl('d'), "buffer::delete_forward_char".into());
         // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('f')], Command {
         //     number: 1,
         //     action: Action::Instruction(Instruction::SetOverlay(OverlayType::SelectFile)),
         //     object: None
         // });
-        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('b')], Command {
-            number: 1,
-            action: Action::Instruction(Instruction::SwitchToLastBuffer),
-            object: None
-        });
+        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('b')], "editor::switch_to_last_buffer".into());
 
         keymap
     }
@@ -106,7 +75,7 @@ impl EmacsMode {
         match self.keymap.check_key(key) {
             KeyMapState::Match(c) => {
                 self.match_in_progress = false;
-                BuilderEvent::Complete(c)
+                BuilderEvent::Complete(c, None)
             },
             KeyMapState::Continue => {
                 self.match_in_progress = true;
@@ -130,7 +99,8 @@ impl Mode for EmacsMode {
         }
 
         if let Key::Char(c) = key {
-            BuilderEvent::Complete(Command::insert_char(c))
+            let mut builder_args = BuilderArgs::new().with_char_arg(c);
+            BuilderEvent::Complete("buffer::insert_char".into(), Some(builder_args))
         } else {
             self.check_key(key)
         }

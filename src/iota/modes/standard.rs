@@ -1,7 +1,7 @@
 use keyboard::Key;
 use keymap::{KeyMap, KeyMapState};
 use buffer::Mark;
-use command::{BuilderEvent, Operation, Command, Action};
+use command::{BuilderEvent, BuilderArgs, Operation, Command, Action};
 use textobject::{Anchor, Kind, TextObject, Offset};
 
 use super::Mode;
@@ -36,52 +36,30 @@ impl StandardMode {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
-        keymap.bind_key(Key::Ctrl('q'), Command::exit_editor());
-        keymap.bind_key(Key::Ctrl('s'), Command::save_buffer());
+        keymap.bind_key(Key::Ctrl('q'), "editor::quit".into());
+        keymap.bind_key(Key::Ctrl('s'), "editor::save_buffer".into());
 
         // Cursor movement
-        keymap.bind_key(Key::Up, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Down, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Left, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Right, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
+        keymap.bind_key(Key::Up, "buffer::move_cursor_backward_line".into());
+        keymap.bind_key(Key::Down, "buffer::move_cursor_forward_line".into());
+        keymap.bind_key(Key::Left, "buffer::move_cursor_forward_char".into());
+        keymap.bind_key(Key::Right, "buffer::move_cursor_backward_char".into());
 
-        keymap.bind_key(Key::CtrlRight, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Word(Anchor::Start)));
-        keymap.bind_key(Key::CtrlLeft, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Word(Anchor::Start)));
+        keymap.bind_key(Key::CtrlRight, "buffer::move_cursor_forward_word_start".into());
+        keymap.bind_key(Key::CtrlLeft, "buffer::move_cursor_backward_word_start".into());
     
-        keymap.bind_key(Key::End, Command::movement(Offset::Forward(0, Mark::Cursor(0)), Kind::Line(Anchor::End)));
-        keymap.bind_key(Key::Home, Command::movement(Offset::Backward(0, Mark::Cursor(0)), Kind::Line(Anchor::Start)));
+        keymap.bind_key(Key::End, "buffer::move_cursor_line_end".into());
+        keymap.bind_key(Key::Home, "buffer::move_cursor_line_start".into());
 
         // Editing
-        keymap.bind_key(Key::Tab, Command::insert_tab());
-        keymap.bind_key(Key::Enter, Command::insert_char('\n'));
-        keymap.bind_key(Key::Backspace, Command {
-            number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Backward(1, Mark::Cursor(0))
-            })
-        });
-        keymap.bind_key(Key::Delete, Command {
-            number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Forward(1, Mark::Cursor(0))
-            })
-        });
-        keymap.bind_key(Key::Ctrl('h'), Command {
-            number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Backward(1, Mark::Cursor(0))
-            })
-        });
+        keymap.bind_key(Key::Tab, "buffer::insert_tab".into());
+        keymap.bind_key(Key::Enter, "buffer::insert_newline".into());
+        keymap.bind_key(Key::Backspace, "buffer::delete_backward_char".into());
+        keymap.bind_key(Key::Delete, "buffer::delete_forward_char".into());
 
         // History
-        keymap.bind_key(Key::Ctrl('z'), Command::undo());
-        keymap.bind_key(Key::Ctrl('y'), Command::redo());
+        keymap.bind_key(Key::Ctrl('z'), "editor::undo".into());
+        keymap.bind_key(Key::Ctrl('y'), "editor::redo".into());
 
         keymap
     }
@@ -99,7 +77,7 @@ impl StandardMode {
         match self.keymap.check_key(key) {
             KeyMapState::Match(c) => {
                 self.match_in_progress = false;
-                BuilderEvent::Complete(c)
+                BuilderEvent::Complete(c, None)
             },
             KeyMapState::Continue => {
                 self.match_in_progress = true;
@@ -123,7 +101,8 @@ impl Mode for StandardMode {
         }
 
         if let Key::Char(c) = key {
-            BuilderEvent::Complete(Command::insert_char(c))
+            let mut builder_args = BuilderArgs::new().with_char_arg(c);
+            BuilderEvent::Complete("buffer::insert_char".into(), Some(builder_args))
         } else {
             self.check_key(key)
         }

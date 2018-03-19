@@ -4,6 +4,7 @@ use std::cmp;
 use unicode_width::UnicodeWidthStr;
 use rustbox::{Style, Color, RustBox};
 
+use editor::ALL_COMMANDS;
 use command::{Command, BuilderEvent};
 use keyboard::Key;
 
@@ -22,29 +23,22 @@ pub trait Overlay {
 pub struct CommandPrompt {
     data: String,
     prefix: String,
-    commands: HashMap<String, Command>,
     selected_index: usize,
 }
 
 impl CommandPrompt {
     pub fn new() -> CommandPrompt {
-        let mut commands = HashMap::new();
-
-        commands.insert("quit".into(), Command::exit_editor());
-        commands.insert("write".into(), Command::save_buffer());
-
         CommandPrompt {
             data: String::new(),
             prefix: String::from(":"),
-            commands: commands,
             selected_index: 0,
         }
     }
 }
 
 impl CommandPrompt {
-    fn get_filtered_command_names(&self) -> Vec<&String> {
-        let mut keys: Vec<&String> = self.commands
+    fn get_filtered_command_names(&self) -> Vec<&&str> {
+        let mut keys: Vec<&&str> = ALL_COMMANDS
             .keys()
             .filter(|item| item.starts_with(&self.data) )
             .collect();
@@ -122,17 +116,10 @@ impl Overlay for CommandPrompt {
 
     fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
         match key {
-            Key::Esc => return BuilderEvent::Complete(Command::noop()),
+            Key::Esc => return BuilderEvent::Complete("editor::noop".into(), None),
             Key::Backspace => { self.data.pop(); },
             Key::Enter => {
-                match self.commands.get(&self.data) {
-                    Some(command) => {
-                        return BuilderEvent::Complete(*command);
-                    }
-                    None => {
-                        return BuilderEvent::Incomplete;
-                    }
-                }
+                return BuilderEvent::Complete(self.data.clone(), None);
             }
             Key::Up => {
                 let max = self.get_filtered_command_names().len();
@@ -151,7 +138,7 @@ impl Overlay for CommandPrompt {
                         let keys = self.get_filtered_command_names();
                         keys[self.selected_index - 1].clone()
                     };
-                    self.data = command;
+                    self.data = command.into();
                 }
             }
             Key::Char(c) => { self.data.push(c) },

@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc::channel;
+use std::collections::HashMap;
 
 use rustbox::{RustBox, Event};
 
@@ -12,6 +13,24 @@ use modes::{Mode, ModeType, InsertMode, NormalMode};
 use buffer::Buffer;
 use command::Command;
 use command::{Action, BuilderEvent, Operation, Instruction};
+use textobject::{ Offset, Kind, Anchor };
+use buffer::Mark;
+
+lazy_static! {
+    pub static ref ALL_COMMANDS: HashMap<&'static str, fn(Option<BuilderArgs>) -> Command> = {
+        let mut map = HashMap::new();
+
+        map.insert("editor::exit", Command::exit_editor);
+        map.insert("editor::save_buffer", Command::save_buffer);
+
+        map.insert("buffer::move_cursor_forward_char", Command::movement);
+        map.insert("buffer::move_cursor_backward_char", Command::movement);
+        map.insert("buffer::move_cursor_forward_line", Command::movement);
+        map.insert("buffer::move_cursor_backward_line", Command::movement);
+
+        map
+    };
+}
 
 
 /// The main Editor structure
@@ -90,10 +109,21 @@ impl<'e> Editor<'e> {
             Some(ref mut overlay) => overlay.handle_key_event(key),
         };
 
-        if let BuilderEvent::Complete(c) = command {
+        if let BuilderEvent::Complete(c, args) = command {
             self.view.overlay = None;
             self.view.clear(&mut self.rb);
-            let _ = self.command_sender.send(c);
+
+            match ALL_COMMANDS.get(&*c) {
+                Some(cmd) => {
+                    let cmd = cmd(args);
+                    let _ = self.command_sender.send(*cmd);
+                }
+                None => {
+                    eprintln!("Unknown command: {}", c);
+                }
+            }
+
+            // let _ = self.command_sender.send(c);
         }
     }
 
