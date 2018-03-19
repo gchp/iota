@@ -17,7 +17,7 @@ use super::Mode;
 /// Standard mode allows Iota to be used in a non-modal way, similar to mainstream
 /// editors like Atom or Sublime.
 pub struct StandardMode {
-    keymap: KeyMap<Command>,
+    keymap: KeyMap,
     match_in_progress: bool,
 }
 
@@ -32,7 +32,7 @@ impl StandardMode {
     }
 
     /// Creates a KeyMap with default StandardMode key bindings
-    fn key_defaults() -> KeyMap<Command> {
+    fn key_defaults() -> KeyMap {
         let mut keymap = KeyMap::new();
 
         // Editor Commands

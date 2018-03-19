@@ -10,7 +10,7 @@ use super::Mode;
 /// Emacs mode uses Emacs-like keybindings.
 ///
 pub struct EmacsMode {
-    keymap: KeyMap<Command>,
+    keymap: KeyMap,
     match_in_progress: bool,
 }
 
@@ -25,7 +25,7 @@ impl EmacsMode {
     }
 
     /// Creates a KeyMap with default EmacsMode key bindings
-    fn key_defaults() -> KeyMap<Command> {
+    fn key_defaults() -> KeyMap {
         let mut keymap = KeyMap::new();
 
         // Editor Commands

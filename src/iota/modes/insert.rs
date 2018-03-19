@@ -7,7 +7,7 @@ use super::{Mode, ModeType};
 
 /// `InsertMode` mimics Vi's Insert mode.
 pub struct InsertMode {
-    keymap: KeyMap<Command>,
+    keymap: KeyMap,
 }
 
 impl InsertMode {
@@ -20,7 +20,7 @@ impl InsertMode {
     }
 
     /// Creates a `KeyMap` with default `InsertMode` key bindings
-    fn key_defaults() -> KeyMap<Command> {
+    fn key_defaults() -> KeyMap {
         let mut keymap = KeyMap::new();
 
         keymap.bind_key(Key::Esc, Command::set_mode(ModeType::Normal));
