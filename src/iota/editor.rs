@@ -12,24 +12,39 @@ use view::View;
 use modes::{Mode, ModeType, InsertMode, NormalMode};
 use buffer::Buffer;
 use command::Command;
-use command::{Action, BuilderEvent, Operation, Instruction};
+use command::{Action, BuilderEvent, BuilderArgs, Operation, Instruction};
 use textobject::{ Offset, Kind, Anchor };
 use buffer::Mark;
 
-lazy_static! {
-    pub static ref ALL_COMMANDS: HashMap<&'static str, fn(Option<BuilderArgs>) -> Command> = {
-        let mut map = HashMap::new();
+// lazy_static! {
+//     pub static ref ALL_COMMANDS: HashMap<&'static str, Box<Fn(Option<BuilderArgs>) -> Command>> = {
+//         let mut map = HashMap::new();
 
-        map.insert("editor::exit", Command::exit_editor);
-        map.insert("editor::save_buffer", Command::save_buffer);
+//         map.insert("editor::exit", Box::new(Command::exit_editor));
+//         map.insert("editor::save_buffer", Box::new(Command::save_buffer));
 
-        map.insert("buffer::move_cursor_forward_char", Command::movement);
-        map.insert("buffer::move_cursor_backward_char", Command::movement);
-        map.insert("buffer::move_cursor_forward_line", Command::movement);
-        map.insert("buffer::move_cursor_backward_line", Command::movement);
+//         map.insert("buffer::move_cursor_forward_char", Box::new(Command::movement));
+//         map.insert("buffer::move_cursor_backward_char", Box::new(Command::movement));
+//         map.insert("buffer::move_cursor_forward_line", Box::new(Command::movement));
+//         map.insert("buffer::move_cursor_backward_line", Box::new(Command::movement));
 
-        map
-    };
+//         map
+//     };
+// }
+
+type EditorCommand = fn(Option<BuilderArgs>) -> Command;
+fn all_commands<F>() -> HashMap<&'static str, EditorCommand> {
+    let mut map: HashMap<&'static str, EditorCommand> = HashMap::new();
+
+    map.insert("editor::exit", Command::exit_editor);
+    map.insert("editor::save_buffer", Command::save_buffer);
+
+    map.insert("buffer::move_cursor_forward_char", Command::movement);
+    map.insert("buffer::move_cursor_backward_char", Command::movement);
+    map.insert("buffer::move_cursor_forward_line", Command::movement);
+    map.insert("buffer::move_cursor_backward_line", Command::movement);
+
+    map
 }
 
 
@@ -115,7 +130,7 @@ impl<'e> Editor<'e> {
 
             match ALL_COMMANDS.get(&*c) {
                 Some(cmd) => {
-                    let cmd = cmd(args);
+                    let cmd = cmd.call(args);
                     let _ = self.command_sender.send(*cmd);
                 }
                 None => {
