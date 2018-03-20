@@ -21,32 +21,19 @@ lazy_static! {
     pub static ref ALL_COMMANDS: HashMap<&'static str, EditorCommand> = {
         let mut map: HashMap<&'static str, EditorCommand> = HashMap::new();
 
-        map.insert("editor::exit", Command::exit_editor);
+        map.insert("editor::quit", Command::exit_editor);
         map.insert("editor::save_buffer", Command::save_buffer);
 
-        map.insert("buffer::move_cursor_forward_char", Command::movement);
-        map.insert("buffer::move_cursor_backward_char", Command::movement);
-        map.insert("buffer::move_cursor_forward_line", Command::movement);
-        map.insert("buffer::move_cursor_backward_line", Command::movement);
+        map.insert("buffer::move_cursor_forward_char", Command::move_cursor_forward_char);
+        map.insert("buffer::move_cursor_backward_char", Command::move_cursor_backward_char);
+        map.insert("buffer::move_cursor_forward_line", Command::move_cursor_forward_line);
+        map.insert("buffer::move_cursor_backward_line", Command::move_cursor_backward_line);
+
+        map.insert("editor::set_overlay_command_prompt", Command::set_overlay_command_prompt);
 
         map
     };
 }
-
-// fn all_commands<F>() -> HashMap<&'static str, EditorCommand> {
-//     let mut map: HashMap<&'static str, EditorCommand> = HashMap::new();
-
-//     map.insert("editor::exit", Command::exit_editor);
-//     map.insert("editor::save_buffer", Command::save_buffer);
-
-//     map.insert("buffer::move_cursor_forward_char", Command::movement);
-//     map.insert("buffer::move_cursor_backward_char", Command::movement);
-//     map.insert("buffer::move_cursor_forward_line", Command::movement);
-//     map.insert("buffer::move_cursor_backward_line", Command::movement);
-
-//     map
-// }
-
 
 /// The main Editor structure
 ///
@@ -134,7 +121,7 @@ impl<'e> Editor<'e> {
                     let _ = self.command_sender.send(cmd);
                 }
                 None => {
-                    eprintln!("Unknown command: {}", c);
+                    panic!("Unknown command: {}", c);
                 }
             }
 

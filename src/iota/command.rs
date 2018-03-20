@@ -1,5 +1,5 @@
 use buffer::Mark;
-use textobject::{ TextObject, Offset, Kind };
+use textobject::{ Anchor, TextObject, Offset, Kind };
 use overlay::OverlayType;
 use modes::ModeType;
 
@@ -150,6 +150,63 @@ impl Command {
                 kind: kind,
                 offset: offset
             })
+        }
+    }
+
+    #[deprecated(note="Remove when arguments can be added to keybindings")]
+    pub fn move_cursor_forward_char(_args: Option<BuilderArgs>) -> Command {
+        Command {
+            number: 1,
+            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Char,
+                offset: Offset::Forward(1, Mark::Cursor(0)),
+            })
+        }
+    }
+
+    #[deprecated(note="Remove when arguments can be added to keybindings")]
+    pub fn move_cursor_backward_char(_args: Option<BuilderArgs>) -> Command {
+        Command {
+            number: 1,
+            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Char,
+                offset: Offset::Backward(1, Mark::Cursor(0)),
+            })
+        }
+    }
+
+    #[deprecated(note="Remove when arguments can be added to keybindings")]
+    pub fn move_cursor_forward_line(_args: Option<BuilderArgs>) -> Command {
+        Command {
+            number: 1,
+            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Line(Anchor::Same),
+                offset: Offset::Forward(1, Mark::Cursor(0)),
+            })
+        }
+    }
+
+    #[deprecated(note="Remove when arguments can be added to keybindings")]
+    pub fn move_cursor_backward_line(_args: Option<BuilderArgs>) -> Command {
+        Command {
+            number: 1,
+            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Line(Anchor::Same),
+                offset: Offset::Backward(1, Mark::Cursor(0)),
+            })
+        }
+    }
+
+    #[deprecated(note="Remove when arguments can be added to keybindings")]
+    pub fn set_overlay_command_prompt(_args: Option<BuilderArgs>) -> Command {
+        Command {
+            number: 0,
+            action: Action::Instruction(Instruction::SetOverlay(OverlayType::CommandPrompt)),
+            object: None,
         }
     }
 
