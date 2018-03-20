@@ -5,6 +5,7 @@ use modes::ModeType;
 
 /// Instructions for the Editor.
 /// These do NOT alter the text, but may change editor/view state
+#[derive(Clone)]
 pub enum Instruction {
     SaveBuffer,
     //FindFile,
@@ -13,7 +14,7 @@ pub enum Instruction {
     SetMark(Mark),
     SetOverlay(OverlayType),
     SetMode(ModeType),
-    ShowMessage(&'static str),
+    ShowMessage(String),
     SwitchToLastBuffer,
     None,
 }
@@ -23,6 +24,7 @@ pub enum Instruction {
 /// Note that these differ from `log::Change` in that they are higher-level
 /// operations dependent on state (cursor/mark locations, etc.), as opposed
 /// to concrete operations on absolute indexes (insert 'a' at index 158, etc.)
+#[derive(Clone)]
 pub enum Operation {
     Insert(char), // insert text
     DeleteObject,         // delete some object
@@ -32,12 +34,14 @@ pub enum Operation {
     Redo,         // replay buffer transaction log
 }
 
+#[derive(Clone)]
 pub enum Action {
     Operation(Operation),
     Instruction(Instruction),
 }
 
 /// A complete, actionable command
+#[derive(Clone)]
 pub struct Command {
     pub number: i32,        // numeric paramter, line number, repeat count, etc.
     pub action: Action,     // what to do
@@ -50,7 +54,7 @@ impl Command {
         let args = args.expect("no arguments given to show_message");
         let message = args.str_args.expect("no message provided");
         Command {
-            action: Action::Instruction(Instruction::ShowMessage(&*message)),
+            action: Action::Instruction(Instruction::ShowMessage(message)),
             number: 0,
             object: None,
         }
@@ -135,7 +139,7 @@ impl Command {
         }
     }
 
-    pub fn movement(args: Option<BuilderEvent>) -> Command {
+    pub fn movement(args: Option<BuilderArgs>) -> Command {
         let args = args.expect("no args given to movement");
         let kind = args.kind.expect("no kind provided");
         let offset = args.offset.expect("no offset provided");
@@ -183,6 +187,12 @@ impl BuilderArgs {
 
     pub fn with_char_arg(mut self, c: char) -> BuilderArgs {
         self.char_args = Some(c);
+
+        self
+    }
+
+    pub fn with_str(mut self, s: String) -> BuilderArgs {
+        self.str_args = Some(s);
 
         self
     }

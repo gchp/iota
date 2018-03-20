@@ -40,7 +40,7 @@ impl CommandPrompt {
     fn get_filtered_command_names(&self) -> Vec<&&str> {
         let mut keys: Vec<&&str> = ALL_COMMANDS
             .keys()
-            .filter(|item| item.starts_with(&self.data) )
+            .filter(|item| item.starts_with(&*self.data) )
             .collect();
         keys.sort();
         keys.reverse();
@@ -135,10 +135,16 @@ impl Overlay for CommandPrompt {
             Key::Tab => {
                 if self.selected_index > 0 {
                     let command = {
-                        let keys = self.get_filtered_command_names();
+                        let mut keys: Vec<&&str> = ALL_COMMANDS
+                            .keys()
+                            .filter(|item| item.starts_with(&*self.data) )
+                            .collect();
+                        keys.sort();
+                        keys.reverse();
+
                         keys[self.selected_index - 1].clone()
                     };
-                    self.data = command.into();
+                    self.data = command.to_string();
                 }
             }
             Key::Char(c) => { self.data.push(c) },

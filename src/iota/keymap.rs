@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-use command::Command;
+use command::{BuilderArgs, Command};
 use keyboard::Key;
 
 pub enum Trie {
@@ -100,22 +100,28 @@ impl KeyMap {
         self.path.push(key);
         self.state = match self.root.lookup_keys(&*self.path) {
             Some(n) => {
-                match *n {
-                    Trie::Leaf(value) => KeyMapState::Match(value),
-                    Trie::Node(_) => KeyMapState::Continue
+                match n {
+                    &Trie::Leaf(ref value) => KeyMapState::Match(value.clone()),
+                    &Trie::Node(_) => KeyMapState::Continue
                 }
             }
             _ => { self.path.clear(); KeyMapState::None }
         };
-        match self.state {
+        let (new_state, ret_val) = match self.state {
             KeyMapState::Match(ref value) => {
-                self.state = KeyMapState::None;
+                // self.state = KeyMapState::None;
                 self.path.clear();
-                KeyMapState::Match(value.to_string())
+                (Some(KeyMapState::None), KeyMapState::Match(value.to_string()))
             },
-            KeyMapState::Continue => KeyMapState::Continue,
-            KeyMapState::None => KeyMapState::None,
+            KeyMapState::Continue => (None, KeyMapState::Continue),
+            KeyMapState::None => (None, KeyMapState::None),
+        };
+
+        if let Some(st) = new_state {
+            self.state = st;
         }
+
+        ret_val
     }
 
     /// Insert or overwrite a key-sequence binding

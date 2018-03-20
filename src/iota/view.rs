@@ -46,7 +46,7 @@ pub struct View<'v> {
 
     /// Message to be displayed in the status bar along with the time it
     /// was displayed.
-    message: Option<(&'static str, SystemTime)>,
+    message: Option<(String, SystemTime)>,
 }
 
 impl<'v> View<'v> {
@@ -186,7 +186,7 @@ impl<'v> View<'v> {
                 rb.print_char(status_text_len + idx + 1, height, RustBoxStyle::empty(), Color::Black, Color::Red, *ch);
             }
         }
-        if let Some((message, _time)) = self.message {
+        if let Some((ref message, _time)) = self.message {
             for (offset, ch) in message.chars().enumerate() {
                 rb.print_char(offset, height + 1, RustBoxStyle::empty(), Color::White, Color::Black, ch);
             }
@@ -211,7 +211,7 @@ impl<'v> View<'v> {
     }
 
     /// Display the given message
-    pub fn show_message(&mut self, message: &'static str) {
+    pub fn show_message(&mut self, message: String) {
         self.message = Some((message, SystemTime::now()));
     }
 
@@ -220,12 +220,16 @@ impl<'v> View<'v> {
     /// Does nothing if there is no message, or of the message has been there for
     /// less that five seconds.
     pub fn maybe_clear_message(&mut self) {
-        if let Some((_message, time)) = self.message {
+        let mut clear_message = false;
+        if let Some((_, time)) = self.message {
             if let Ok(elapsed) = time.elapsed() {
                 if elapsed.as_secs() >= 5 {
-                    self.message = None;
+                    clear_message = true;
                 }
             }
+        }
+        if clear_message {
+            self.message = None;
         }
     }
 
@@ -376,7 +380,7 @@ impl<'v> View<'v> {
             match buffer.file_path {
                 Some(_) => { should_save = true; }
                 None => {
-                    self.message = Some(("No file name", SystemTime::now()));
+                    self.message = Some(("No file name".into(), SystemTime::now()));
                 }
             }
         }
