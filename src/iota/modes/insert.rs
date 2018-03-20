@@ -1,8 +1,8 @@
 use keyboard::Key;
 use keymap::{KeyMap, KeyMapState};
-use command::{BuilderEvent, BuilderArgs, Command};
+use command::{BuilderEvent, BuilderArgs };
 
-use super::{Mode, ModeType};
+use super::Mode;
 
 
 /// `InsertMode` mimics Vi's Insert mode.

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
-use command::{BuilderArgs, Command};
 use keyboard::Key;
+
 
 pub enum Trie {
     Leaf(String),

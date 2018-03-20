@@ -1,8 +1,6 @@
 use keyboard::Key;
 use keymap::{KeyMap, KeyMapState};
-use buffer::Mark;
-use command::{BuilderEvent, BuilderArgs, Operation, Instruction, Command, Action};
-use textobject::{Anchor, Kind, TextObject, Offset};
+use command::{BuilderEvent, BuilderArgs };
 
 use super::Mode;
 

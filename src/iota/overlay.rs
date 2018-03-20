@@ -1,11 +1,10 @@
-use std::collections::HashMap;
 use std::cmp;
 
 use unicode_width::UnicodeWidthStr;
 use rustbox::{Style, Color, RustBox};
 
 use editor::ALL_COMMANDS;
-use command::{Command, BuilderEvent};
+use command::BuilderEvent;
 use keyboard::Key;
 
 

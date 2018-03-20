@@ -13,8 +13,7 @@ use modes::{Mode, ModeType, InsertMode, NormalMode};
 use buffer::Buffer;
 use command::Command;
 use command::{Action, BuilderEvent, BuilderArgs, Operation, Instruction};
-use textobject::{ Offset, Kind, Anchor };
-use buffer::Mark;
+
 
 type EditorCommand = fn(Option<BuilderArgs>) -> Command;
 lazy_static! {

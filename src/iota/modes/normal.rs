@@ -1,11 +1,8 @@
 use keyboard::Key;
 use keymap::{KeyMap, KeyMapState};
-use command::{BuilderEvent, BuilderArgs, Command};
-use textobject::{ Offset, Kind, Anchor };
-use buffer::Mark;
-use overlay::OverlayType;
+use command::{BuilderEvent, BuilderArgs };
 
-use super::{Mode, ModeType};
+use super::Mode;
 
 
 /// `NormalMode` mimics Vi's Normal mode.
@@ -68,7 +65,7 @@ impl Mode for NormalMode {
             }
         }
         match self.keymap.check_key(key) {
-            KeyMapState::Match(mut c) => {
+            KeyMapState::Match(c) => {
                 let mut args = None;
                 if let Some(num) = self.number {
                     args = Some(BuilderArgs::new().with_number(num));
