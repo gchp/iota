@@ -28,6 +28,16 @@ lazy_static! {
         map.insert("buffer::move_cursor_forward_line", Command::move_cursor_forward_line);
         map.insert("buffer::move_cursor_backward_line", Command::move_cursor_backward_line);
 
+        map.insert("buffer::move_cursor_forward_word_start", Command::move_cursor_forward_word_start);
+        map.insert("buffer::move_cursor_backward_word_start", Command::move_cursor_backward_word_start);
+        map.insert("buffer::move_cursor_line_end", Command::move_cursor_line_end);
+        map.insert("buffer::move_cursor_line_start", Command::move_cursor_line_start);
+
+        // actions
+        map.insert("editor::undo", Command::undo);
+        map.insert("editor::redo", Command::redo);
+        map.insert("editor::set_mode_insert", Command::set_mode_insert);
+
         map.insert("editor::set_overlay_command_prompt", Command::set_overlay_command_prompt);
 
         map

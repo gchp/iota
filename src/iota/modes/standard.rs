@@ -40,8 +40,8 @@ impl StandardMode {
         // Cursor movement
         keymap.bind_key(Key::Up, "buffer::move_cursor_backward_line".into());
         keymap.bind_key(Key::Down, "buffer::move_cursor_forward_line".into());
-        keymap.bind_key(Key::Left, "buffer::move_cursor_forward_char".into());
-        keymap.bind_key(Key::Right, "buffer::move_cursor_backward_char".into());
+        keymap.bind_key(Key::Left, "buffer::move_cursor_backward_char".into());
+        keymap.bind_key(Key::Right, "buffer::move_cursor_forward_char".into());
 
         keymap.bind_key(Key::CtrlRight, "buffer::move_cursor_forward_word_start".into());
         keymap.bind_key(Key::CtrlLeft, "buffer::move_cursor_backward_word_start".into());

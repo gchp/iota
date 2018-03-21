@@ -210,6 +210,63 @@ impl Command {
         }
     }
 
+    #[deprecated(note="Remove when arguments can be added to keybindings")]
+    pub fn set_mode_insert(_args: Option<BuilderArgs>) -> Command {
+        Command {
+            number: 0,
+            action: Action::Instruction(Instruction::SetMode(ModeType::Insert)),
+            object: None,
+        }
+    }
+
+    #[deprecated(note="Remove when arguments can be added to keybindings")]
+    pub fn move_cursor_forward_word_start(_args: Option<BuilderArgs>) -> Command {
+        Command {
+            number: 1,
+            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Word(Anchor::Start),
+                offset: Offset::Forward(1, Mark::Cursor(0)),
+            })
+        }
+    }
+
+    #[deprecated(note="Remove when arguments can be added to keybindings")]
+    pub fn move_cursor_backward_word_start(_args: Option<BuilderArgs>) -> Command {
+        Command {
+            number: 1,
+            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Word(Anchor::Start),
+                offset: Offset::Backward(1, Mark::Cursor(0)),
+            })
+        }
+    }
+
+    #[deprecated(note="Remove when arguments can be added to keybindings")]
+    pub fn move_cursor_line_start(_args: Option<BuilderArgs>) -> Command {
+        Command {
+            number: 1,
+            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Line(Anchor::Start),
+                offset: Offset::Backward(0, Mark::Cursor(0)),
+            })
+        }
+    }
+
+    #[deprecated(note="Remove when arguments can be added to keybindings")]
+    pub fn move_cursor_line_end(_args: Option<BuilderArgs>) -> Command {
+        Command {
+            number: 1,
+            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: Kind::Line(Anchor::End),
+                offset: Offset::Forward(0, Mark::Cursor(0)),
+            })
+        }
+    }
+
     pub fn noop(_args: Option<BuilderArgs>) -> Command {
         Command {
             number: 0,
