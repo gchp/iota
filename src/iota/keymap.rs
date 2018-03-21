@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 
+use command::BuilderArgs;
 use keyboard::Key;
 
 
@@ -133,4 +134,21 @@ impl KeyMap {
     pub fn bind_key(&mut self, key: Key, value: String) {
         self.root.bind_key(key, value);
     }
+
+    /// Insert or overwrite a key binding or key-sequence binding
+    pub fn bind(&mut self, binding: KeyBinding) {
+        if binding.keys.len() == 1 {
+            self.bind_key(binding.keys[0], binding.command_name);
+        } else {
+            self.bind_keys(binding.keys, binding.command_name);
+        }
+        // self.root.bind_key(key, value);
+    }
+}
+
+
+pub struct KeyBinding<'k> {
+    pub keys: &'k [Key],
+    pub command_name: String,
+    pub args: BuilderArgs,
 }

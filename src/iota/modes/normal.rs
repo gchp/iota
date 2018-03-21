@@ -1,6 +1,8 @@
 use keyboard::Key;
-use keymap::{KeyMap, KeyMapState};
+use keymap::{KeyMap, KeyBinding, KeyMapState};
 use command::{BuilderEvent, BuilderArgs };
+use textobject::{ Offset, Kind, Anchor };
+use buffer::Mark;
 
 use super::Mode;
 
@@ -27,7 +29,15 @@ impl NormalMode {
     fn key_defaults() -> KeyMap {
         let mut keymap = KeyMap::new();
         // movement
-        keymap.bind_key(Key::Char('h'), "buffer::move_cursor_backward_char".into());
+        // { keys: 'h', command: 'buffer::move_cursor', args: { direction: backward, kind: char, number: 1 } }
+        keymap.bind(KeyBinding {
+            keys: &[Key::Char('h')],
+            command_name: String::from("buffer::move_cursor"),
+            args: BuilderArgs::new().with_kind(Kind::Char)
+                                    .with_offset(Offset::Forward(1, Mark::Cursor(0)))
+                                    .with_number(1)
+        });
+        // keymap.bind_key(Key::Char('h'), "buffer::move_cursor_backward_char".into());
         keymap.bind_key(Key::Char('j'), "buffer::move_cursor_forward_line".into());
         keymap.bind_key(Key::Char('k'), "buffer::move_cursor_backward_line".into());
         keymap.bind_key(Key::Char('l'), "buffer::move_cursor_forward_char".into());

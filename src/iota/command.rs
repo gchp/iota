@@ -316,6 +316,18 @@ impl BuilderArgs {
 
         self
     }
+
+    pub fn with_kind(mut self, kind: Kind) -> BuilderArgs {
+        self.kind = Some(kind);
+
+        self
+    }
+
+    pub fn with_offset(mut self, offset: Offset) -> BuilderArgs {
+        self.offset = Some(offset);
+
+        self
+    }
 }
 
 
