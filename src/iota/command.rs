@@ -144,8 +144,9 @@ impl Command {
         let args = args.expect("no args given to movement");
         let kind = args.kind.expect("no kind provided");
         let offset = args.offset.expect("no offset provided");
+        let repeat = args.number.unwrap_or(1);
         Command {
-            number: 1,
+            number: repeat,
             action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
             object: Some(TextObject {
                 kind: kind,
