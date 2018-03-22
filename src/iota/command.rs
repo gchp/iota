@@ -337,6 +337,12 @@ impl BuilderArgs {
 
         self
     }
+
+    pub fn with_overlay(mut self, overlay: OverlayType) -> BuilderArgs {
+        self.overlay_args = Some(overlay);
+
+        self
+    }
 }
 
 

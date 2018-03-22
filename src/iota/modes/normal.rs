@@ -3,6 +3,8 @@ use keymap::{KeyMap, KeyBinding, KeyMapState, CommandInfo};
 use command::{BuilderEvent, BuilderArgs };
 use textobject::{ Offset, Kind, Anchor };
 use buffer::Mark;
+use overlay::OverlayType;
+use modes::ModeType;
 
 use super::Mode;
 
@@ -30,37 +32,101 @@ impl NormalMode {
         let mut keymap = KeyMap::new();
         // movement
         // { keys: 'h', command: 'buffer::move_cursor', args: { direction: backward, kind: char, number: 1 } }
-        keymap.bind(KeyBinding {
-            keys: vec![Key::Char('h')],
-            command_info: CommandInfo {
+        keymap.bind_key(
+            Key::Char('h'),
+            CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
                 args: Some(BuilderArgs::new().with_kind(Kind::Char)
-                                    .with_offset(Offset::Backward(1, Mark::Cursor(0)))
-                                    .with_number(1))
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
             }
-        });
-        keymap.bind(KeyBinding {
-            keys: vec![Key::Char('j')],
-            command_info: CommandInfo {
+        );
+        keymap.bind_key(
+            Key::Char('j'),
+            CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
                 args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
-                                        .with_offset(Offset::Forward(1, Mark::Cursor(0)))
-                                        .with_number(1))
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
             }
-        });
-        // keymap.bind_key(Key::Char('j'), "buffer::move_cursor_forward_line".into());
-        // keymap.bind_key(Key::Char('k'), "buffer::move_cursor_backward_line".into());
-        // keymap.bind_key(Key::Char('l'), "buffer::move_cursor_forward_char".into());
-        // keymap.bind_key(Key::Char('w'), "buffer::move_cursor_forward_word_start".into());
-        // keymap.bind_key(Key::Char('b'), "buffer::move_cursor_backward_word_start".into());
-        // keymap.bind_key(Key::Char('$'), "buffer::move_cursor_line_end".into());
-        // keymap.bind_key(Key::Char('0'), "buffer::move_cursor_line_start".into());
+        );
+        keymap.bind_key(
+            Key::Char('k'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Char('l'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Char('w'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Word(Anchor::Start))
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Char('b'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Word(Anchor::Start))
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Char('$'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::End))
+                                             .with_offset(Offset::Forward(0, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Char('0'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::End))
+                                             .with_offset(Offset::Backward(0, Mark::Cursor(0))))
+            }
+        );
 
         // actions
-        // keymap.bind_key(Key::Char('u'), "editor::undo".into());
-        // keymap.bind_key(Key::Ctrl('r'), "editor::redo".into());
-        // keymap.bind_key(Key::Char('i'), "editor::set_mode_insert".into());
-        // keymap.bind_key(Key::Char(':'), "editor::set_overlay_command_prompt".into());
+        keymap.bind_key(
+            Key::Char('u'),
+            CommandInfo {
+                command_name: String::from("editor::undo"),
+                args: None,
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('r'),
+            CommandInfo {
+                command_name: String::from("editor::redo"),
+                args: None,
+            }
+        );
+
+        keymap.bind_key(
+            Key::Char('i'),
+            CommandInfo {
+                command_name: String::from("editor::set_mode"),
+                args: Some(BuilderArgs::new().with_mode(ModeType::Insert)),
+            }
+        );
+        keymap.bind_key(
+            Key::Char('i'),
+            CommandInfo {
+                command_name: String::from("editor::set_overlay"),
+                args: Some(BuilderArgs::new().with_overlay(OverlayType::CommandPrompt)),
+            }
+        );
 
         keymap
     }

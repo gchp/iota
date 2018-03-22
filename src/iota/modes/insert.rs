@@ -23,14 +23,13 @@ impl InsertMode {
     fn key_defaults() -> KeyMap {
         let mut keymap = KeyMap::new();
 
-        // keymap.bind_key(Key::Esc, "editor::set_mode_normal".into());
-        keymap.bind(KeyBinding {
-            keys: vec![Key::Esc],
-            command_info: CommandInfo {
+        keymap.bind_key(
+            Key::Esc,
+            CommandInfo {
                 command_name: String::from("editor::set_mode"),
                 args: Some(BuilderArgs::new().with_mode(ModeType::Normal))
             }
-        });
+        );
 
 
         keymap

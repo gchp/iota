@@ -1,6 +1,8 @@
 use keyboard::Key;
 use keymap::{KeyMap, KeyBinding, KeyMapState, CommandInfo};
 use command::{BuilderEvent, BuilderArgs };
+use textobject::{Offset, Anchor, Kind};
+use buffer::Mark;
 
 use super::Mode;
 
@@ -34,35 +36,158 @@ impl EmacsMode {
                 args: None,
             }
         });
-        // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], "editor::exit".into());
-        // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('s')], "editor::save_buffer".into());
+        keymap.bind_keys(
+            &[Key::Ctrl('x'), Key::Ctrl('s')],
+            CommandInfo {
+                command_name: String::from("editor::save_buffer"),
+                args: None,
+            }
+        );
 
         // Cursor movement
-        // keymap.bind_key(Key::Up, "buffer::move_cursor_backward_line".into());
-        // keymap.bind_key(Key::Down, "buffer::move_cursor_forward_line".into());
-        // keymap.bind_key(Key::Left, "buffer::move_cursor_forward_char".into());
-        // keymap.bind_key(Key::Right, "buffer::move_cursor_backward_char".into());
-        // keymap.bind_key(Key::Ctrl('p'), "buffer::move_cursor_backward_line".into());
-        // keymap.bind_key(Key::Ctrl('n'), "buffer::move_cursor_forward_line".into());
-        // keymap.bind_key(Key::Ctrl('f'), "buffer::move_cursor_forward_char".into());
-        // keymap.bind_key(Key::Ctrl('b'), "buffer::move_cursor_backward_char".into());
+        keymap.bind_key(
+            Key::Up,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Down,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Left,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Right,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('p'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('n'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('b'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('f'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
 
-        // keymap.bind_key(Key::Ctrl('e'), "buffer::move_cursor_line_end".into());
-        // keymap.bind_key(Key::Ctrl('a'), "buffer::move_cursor_line_start".into());
+        keymap.bind_key(
+            Key::Ctrl('e'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::End))
+                                             .with_offset(Offset::Forward(0, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('a'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::End))
+                                             .with_offset(Offset::Backward(0, Mark::Cursor(0))))
+            }
+        );
 
         // Editing
-        // keymap.bind_key(Key::Tab, "buffer::insert_tab".into());
-        // keymap.bind_key(Key::Enter, "buffer::insert_newline".into());
-        // keymap.bind_key(Key::Backspace, "buffer::delete_backward_char".into());
-        // keymap.bind_key(Key::Delete, "buffer::delete_forward_char".into());
-        // keymap.bind_key(Key::Ctrl('h'), "buffer::delete_backward_char".into());
-        // keymap.bind_key(Key::Ctrl('d'), "buffer::delete_forward_char".into());
-        // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('f')], Command {
-        //     number: 1,
-        //     action: Action::Instruction(Instruction::SetOverlay(OverlayType::SelectFile)),
-        //     object: None
-        // });
-        // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('b')], "editor::switch_to_last_buffer".into());
+        keymap.bind_key(
+            Key::Tab,
+            CommandInfo {
+                command_name: String::from("buffer::insert_tab"),
+                args: None,
+            }
+        );
+        keymap.bind_key(
+            Key::Enter,
+            CommandInfo {
+                command_name: String::from("buffer::insert_char"),
+                args: Some(BuilderArgs::new().with_char_arg('\n')),
+            }
+        );
+        keymap.bind_key(
+            Key::Backspace,
+            CommandInfo {
+                command_name: String::from("buffer::delete_char"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Delete,
+            CommandInfo {
+                command_name: String::from("buffer::delete_char"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('h'),
+            CommandInfo {
+                command_name: String::from("buffer::delete_char"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('d'),
+            CommandInfo {
+                command_name: String::from("buffer::delete_char"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_keys(
+            &[Key::Ctrl('x'), Key::Ctrl('f')],
+            CommandInfo {
+                command_name: String::from("editor::find_file"),
+                args: None,
+            }
+        );
+        // keymap.bind_keys(
+        //     &[Key::Ctrl('x'), Key::Ctrl('f')],
+        //     CommandInfo {
+        //         command_name: String::from("editor::switch_to_last_buffer"),
+        //         args: None,
+        //     }
+        // );
 
         keymap
     }
