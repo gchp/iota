@@ -34,18 +34,18 @@ impl NormalMode {
             keys: vec![Key::Char('h')],
             command_info: CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: BuilderArgs::new().with_kind(Kind::Char)
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
                                     .with_offset(Offset::Backward(1, Mark::Cursor(0)))
-                                    .with_number(1)
+                                    .with_number(1))
             }
         });
         keymap.bind(KeyBinding {
             keys: vec![Key::Char('j')],
             command_info: CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
                                         .with_offset(Offset::Forward(1, Mark::Cursor(0)))
-                                        .with_number(1)
+                                        .with_number(1))
             }
         });
         // keymap.bind_key(Key::Char('j'), "buffer::move_cursor_forward_line".into());
@@ -87,8 +87,9 @@ impl Mode for NormalMode {
         match self.keymap.check_key(key) {
             KeyMapState::Match(mut c) => {
                 if let Some(num) = self.number {
-                    // args = Some(BuilderArgs::new().with_number(num));
-                    c.args = c.args.with_number(num);
+                    if let Some(args) = c.args {
+                        c.args = Some(args.with_number(num));
+                    }
                 }
                 self.number = None;
                 BuilderEvent::Complete(c)

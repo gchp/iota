@@ -28,7 +28,7 @@ impl InsertMode {
             keys: vec![Key::Esc],
             command_info: CommandInfo {
                 command_name: String::from("editor::set_mode"),
-                args: BuilderArgs::new().with_mode(ModeType::Normal)
+                args: Some(BuilderArgs::new().with_mode(ModeType::Normal))
             }
         });
 
@@ -44,7 +44,7 @@ impl Mode for InsertMode {
             let builder_args = BuilderArgs::new().with_char_arg(c);
             let command_info = CommandInfo {
                 command_name: String::from("buffer::insert_char"),
-                args: builder_args,
+                args: Some(builder_args),
             };
             BuilderEvent::Complete(command_info)
         } else if let KeyMapState::Match(c) = self.keymap.check_key(key) {

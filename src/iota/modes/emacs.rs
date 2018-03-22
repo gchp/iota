@@ -31,7 +31,7 @@ impl EmacsMode {
             keys: vec![Key::Ctrl('x'), Key::Ctrl('c')],
             command_info: CommandInfo {
                 command_name: String::from("editor::quit"),
-                args: BuilderArgs::new()
+                args: None,
             }
         });
         // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], "editor::exit".into());
@@ -107,7 +107,7 @@ impl Mode for EmacsMode {
             let mut builder_args = BuilderArgs::new().with_char_arg(c);
             let command_info = CommandInfo {
                 command_name: String::from("buffer::insert_char"),
-                args: builder_args,
+                args: Some(builder_args),
             };
             BuilderEvent::Complete(command_info)
         } else {

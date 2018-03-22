@@ -38,7 +38,7 @@ impl StandardMode {
             keys: vec![Key::Ctrl('q')],
             command_info: CommandInfo {
                 command_name: String::from("editor::quit"),
-                args: BuilderArgs::new()
+                args: None,
             }
         });
         // keymap.bind_key(Key::Ctrl('q'), "editor::quit".into());
@@ -108,7 +108,7 @@ impl Mode for StandardMode {
         if let Key::Char(c) = key {
             let command_info = CommandInfo {
                 command_name: String::from("buffer::insert_char"),
-                args: BuilderArgs::new().with_char_arg(c),
+                args: Some(BuilderArgs::new().with_char_arg(c)),
             };
             BuilderEvent::Complete(command_info)
         } else {

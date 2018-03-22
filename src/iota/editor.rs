@@ -128,7 +128,7 @@ impl<'e> Editor<'e> {
 
             match ALL_COMMANDS.get(&*c.command_name) {
                 Some(cmd) => {
-                    let cmd = cmd(Some(c.args));
+                    let cmd = cmd(c.args);
                     let _ = self.command_sender.send(cmd);
                 }
                 None => {

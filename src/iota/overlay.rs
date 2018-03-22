@@ -119,7 +119,7 @@ impl Overlay for CommandPrompt {
             Key::Esc => {
                 let command_info = CommandInfo {
                     command_name: String::from("editor::noop"),
-                    args: BuilderArgs::new(),
+                    args: None,
                 };
                 return BuilderEvent::Complete(command_info);
             }
@@ -127,7 +127,7 @@ impl Overlay for CommandPrompt {
             Key::Enter => {
                 let command_info = CommandInfo {
                     command_name: self.data.clone(),
-                    args: BuilderArgs::new(),
+                    args: None,
                 };
                 return BuilderEvent::Complete(command_info);
             }

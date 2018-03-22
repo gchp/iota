@@ -156,5 +156,5 @@ pub struct KeyBinding {
 #[derive(Clone)]
 pub struct CommandInfo {
     pub command_name: String,
-    pub args: BuilderArgs,
+    pub args: Option<BuilderArgs>,
 }
