@@ -4,7 +4,7 @@ use unicode_width::UnicodeWidthStr;
 use rustbox::{Style, Color, RustBox};
 
 use editor::ALL_COMMANDS;
-use command::{BuilderArgs, BuilderEvent};
+use command::BuilderEvent;
 use keyboard::Key;
 use keymap::CommandInfo;
 

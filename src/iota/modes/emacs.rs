@@ -1,5 +1,5 @@
 use keyboard::Key;
-use keymap::{KeyMap, KeyBinding, KeyMapState, CommandInfo};
+use keymap::{KeyMap, KeyMapState, CommandInfo};
 use command::{BuilderEvent, BuilderArgs };
 use textobject::{Offset, Anchor, Kind};
 use buffer::Mark;
@@ -29,13 +29,13 @@ impl EmacsMode {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
-        keymap.bind(KeyBinding {
-            keys: vec![Key::Ctrl('x'), Key::Ctrl('c')],
-            command_info: CommandInfo {
+        keymap.bind_keys(
+            &[Key::Ctrl('x'), Key::Ctrl('c')],
+            CommandInfo {
                 command_name: String::from("editor::quit"),
                 args: None,
             }
-        });
+        );
         keymap.bind_keys(
             &[Key::Ctrl('x'), Key::Ctrl('s')],
             CommandInfo {

@@ -1,5 +1,5 @@
 use keyboard::Key;
-use keymap::{KeyMap, KeyBinding, KeyMapState, CommandInfo};
+use keymap::{KeyMap, KeyMapState, CommandInfo};
 use command::{BuilderEvent, BuilderArgs };
 use textobject::{ Offset, Kind, Anchor };
 use buffer::Mark;
@@ -121,7 +121,7 @@ impl NormalMode {
             }
         );
         keymap.bind_key(
-            Key::Char('i'),
+            Key::Char(':'),
             CommandInfo {
                 command_name: String::from("editor::set_overlay"),
                 args: Some(BuilderArgs::new().with_overlay(OverlayType::CommandPrompt)),

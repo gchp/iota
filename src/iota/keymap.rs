@@ -135,15 +135,14 @@ impl KeyMap {
         self.root.bind_key(key, value);
     }
 
-    /// Insert or overwrite a key binding or key-sequence binding
-    pub fn bind(&mut self, binding: KeyBinding) {
-        if binding.keys.len() == 1 {
-            self.bind_key(binding.keys[0], binding.command_info);
-        } else {
-            self.bind_keys(&binding.keys.clone(), binding.command_info);
-        }
-        // self.root.bind_key(key, value);
-    }
+    // /// Insert or overwrite a key binding or key-sequence binding
+    // pub fn bind(&mut self, binding: KeyBinding) {
+    //     if binding.keys.len() == 1 {
+    //         self.bind_key(binding.keys[0], binding.command_info);
+    //     } else {
+    //         self.bind_keys(&binding.keys.clone(), binding.command_info);
+    //     }
+    // }
 }
 
 

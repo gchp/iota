@@ -1,8 +1,8 @@
 use buffer::Mark;
-use textobject::{ Anchor, TextObject, Offset, Kind };
+use textobject::{ TextObject, Offset, Kind };
 use overlay::OverlayType;
 use modes::ModeType;
-use keymap::{CommandInfo, KeyBinding};
+use keymap::CommandInfo;
 
 /// Instructions for the Editor.
 /// These do NOT alter the text, but may change editor/view state
@@ -151,120 +151,6 @@ impl Command {
             object: Some(TextObject {
                 kind: kind,
                 offset: offset
-            })
-        }
-    }
-
-    #[deprecated(note="Remove when arguments can be added to keybindings")]
-    pub fn move_cursor_forward_char(_args: Option<BuilderArgs>) -> Command {
-        Command {
-            number: 1,
-            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Forward(1, Mark::Cursor(0)),
-            })
-        }
-    }
-
-    #[deprecated(note="Remove when arguments can be added to keybindings")]
-    pub fn move_cursor_backward_char(_args: Option<BuilderArgs>) -> Command {
-        Command {
-            number: 1,
-            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Backward(1, Mark::Cursor(0)),
-            })
-        }
-    }
-
-    #[deprecated(note="Remove when arguments can be added to keybindings")]
-    pub fn move_cursor_forward_line(_args: Option<BuilderArgs>) -> Command {
-        Command {
-            number: 1,
-            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Line(Anchor::Same),
-                offset: Offset::Forward(1, Mark::Cursor(0)),
-            })
-        }
-    }
-
-    #[deprecated(note="Remove when arguments can be added to keybindings")]
-    pub fn move_cursor_backward_line(_args: Option<BuilderArgs>) -> Command {
-        Command {
-            number: 1,
-            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Line(Anchor::Same),
-                offset: Offset::Backward(1, Mark::Cursor(0)),
-            })
-        }
-    }
-
-    #[deprecated(note="Remove when arguments can be added to keybindings")]
-    pub fn set_overlay_command_prompt(_args: Option<BuilderArgs>) -> Command {
-        Command {
-            number: 0,
-            action: Action::Instruction(Instruction::SetOverlay(OverlayType::CommandPrompt)),
-            object: None,
-        }
-    }
-
-    #[deprecated(note="Remove when arguments can be added to keybindings")]
-    pub fn set_mode_insert(_args: Option<BuilderArgs>) -> Command {
-        Command {
-            number: 0,
-            action: Action::Instruction(Instruction::SetMode(ModeType::Insert)),
-            object: None,
-        }
-    }
-
-    #[deprecated(note="Remove when arguments can be added to keybindings")]
-    pub fn move_cursor_forward_word_start(_args: Option<BuilderArgs>) -> Command {
-        Command {
-            number: 1,
-            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Word(Anchor::Start),
-                offset: Offset::Forward(1, Mark::Cursor(0)),
-            })
-        }
-    }
-
-    #[deprecated(note="Remove when arguments can be added to keybindings")]
-    pub fn move_cursor_backward_word_start(_args: Option<BuilderArgs>) -> Command {
-        Command {
-            number: 1,
-            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Word(Anchor::Start),
-                offset: Offset::Backward(1, Mark::Cursor(0)),
-            })
-        }
-    }
-
-    #[deprecated(note="Remove when arguments can be added to keybindings")]
-    pub fn move_cursor_line_start(_args: Option<BuilderArgs>) -> Command {
-        Command {
-            number: 1,
-            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Line(Anchor::Start),
-                offset: Offset::Backward(0, Mark::Cursor(0)),
-            })
-        }
-    }
-
-    #[deprecated(note="Remove when arguments can be added to keybindings")]
-    pub fn move_cursor_line_end(_args: Option<BuilderArgs>) -> Command {
-        Command {
-            number: 1,
-            action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Line(Anchor::End),
-                offset: Offset::Forward(0, Mark::Cursor(0)),
             })
         }
     }
