@@ -1,6 +1,8 @@
 use keyboard::Key;
 use keymap::{KeyMap, KeyBinding, KeyMapState, CommandInfo};
 use command::{BuilderEvent, BuilderArgs };
+use buffer::Mark;
+use textobject::{ Offset, Kind, Anchor };
 
 use super::Mode;
 
@@ -34,37 +36,136 @@ impl StandardMode {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
-        keymap.bind(KeyBinding {
-            keys: vec![Key::Ctrl('q')],
-            command_info: CommandInfo {
+        keymap.bind_key(
+            Key::Ctrl('q'),
+            CommandInfo {
                 command_name: String::from("editor::quit"),
                 args: None,
             }
-        });
-        // keymap.bind_key(Key::Ctrl('q'), "editor::quit".into());
-        // keymap.bind_key(Key::Ctrl('s'), "editor::save_buffer".into());
+        );
+        keymap.bind_key(
+            Key::Ctrl('s'),
+            CommandInfo {
+                command_name: String::from("editor::save_buffer"),
+                args: None,
+            }
+        );
 
         // Cursor movement
-        // keymap.bind_key(Key::Up, "buffer::move_cursor_backward_line".into());
-        // keymap.bind_key(Key::Down, "buffer::move_cursor_forward_line".into());
-        // keymap.bind_key(Key::Left, "buffer::move_cursor_backward_char".into());
-        // keymap.bind_key(Key::Right, "buffer::move_cursor_forward_char".into());
+        keymap.bind_key(
+            Key::Up,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Down,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Left,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Right,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
 
-        // keymap.bind_key(Key::CtrlRight, "buffer::move_cursor_forward_word_start".into());
-        // keymap.bind_key(Key::CtrlLeft, "buffer::move_cursor_backward_word_start".into());
+        keymap.bind_key(
+            Key::CtrlRight,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Word(Anchor::Start))
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::CtrlLeft,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Word(Anchor::Start))
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
     
-        // keymap.bind_key(Key::End, "buffer::move_cursor_line_end".into());
-        // keymap.bind_key(Key::Home, "buffer::move_cursor_line_start".into());
+        keymap.bind_key(
+            Key::End,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::End))
+                                             .with_offset(Offset::Forward(0, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Home,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::End))
+                                             .with_offset(Offset::Backward(0, Mark::Cursor(0))))
+            }
+        );
 
         // Editing
-        // keymap.bind_key(Key::Tab, "buffer::insert_tab".into());
-        // keymap.bind_key(Key::Enter, "buffer::insert_newline".into());
-        // keymap.bind_key(Key::Backspace, "buffer::delete_backward_char".into());
-        // keymap.bind_key(Key::Delete, "buffer::delete_forward_char".into());
+        keymap.bind_key(
+            Key::Tab,
+            CommandInfo {
+                command_name: String::from("buffer::insert_tab"),
+                args: None,
+            }
+        );
+        keymap.bind_key(
+            Key::Enter,
+            CommandInfo {
+                command_name: String::from("buffer::insert_char"),
+                args: Some(BuilderArgs::new().with_char_arg('\n')),
+            }
+        );
+        keymap.bind_key(
+            Key::Backspace,
+            CommandInfo {
+                command_name: String::from("buffer::delete_char"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Backspace,
+            CommandInfo {
+                command_name: String::from("buffer::delete_char"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
 
         // History
-        // keymap.bind_key(Key::Ctrl('z'), "editor::undo".into());
-        // keymap.bind_key(Key::Ctrl('y'), "editor::redo".into());
+        keymap.bind_key(
+            Key::Ctrl('z'),
+            CommandInfo {
+                command_name: String::from("editor::undo"),
+                args: None,
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('r'),
+            CommandInfo {
+                command_name: String::from("editor::redo"),
+                args: None,
+            }
+        );
 
         keymap
     }
