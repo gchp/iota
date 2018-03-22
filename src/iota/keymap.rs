@@ -6,7 +6,7 @@ use keyboard::Key;
 
 
 pub enum Trie {
-    Leaf(KeyBinding),
+    Leaf(CommandInfo),
     Node(HashMap<Key, Trie>)
 }
 
@@ -36,7 +36,7 @@ impl Trie {
 
         Some(&(*current))
     }
-    fn bind_key(&mut self, key: Key, value: KeyBinding) {
+    fn bind_key(&mut self, key: Key, value: CommandInfo) {
         match *self {
             Trie::Leaf(_) => {
                 *self = Trie::new();
@@ -47,7 +47,7 @@ impl Trie {
             }
         }
     }
-    fn bind_keys(&mut self, keys: &[Key], value: KeyBinding) {
+    fn bind_keys(&mut self, keys: &[Key], value: CommandInfo) {
         if keys.len() == 1 {
             self.bind_key(keys[0], value);
         } else if keys.len() > 1 {
@@ -75,7 +75,7 @@ impl Trie {
 }
 
 pub enum KeyMapState {
-    Match(KeyBinding),     // found a match
+    Match(CommandInfo),     // found a match
     Continue,     // needs another key to disambiguate
     None          // no match
 }
@@ -126,21 +126,21 @@ impl KeyMap {
     }
 
     /// Insert or overwrite a key-sequence binding
-    pub fn bind_keys(&mut self, keys: &[Key], value: KeyBinding) {
+    pub fn bind_keys(&mut self, keys: &[Key], value: CommandInfo) {
         self.root.bind_keys(&*keys, value);
     }
 
     /// Insert or overwrite a key binding
-    pub fn bind_key(&mut self, key: Key, value: KeyBinding) {
+    pub fn bind_key(&mut self, key: Key, value: CommandInfo) {
         self.root.bind_key(key, value);
     }
 
     /// Insert or overwrite a key binding or key-sequence binding
     pub fn bind(&mut self, binding: KeyBinding) {
         if binding.keys.len() == 1 {
-            self.bind_key(binding.keys[0], binding);
+            self.bind_key(binding.keys[0], binding.command_info);
         } else {
-            self.bind_keys(&binding.keys.clone(), binding);
+            self.bind_keys(&binding.keys.clone(), binding.command_info);
         }
         // self.root.bind_key(key, value);
     }
@@ -150,6 +150,11 @@ impl KeyMap {
 #[derive(Clone)]
 pub struct KeyBinding {
     pub keys: Vec<Key>,
+    pub command_info: CommandInfo,
+}
+
+#[derive(Clone)]
+pub struct CommandInfo {
     pub command_name: String,
     pub args: BuilderArgs,
 }

@@ -6,7 +6,7 @@ use rustbox::{Style, Color, RustBox};
 use editor::ALL_COMMANDS;
 use command::{BuilderArgs, BuilderEvent};
 use keyboard::Key;
-use keymap::KeyBinding;
+use keymap::CommandInfo;
 
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -117,21 +117,19 @@ impl Overlay for CommandPrompt {
     fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
         match key {
             Key::Esc => {
-                let binding = KeyBinding {
-                    keys: Vec::new(),
+                let command_info = CommandInfo {
                     command_name: String::from("editor::noop"),
                     args: BuilderArgs::new(),
                 };
-                return BuilderEvent::Complete(binding);
+                return BuilderEvent::Complete(command_info);
             }
             Key::Backspace => { self.data.pop(); },
             Key::Enter => {
-                let binding = KeyBinding {
-                    keys: Vec::new(),
+                let command_info = CommandInfo {
                     command_name: self.data.clone(),
                     args: BuilderArgs::new(),
                 };
-                return BuilderEvent::Complete(binding);
+                return BuilderEvent::Complete(command_info);
             }
             Key::Up => {
                 let max = self.get_filtered_command_names().len();

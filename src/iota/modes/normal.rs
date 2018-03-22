@@ -1,5 +1,5 @@
 use keyboard::Key;
-use keymap::{KeyMap, KeyBinding, KeyMapState};
+use keymap::{KeyMap, KeyBinding, KeyMapState, CommandInfo};
 use command::{BuilderEvent, BuilderArgs };
 use textobject::{ Offset, Kind, Anchor };
 use buffer::Mark;
@@ -32,17 +32,21 @@ impl NormalMode {
         // { keys: 'h', command: 'buffer::move_cursor', args: { direction: backward, kind: char, number: 1 } }
         keymap.bind(KeyBinding {
             keys: vec![Key::Char('h')],
-            command_name: String::from("buffer::move_cursor"),
-            args: BuilderArgs::new().with_kind(Kind::Char)
+            command_info: CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: BuilderArgs::new().with_kind(Kind::Char)
                                     .with_offset(Offset::Backward(1, Mark::Cursor(0)))
                                     .with_number(1)
+            }
         });
         keymap.bind(KeyBinding {
             keys: vec![Key::Char('j')],
-            command_name: String::from("buffer::move_cursor"),
-            args: BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
-                                    .with_offset(Offset::Forward(1, Mark::Cursor(0)))
-                                    .with_number(1)
+            command_info: CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                        .with_offset(Offset::Forward(1, Mark::Cursor(0)))
+                                        .with_number(1)
+            }
         });
         // keymap.bind_key(Key::Char('j'), "buffer::move_cursor_forward_line".into());
         // keymap.bind_key(Key::Char('k'), "buffer::move_cursor_backward_line".into());

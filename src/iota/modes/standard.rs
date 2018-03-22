@@ -1,5 +1,5 @@
 use keyboard::Key;
-use keymap::{KeyMap, KeyBinding, KeyMapState};
+use keymap::{KeyMap, KeyBinding, KeyMapState, CommandInfo};
 use command::{BuilderEvent, BuilderArgs };
 
 use super::Mode;
@@ -36,8 +36,10 @@ impl StandardMode {
         // Editor Commands
         keymap.bind(KeyBinding {
             keys: vec![Key::Ctrl('q')],
-            command_name: String::from("editor::quit"),
-            args: BuilderArgs::new()
+            command_info: CommandInfo {
+                command_name: String::from("editor::quit"),
+                args: BuilderArgs::new()
+            }
         });
         // keymap.bind_key(Key::Ctrl('q'), "editor::quit".into());
         // keymap.bind_key(Key::Ctrl('s'), "editor::save_buffer".into());
@@ -104,28 +106,11 @@ impl Mode for StandardMode {
         }
 
         if let Key::Char(c) = key {
-            // TODO: it would be better to remove the keys field from this struct
-            //       and replace with something like:
-            //
-            // struct KeyBinding {
-            //    keys: Vec<Key>,
-            //    command_info: CommandInfo,
-            // }
-            //
-            // struct CommandInfo {
-            //    command_name: String,
-            //    args: BuilderArgs,
-            // }
-            //
-            // This would be more efficient in the keymap (I think)
-            // and also remove the need to us to define the keys in the example
-            // below when it doesn't really make sense to do so.
-            let binding = KeyBinding {
-                keys: Vec::new(),
+            let command_info = CommandInfo {
                 command_name: String::from("buffer::insert_char"),
                 args: BuilderArgs::new().with_char_arg(c),
             };
-            BuilderEvent::Complete(binding)
+            BuilderEvent::Complete(command_info)
         } else {
             self.check_key(key)
         }

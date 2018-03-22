@@ -2,7 +2,7 @@ use buffer::Mark;
 use textobject::{ Anchor, TextObject, Offset, Kind };
 use overlay::OverlayType;
 use modes::ModeType;
-use keymap::KeyBinding;
+use keymap::{CommandInfo, KeyBinding};
 
 /// Instructions for the Editor.
 /// These do NOT alter the text, but may change editor/view state
@@ -342,5 +342,5 @@ impl BuilderArgs {
 pub enum BuilderEvent {
     Invalid,            // cannot find a valid interpretation
     Incomplete,         // needs more information
-    Complete(KeyBinding),  // command is finished
+    Complete(CommandInfo),  // command is finished
 }

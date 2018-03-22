@@ -1,5 +1,5 @@
 use keyboard::Key;
-use keymap::{KeyMap, KeyBinding, KeyMapState};
+use keymap::{KeyMap, KeyBinding, KeyMapState, CommandInfo};
 use command::{BuilderEvent, BuilderArgs };
 
 use super::Mode;
@@ -29,8 +29,10 @@ impl EmacsMode {
         // Editor Commands
         keymap.bind(KeyBinding {
             keys: vec![Key::Ctrl('x'), Key::Ctrl('c')],
-            command_name: String::from("editor::quit"),
-            args: BuilderArgs::new()
+            command_info: CommandInfo {
+                command_name: String::from("editor::quit"),
+                args: BuilderArgs::new()
+            }
         });
         // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], "editor::exit".into());
         // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('s')], "editor::save_buffer".into());
@@ -103,12 +105,11 @@ impl Mode for EmacsMode {
 
         if let Key::Char(c) = key {
             let mut builder_args = BuilderArgs::new().with_char_arg(c);
-            let binding = KeyBinding {
-                keys: Vec::new(),
+            let command_info = CommandInfo {
                 command_name: String::from("buffer::insert_char"),
                 args: builder_args,
             };
-            BuilderEvent::Complete(binding)
+            BuilderEvent::Complete(command_info)
         } else {
             self.check_key(key)
         }
