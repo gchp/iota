@@ -2,6 +2,7 @@ use buffer::Mark;
 use textobject::{ Anchor, TextObject, Offset, Kind };
 use overlay::OverlayType;
 use modes::ModeType;
+use keymap::KeyBinding;
 
 /// Instructions for the Editor.
 /// These do NOT alter the text, but may change editor/view state
@@ -139,7 +140,7 @@ impl Command {
         }
     }
 
-    pub fn movement(args: Option<BuilderArgs>) -> Command {
+    pub fn move_cursor(args: Option<BuilderArgs>) -> Command {
         let args = args.expect("no args given to movement");
         let kind = args.kind.expect("no kind provided");
         let offset = args.offset.expect("no offset provided");
@@ -276,6 +277,7 @@ impl Command {
     }
 }
 
+#[derive(Clone)]
 pub struct BuilderArgs {
     pub char_args: Option<char>,
     pub number: Option<i32>,
@@ -328,11 +330,17 @@ impl BuilderArgs {
 
         self
     }
+
+    pub fn with_mode(mut self, mode: ModeType) -> BuilderArgs {
+        self.mode_args = Some(mode);
+
+        self
+    }
 }
 
 
 pub enum BuilderEvent {
     Invalid,            // cannot find a valid interpretation
     Incomplete,         // needs more information
-    Complete(String, Option<BuilderArgs>),  // command is finished
+    Complete(KeyBinding),  // command is finished
 }

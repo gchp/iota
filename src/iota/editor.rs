@@ -23,6 +23,8 @@ lazy_static! {
         map.insert("editor::quit", Command::exit_editor);
         map.insert("editor::save_buffer", Command::save_buffer);
 
+        map.insert("buffer::move_cursor", Command::move_cursor);
+
         map.insert("buffer::move_cursor_forward_char", Command::move_cursor_forward_char);
         map.insert("buffer::move_cursor_backward_char", Command::move_cursor_backward_char);
         map.insert("buffer::move_cursor_forward_line", Command::move_cursor_forward_line);
@@ -120,17 +122,17 @@ impl<'e> Editor<'e> {
             Some(ref mut overlay) => overlay.handle_key_event(key),
         };
 
-        if let BuilderEvent::Complete(c, args) = command {
+        if let BuilderEvent::Complete(c) = command {
             self.view.overlay = None;
             self.view.clear(&mut self.rb);
 
-            match ALL_COMMANDS.get(&*c) {
+            match ALL_COMMANDS.get(&*c.command_name) {
                 Some(cmd) => {
-                    let cmd = cmd(args);
+                    let cmd = cmd(Some(c.args));
                     let _ = self.command_sender.send(cmd);
                 }
                 None => {
-                    panic!("Unknown command: {}", c);
+                    panic!("Unknown command: {}", c.command_name);
                 }
             }
 

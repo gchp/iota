@@ -1,8 +1,8 @@
 use keyboard::Key;
-use keymap::{KeyMap, KeyMapState};
+use keymap::{KeyMap, KeyBinding, KeyMapState};
 use command::{BuilderEvent, BuilderArgs };
 
-use super::Mode;
+use super::{ModeType, Mode};
 
 
 /// `InsertMode` mimics Vi's Insert mode.
@@ -23,7 +23,13 @@ impl InsertMode {
     fn key_defaults() -> KeyMap {
         let mut keymap = KeyMap::new();
 
-        keymap.bind_key(Key::Esc, "editor::set_mode_normal".into());
+        // keymap.bind_key(Key::Esc, "editor::set_mode_normal".into());
+        keymap.bind(KeyBinding {
+            keys: vec![Key::Esc],
+            command_name: String::from("editor::set_mode"),
+            args: BuilderArgs::new().with_mode(ModeType::Normal)
+        });
+
 
         keymap
     }
@@ -34,9 +40,14 @@ impl Mode for InsertMode {
     fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
         if let Key::Char(c) = key {
             let builder_args = BuilderArgs::new().with_char_arg(c);
-            BuilderEvent::Complete("buffer::insert_char".into(), Some(builder_args))
+            let binding = KeyBinding {
+                keys: Vec::new(),
+                command_name: String::from("buffer::insert_char"),
+                args: builder_args,
+            };
+            BuilderEvent::Complete(binding)
         } else if let KeyMapState::Match(c) = self.keymap.check_key(key) {
-            BuilderEvent::Complete(c, None)
+            BuilderEvent::Complete(c)
         } else {
             BuilderEvent::Incomplete
         }

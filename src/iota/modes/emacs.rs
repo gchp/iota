@@ -1,5 +1,5 @@
 use keyboard::Key;
-use keymap::{KeyMap, KeyMapState};
+use keymap::{KeyMap, KeyBinding, KeyMapState};
 use command::{BuilderEvent, BuilderArgs };
 
 use super::Mode;
@@ -27,35 +27,40 @@ impl EmacsMode {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
-        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], "editor::exit".into());
-        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('s')], "editor::save_buffer".into());
+        keymap.bind(KeyBinding {
+            keys: vec![Key::Ctrl('x'), Key::Ctrl('c')],
+            command_name: String::from("editor::quit"),
+            args: BuilderArgs::new()
+        });
+        // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('c')], "editor::exit".into());
+        // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('s')], "editor::save_buffer".into());
 
         // Cursor movement
-        keymap.bind_key(Key::Up, "buffer::move_cursor_backward_line".into());
-        keymap.bind_key(Key::Down, "buffer::move_cursor_forward_line".into());
-        keymap.bind_key(Key::Left, "buffer::move_cursor_forward_char".into());
-        keymap.bind_key(Key::Right, "buffer::move_cursor_backward_char".into());
-        keymap.bind_key(Key::Ctrl('p'), "buffer::move_cursor_backward_line".into());
-        keymap.bind_key(Key::Ctrl('n'), "buffer::move_cursor_forward_line".into());
-        keymap.bind_key(Key::Ctrl('f'), "buffer::move_cursor_forward_char".into());
-        keymap.bind_key(Key::Ctrl('b'), "buffer::move_cursor_backward_char".into());
+        // keymap.bind_key(Key::Up, "buffer::move_cursor_backward_line".into());
+        // keymap.bind_key(Key::Down, "buffer::move_cursor_forward_line".into());
+        // keymap.bind_key(Key::Left, "buffer::move_cursor_forward_char".into());
+        // keymap.bind_key(Key::Right, "buffer::move_cursor_backward_char".into());
+        // keymap.bind_key(Key::Ctrl('p'), "buffer::move_cursor_backward_line".into());
+        // keymap.bind_key(Key::Ctrl('n'), "buffer::move_cursor_forward_line".into());
+        // keymap.bind_key(Key::Ctrl('f'), "buffer::move_cursor_forward_char".into());
+        // keymap.bind_key(Key::Ctrl('b'), "buffer::move_cursor_backward_char".into());
 
-        keymap.bind_key(Key::Ctrl('e'), "buffer::move_cursor_line_end".into());
-        keymap.bind_key(Key::Ctrl('a'), "buffer::move_cursor_line_start".into());
+        // keymap.bind_key(Key::Ctrl('e'), "buffer::move_cursor_line_end".into());
+        // keymap.bind_key(Key::Ctrl('a'), "buffer::move_cursor_line_start".into());
 
         // Editing
-        keymap.bind_key(Key::Tab, "buffer::insert_tab".into());
-        keymap.bind_key(Key::Enter, "buffer::insert_newline".into());
-        keymap.bind_key(Key::Backspace, "buffer::delete_backward_char".into());
-        keymap.bind_key(Key::Delete, "buffer::delete_forward_char".into());
-        keymap.bind_key(Key::Ctrl('h'), "buffer::delete_backward_char".into());
-        keymap.bind_key(Key::Ctrl('d'), "buffer::delete_forward_char".into());
+        // keymap.bind_key(Key::Tab, "buffer::insert_tab".into());
+        // keymap.bind_key(Key::Enter, "buffer::insert_newline".into());
+        // keymap.bind_key(Key::Backspace, "buffer::delete_backward_char".into());
+        // keymap.bind_key(Key::Delete, "buffer::delete_forward_char".into());
+        // keymap.bind_key(Key::Ctrl('h'), "buffer::delete_backward_char".into());
+        // keymap.bind_key(Key::Ctrl('d'), "buffer::delete_forward_char".into());
         // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('f')], Command {
         //     number: 1,
         //     action: Action::Instruction(Instruction::SetOverlay(OverlayType::SelectFile)),
         //     object: None
         // });
-        keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('b')], "editor::switch_to_last_buffer".into());
+        // keymap.bind_keys(&[Key::Ctrl('x'), Key::Ctrl('b')], "editor::switch_to_last_buffer".into());
 
         keymap
     }
@@ -73,7 +78,7 @@ impl EmacsMode {
         match self.keymap.check_key(key) {
             KeyMapState::Match(c) => {
                 self.match_in_progress = false;
-                BuilderEvent::Complete(c, None)
+                BuilderEvent::Complete(c)
             },
             KeyMapState::Continue => {
                 self.match_in_progress = true;
@@ -98,7 +103,12 @@ impl Mode for EmacsMode {
 
         if let Key::Char(c) = key {
             let mut builder_args = BuilderArgs::new().with_char_arg(c);
-            BuilderEvent::Complete("buffer::insert_char".into(), Some(builder_args))
+            let binding = KeyBinding {
+                keys: Vec::new(),
+                command_name: String::from("buffer::insert_char"),
+                args: builder_args,
+            };
+            BuilderEvent::Complete(binding)
         } else {
             self.check_key(key)
         }

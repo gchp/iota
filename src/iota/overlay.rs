@@ -4,8 +4,9 @@ use unicode_width::UnicodeWidthStr;
 use rustbox::{Style, Color, RustBox};
 
 use editor::ALL_COMMANDS;
-use command::BuilderEvent;
+use command::{BuilderArgs, BuilderEvent};
 use keyboard::Key;
+use keymap::KeyBinding;
 
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -115,10 +116,22 @@ impl Overlay for CommandPrompt {
 
     fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
         match key {
-            Key::Esc => return BuilderEvent::Complete("editor::noop".into(), None),
+            Key::Esc => {
+                let binding = KeyBinding {
+                    keys: Vec::new(),
+                    command_name: String::from("editor::noop"),
+                    args: BuilderArgs::new(),
+                };
+                return BuilderEvent::Complete(binding);
+            }
             Key::Backspace => { self.data.pop(); },
             Key::Enter => {
-                return BuilderEvent::Complete(self.data.clone(), None);
+                let binding = KeyBinding {
+                    keys: Vec::new(),
+                    command_name: self.data.clone(),
+                    args: BuilderArgs::new(),
+                };
+                return BuilderEvent::Complete(binding);
             }
             Key::Up => {
                 let max = self.get_filtered_command_names().len();

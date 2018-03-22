@@ -31,26 +31,32 @@ impl NormalMode {
         // movement
         // { keys: 'h', command: 'buffer::move_cursor', args: { direction: backward, kind: char, number: 1 } }
         keymap.bind(KeyBinding {
-            keys: &[Key::Char('h')],
+            keys: vec![Key::Char('h')],
             command_name: String::from("buffer::move_cursor"),
             args: BuilderArgs::new().with_kind(Kind::Char)
+                                    .with_offset(Offset::Backward(1, Mark::Cursor(0)))
+                                    .with_number(1)
+        });
+        keymap.bind(KeyBinding {
+            keys: vec![Key::Char('j')],
+            command_name: String::from("buffer::move_cursor"),
+            args: BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
                                     .with_offset(Offset::Forward(1, Mark::Cursor(0)))
                                     .with_number(1)
         });
-        // keymap.bind_key(Key::Char('h'), "buffer::move_cursor_backward_char".into());
-        keymap.bind_key(Key::Char('j'), "buffer::move_cursor_forward_line".into());
-        keymap.bind_key(Key::Char('k'), "buffer::move_cursor_backward_line".into());
-        keymap.bind_key(Key::Char('l'), "buffer::move_cursor_forward_char".into());
-        keymap.bind_key(Key::Char('w'), "buffer::move_cursor_forward_word_start".into());
-        keymap.bind_key(Key::Char('b'), "buffer::move_cursor_backward_word_start".into());
-        keymap.bind_key(Key::Char('$'), "buffer::move_cursor_line_end".into());
-        keymap.bind_key(Key::Char('0'), "buffer::move_cursor_line_start".into());
+        // keymap.bind_key(Key::Char('j'), "buffer::move_cursor_forward_line".into());
+        // keymap.bind_key(Key::Char('k'), "buffer::move_cursor_backward_line".into());
+        // keymap.bind_key(Key::Char('l'), "buffer::move_cursor_forward_char".into());
+        // keymap.bind_key(Key::Char('w'), "buffer::move_cursor_forward_word_start".into());
+        // keymap.bind_key(Key::Char('b'), "buffer::move_cursor_backward_word_start".into());
+        // keymap.bind_key(Key::Char('$'), "buffer::move_cursor_line_end".into());
+        // keymap.bind_key(Key::Char('0'), "buffer::move_cursor_line_start".into());
 
         // actions
-        keymap.bind_key(Key::Char('u'), "editor::undo".into());
-        keymap.bind_key(Key::Ctrl('r'), "editor::redo".into());
-        keymap.bind_key(Key::Char('i'), "editor::set_mode_insert".into());
-        keymap.bind_key(Key::Char(':'), "editor::set_overlay_command_prompt".into());
+        // keymap.bind_key(Key::Char('u'), "editor::undo".into());
+        // keymap.bind_key(Key::Ctrl('r'), "editor::redo".into());
+        // keymap.bind_key(Key::Char('i'), "editor::set_mode_insert".into());
+        // keymap.bind_key(Key::Char(':'), "editor::set_overlay_command_prompt".into());
 
         keymap
     }
@@ -75,13 +81,13 @@ impl Mode for NormalMode {
             }
         }
         match self.keymap.check_key(key) {
-            KeyMapState::Match(c) => {
-                let mut args = None;
+            KeyMapState::Match(mut c) => {
                 if let Some(num) = self.number {
-                    args = Some(BuilderArgs::new().with_number(num));
+                    // args = Some(BuilderArgs::new().with_number(num));
+                    c.args = c.args.with_number(num);
                 }
                 self.number = None;
-                BuilderEvent::Complete(c, args)
+                BuilderEvent::Complete(c)
             }
             _ => {
                 BuilderEvent::Incomplete

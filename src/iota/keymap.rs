@@ -6,7 +6,7 @@ use keyboard::Key;
 
 
 pub enum Trie {
-    Leaf(String),
+    Leaf(KeyBinding),
     Node(HashMap<Key, Trie>)
 }
 
@@ -36,7 +36,7 @@ impl Trie {
 
         Some(&(*current))
     }
-    fn bind_key(&mut self, key: Key, value: String) {
+    fn bind_key(&mut self, key: Key, value: KeyBinding) {
         match *self {
             Trie::Leaf(_) => {
                 *self = Trie::new();
@@ -47,7 +47,7 @@ impl Trie {
             }
         }
     }
-    fn bind_keys(&mut self, keys: &[Key], value: String) {
+    fn bind_keys(&mut self, keys: &[Key], value: KeyBinding) {
         if keys.len() == 1 {
             self.bind_key(keys[0], value);
         } else if keys.len() > 1 {
@@ -75,7 +75,7 @@ impl Trie {
 }
 
 pub enum KeyMapState {
-    Match(String),     // found a match
+    Match(KeyBinding),     // found a match
     Continue,     // needs another key to disambiguate
     None          // no match
 }
@@ -112,7 +112,7 @@ impl KeyMap {
             KeyMapState::Match(ref value) => {
                 // self.state = KeyMapState::None;
                 self.path.clear();
-                (Some(KeyMapState::None), KeyMapState::Match(value.to_string()))
+                (Some(KeyMapState::None), KeyMapState::Match(value.clone()))
             },
             KeyMapState::Continue => (None, KeyMapState::Continue),
             KeyMapState::None => (None, KeyMapState::None),
@@ -126,29 +126,30 @@ impl KeyMap {
     }
 
     /// Insert or overwrite a key-sequence binding
-    pub fn bind_keys(&mut self, keys: &[Key], value: String) {
+    pub fn bind_keys(&mut self, keys: &[Key], value: KeyBinding) {
         self.root.bind_keys(&*keys, value);
     }
 
     /// Insert or overwrite a key binding
-    pub fn bind_key(&mut self, key: Key, value: String) {
+    pub fn bind_key(&mut self, key: Key, value: KeyBinding) {
         self.root.bind_key(key, value);
     }
 
     /// Insert or overwrite a key binding or key-sequence binding
     pub fn bind(&mut self, binding: KeyBinding) {
         if binding.keys.len() == 1 {
-            self.bind_key(binding.keys[0], binding.command_name);
+            self.bind_key(binding.keys[0], binding);
         } else {
-            self.bind_keys(binding.keys, binding.command_name);
+            self.bind_keys(&binding.keys.clone(), binding);
         }
         // self.root.bind_key(key, value);
     }
 }
 
 
-pub struct KeyBinding<'k> {
-    pub keys: &'k [Key],
+#[derive(Clone)]
+pub struct KeyBinding {
+    pub keys: Vec<Key>,
     pub command_name: String,
     pub args: BuilderArgs,
 }

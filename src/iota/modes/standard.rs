@@ -1,5 +1,5 @@
 use keyboard::Key;
-use keymap::{KeyMap, KeyMapState};
+use keymap::{KeyMap, KeyBinding, KeyMapState};
 use command::{BuilderEvent, BuilderArgs };
 
 use super::Mode;
@@ -34,30 +34,35 @@ impl StandardMode {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
-        keymap.bind_key(Key::Ctrl('q'), "editor::quit".into());
-        keymap.bind_key(Key::Ctrl('s'), "editor::save_buffer".into());
+        keymap.bind(KeyBinding {
+            keys: vec![Key::Ctrl('q')],
+            command_name: String::from("editor::quit"),
+            args: BuilderArgs::new()
+        });
+        // keymap.bind_key(Key::Ctrl('q'), "editor::quit".into());
+        // keymap.bind_key(Key::Ctrl('s'), "editor::save_buffer".into());
 
         // Cursor movement
-        keymap.bind_key(Key::Up, "buffer::move_cursor_backward_line".into());
-        keymap.bind_key(Key::Down, "buffer::move_cursor_forward_line".into());
-        keymap.bind_key(Key::Left, "buffer::move_cursor_backward_char".into());
-        keymap.bind_key(Key::Right, "buffer::move_cursor_forward_char".into());
+        // keymap.bind_key(Key::Up, "buffer::move_cursor_backward_line".into());
+        // keymap.bind_key(Key::Down, "buffer::move_cursor_forward_line".into());
+        // keymap.bind_key(Key::Left, "buffer::move_cursor_backward_char".into());
+        // keymap.bind_key(Key::Right, "buffer::move_cursor_forward_char".into());
 
-        keymap.bind_key(Key::CtrlRight, "buffer::move_cursor_forward_word_start".into());
-        keymap.bind_key(Key::CtrlLeft, "buffer::move_cursor_backward_word_start".into());
+        // keymap.bind_key(Key::CtrlRight, "buffer::move_cursor_forward_word_start".into());
+        // keymap.bind_key(Key::CtrlLeft, "buffer::move_cursor_backward_word_start".into());
     
-        keymap.bind_key(Key::End, "buffer::move_cursor_line_end".into());
-        keymap.bind_key(Key::Home, "buffer::move_cursor_line_start".into());
+        // keymap.bind_key(Key::End, "buffer::move_cursor_line_end".into());
+        // keymap.bind_key(Key::Home, "buffer::move_cursor_line_start".into());
 
         // Editing
-        keymap.bind_key(Key::Tab, "buffer::insert_tab".into());
-        keymap.bind_key(Key::Enter, "buffer::insert_newline".into());
-        keymap.bind_key(Key::Backspace, "buffer::delete_backward_char".into());
-        keymap.bind_key(Key::Delete, "buffer::delete_forward_char".into());
+        // keymap.bind_key(Key::Tab, "buffer::insert_tab".into());
+        // keymap.bind_key(Key::Enter, "buffer::insert_newline".into());
+        // keymap.bind_key(Key::Backspace, "buffer::delete_backward_char".into());
+        // keymap.bind_key(Key::Delete, "buffer::delete_forward_char".into());
 
         // History
-        keymap.bind_key(Key::Ctrl('z'), "editor::undo".into());
-        keymap.bind_key(Key::Ctrl('y'), "editor::redo".into());
+        // keymap.bind_key(Key::Ctrl('z'), "editor::undo".into());
+        // keymap.bind_key(Key::Ctrl('y'), "editor::redo".into());
 
         keymap
     }
@@ -75,7 +80,7 @@ impl StandardMode {
         match self.keymap.check_key(key) {
             KeyMapState::Match(c) => {
                 self.match_in_progress = false;
-                BuilderEvent::Complete(c, None)
+                BuilderEvent::Complete(c)
             },
             KeyMapState::Continue => {
                 self.match_in_progress = true;
@@ -99,8 +104,28 @@ impl Mode for StandardMode {
         }
 
         if let Key::Char(c) = key {
-            let mut builder_args = BuilderArgs::new().with_char_arg(c);
-            BuilderEvent::Complete("buffer::insert_char".into(), Some(builder_args))
+            // TODO: it would be better to remove the keys field from this struct
+            //       and replace with something like:
+            //
+            // struct KeyBinding {
+            //    keys: Vec<Key>,
+            //    command_info: CommandInfo,
+            // }
+            //
+            // struct CommandInfo {
+            //    command_name: String,
+            //    args: BuilderArgs,
+            // }
+            //
+            // This would be more efficient in the keymap (I think)
+            // and also remove the need to us to define the keys in the example
+            // below when it doesn't really make sense to do so.
+            let binding = KeyBinding {
+                keys: Vec::new(),
+                command_name: String::from("buffer::insert_char"),
+                args: BuilderArgs::new().with_char_arg(c),
+            };
+            BuilderEvent::Complete(binding)
         } else {
             self.check_key(key)
         }
