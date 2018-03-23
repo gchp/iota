@@ -167,11 +167,6 @@ impl Buffer {
                 if let Some(mark_pos) = self.marks.get(&from_mark) {
                     let new_absolute_position = mark_pos.absolute + offset;
                     if new_absolute_position < last {
-                        // if the new position is past the end of the line, do nothing
-                        if text[mark_pos.absolute] == b'\n' {
-                            return None;
-                        }
-
                         // FIXME: it would be nice if we could avoid using get_line_info here...
                         let new_mark_pos = get_line_info(new_absolute_position, text).unwrap();
                         return Some(new_mark_pos)
