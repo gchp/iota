@@ -1,8 +1,8 @@
 use keyboard::Key;
-use keymap::{KeyMap, KeyMapState};
+use keymap::{KeyMap, KeyMapState, CommandInfo};
+use command::{BuilderEvent, BuilderArgs };
 use buffer::Mark;
-use command::{BuilderEvent, Operation, Command, Action};
-use textobject::{Anchor, Kind, TextObject, Offset};
+use textobject::{ Offset, Kind, Anchor };
 
 use super::Mode;
 
@@ -17,7 +17,7 @@ use super::Mode;
 /// Standard mode allows Iota to be used in a non-modal way, similar to mainstream
 /// editors like Atom or Sublime.
 pub struct StandardMode {
-    keymap: KeyMap<Command>,
+    keymap: KeyMap,
     match_in_progress: bool,
 }
 
@@ -32,56 +32,140 @@ impl StandardMode {
     }
 
     /// Creates a KeyMap with default StandardMode key bindings
-    fn key_defaults() -> KeyMap<Command> {
+    fn key_defaults() -> KeyMap {
         let mut keymap = KeyMap::new();
 
         // Editor Commands
-        keymap.bind_key(Key::Ctrl('q'), Command::exit_editor());
-        keymap.bind_key(Key::Ctrl('s'), Command::save_buffer());
+        keymap.bind_key(
+            Key::Ctrl('q'),
+            CommandInfo {
+                command_name: String::from("editor::quit"),
+                args: None,
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('s'),
+            CommandInfo {
+                command_name: String::from("editor::save_buffer"),
+                args: None,
+            }
+        );
 
         // Cursor movement
-        keymap.bind_key(Key::Up, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Down, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Line(Anchor::Same)));
-        keymap.bind_key(Key::Left, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Char));
-        keymap.bind_key(Key::Right, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Char));
+        keymap.bind_key(
+            Key::Up,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Down,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Left,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Right,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
 
-        keymap.bind_key(Key::CtrlRight, Command::movement(Offset::Forward(1, Mark::Cursor(0)), Kind::Word(Anchor::Start)));
-        keymap.bind_key(Key::CtrlLeft, Command::movement(Offset::Backward(1, Mark::Cursor(0)), Kind::Word(Anchor::Start)));
+        keymap.bind_key(
+            Key::CtrlRight,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Word(Anchor::Start))
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::CtrlLeft,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Word(Anchor::Start))
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
     
-        keymap.bind_key(Key::End, Command::movement(Offset::Forward(0, Mark::Cursor(0)), Kind::Line(Anchor::End)));
-        keymap.bind_key(Key::Home, Command::movement(Offset::Backward(0, Mark::Cursor(0)), Kind::Line(Anchor::Start)));
+        keymap.bind_key(
+            Key::End,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::End))
+                                             .with_offset(Offset::Forward(0, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Home,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::End))
+                                             .with_offset(Offset::Backward(0, Mark::Cursor(0))))
+            }
+        );
 
         // Editing
-        keymap.bind_key(Key::Tab, Command::insert_tab());
-        keymap.bind_key(Key::Enter, Command::insert_char('\n'));
-        keymap.bind_key(Key::Backspace, Command {
-            number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Backward(1, Mark::Cursor(0))
-            })
-        });
-        keymap.bind_key(Key::Delete, Command {
-            number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Forward(1, Mark::Cursor(0))
-            })
-        });
-        keymap.bind_key(Key::Ctrl('h'), Command {
-            number: 1,
-            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
-            object: Some(TextObject {
-                kind: Kind::Char,
-                offset: Offset::Backward(1, Mark::Cursor(0))
-            })
-        });
+        keymap.bind_key(
+            Key::Tab,
+            CommandInfo {
+                command_name: String::from("buffer::insert_tab"),
+                args: None,
+            }
+        );
+        keymap.bind_key(
+            Key::Enter,
+            CommandInfo {
+                command_name: String::from("buffer::insert_char"),
+                args: Some(BuilderArgs::new().with_char_arg('\n')),
+            }
+        );
+        keymap.bind_key(
+            Key::Backspace,
+            CommandInfo {
+                command_name: String::from("buffer::delete_char"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Backspace,
+            CommandInfo {
+                command_name: String::from("buffer::delete_char"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Char)
+                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
+            }
+        );
 
         // History
-        keymap.bind_key(Key::Ctrl('z'), Command::undo());
-        keymap.bind_key(Key::Ctrl('y'), Command::redo());
+        keymap.bind_key(
+            Key::Ctrl('z'),
+            CommandInfo {
+                command_name: String::from("editor::undo"),
+                args: None,
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('r'),
+            CommandInfo {
+                command_name: String::from("editor::redo"),
+                args: None,
+            }
+        );
 
         keymap
     }
@@ -123,7 +207,11 @@ impl Mode for StandardMode {
         }
 
         if let Key::Char(c) = key {
-            BuilderEvent::Complete(Command::insert_char(c))
+            let command_info = CommandInfo {
+                command_name: String::from("buffer::insert_char"),
+                args: Some(BuilderArgs::new().with_char_arg(c)),
+            };
+            BuilderEvent::Complete(command_info)
         } else {
             self.check_key(key)
         }

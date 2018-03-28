@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::{Mutex, Arc};
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc::channel;
+use std::collections::HashMap;
 
 use rustbox::{RustBox, Event};
 
@@ -11,8 +12,32 @@ use view::View;
 use modes::{Mode, ModeType, InsertMode, NormalMode};
 use buffer::Buffer;
 use command::Command;
-use command::{Action, BuilderEvent, Operation, Instruction};
+use command::{Action, BuilderEvent, BuilderArgs, Operation, Instruction};
 
+
+type EditorCommand = fn(Option<BuilderArgs>) -> Command;
+lazy_static! {
+    pub static ref ALL_COMMANDS: HashMap<&'static str, EditorCommand> = {
+        let mut map: HashMap<&'static str, EditorCommand> = HashMap::new();
+
+        map.insert("editor::quit", Command::exit_editor);
+        map.insert("editor::save_buffer", Command::save_buffer);
+        map.insert("editor::noop", Command::noop);
+
+        map.insert("editor::undo", Command::undo);
+        map.insert("editor::redo", Command::redo);
+        map.insert("editor::set_mode", Command::set_mode);
+
+        map.insert("editor::set_overlay", Command::set_overlay);
+
+        map.insert("buffer::move_cursor", Command::move_cursor);
+        map.insert("buffer::insert_char", Command::insert_char);
+        map.insert("buffer::insert_tab", Command::insert_tab);
+
+
+        map
+    };
+}
 
 /// The main Editor structure
 ///
@@ -93,7 +118,18 @@ impl<'e> Editor<'e> {
         if let BuilderEvent::Complete(c) = command {
             self.view.overlay = None;
             self.view.clear(&mut self.rb);
-            let _ = self.command_sender.send(c);
+
+            match ALL_COMMANDS.get(&*c.command_name) {
+                Some(cmd) => {
+                    let cmd = cmd(c.args);
+                    let _ = self.command_sender.send(cmd);
+                }
+                None => {
+                    panic!("Unknown command: {}", c.command_name);
+                }
+            }
+
+            // let _ = self.command_sender.send(c);
         }
     }
 
@@ -116,43 +152,44 @@ impl<'e> Editor<'e> {
         } else { 1 };
         for _ in 0..repeat {
             match command.action {
-                Action::Instruction(i) => self.handle_instruction(i, command),
-                Action::Operation(o) => self.handle_operation(o, command),
+                Action::Instruction(_) => self.handle_instruction(command.clone()),
+                Action::Operation(_) => self.handle_operation(command.clone()),
             }
         }
     }
 
 
-    fn handle_instruction(&mut self, instruction: Instruction, command: Command) {
-        match instruction {
-            Instruction::SaveBuffer => { self.view.try_save_buffer() }
-            Instruction::ExitEditor => {
+    fn handle_instruction(&mut self, command: Command) {
+        match command.action {
+            Action::Instruction(Instruction::SaveBuffer) => { self.view.try_save_buffer() }
+            Action::Instruction(Instruction::ExitEditor) => {
                 if self.view.buffer_is_dirty() {
-                    let _ = self.command_sender.send(Command::show_message("Unsaved changes"));
+                    let args = BuilderArgs::new().with_str("Unsaved changes".into());
+                    let _ = self.command_sender.send(Command::show_message(Some(args)));
                 } else {
                     self.running = false;
                 }
 
             }
-            Instruction::SetMark(mark) => {
+            Action::Instruction(Instruction::SetMark(mark)) => {
                 if let Some(object) = command.object {
                     self.view.move_mark(mark, object)
                 }
             }
-            Instruction::SetOverlay(overlay_type) => {
+            Action::Instruction(Instruction::SetOverlay(overlay_type)) => {
                 self.view.set_overlay(overlay_type)
             }
-            Instruction::SetMode(mode) => {
+            Action::Instruction(Instruction::SetMode(mode)) => {
                 match mode {
                     ModeType::Insert => { self.mode = Box::new(InsertMode::new()) }
                     ModeType::Normal => { self.mode = Box::new(NormalMode::new()) }
                 }
             }
-            Instruction::SwitchToLastBuffer => {
+            Action::Instruction(Instruction::SwitchToLastBuffer) => {
                 self.view.switch_last_buffer();
                 self.view.clear(&mut self.rb);
             }
-            Instruction::ShowMessage(msg) => {
+            Action::Instruction(Instruction::ShowMessage(msg)) => {
                 self.view.show_message(msg)
             }
 
@@ -160,25 +197,27 @@ impl<'e> Editor<'e> {
         }
     }
 
-    fn handle_operation(&mut self, operation: Operation, command: Command) {
-        match operation {
-            Operation::Insert(c) => {
+    fn handle_operation(&mut self, command: Command) {
+        match command.action {
+            Action::Operation(Operation::Insert(c)) => {
                 for _ in 0..command.number {
                     self.view.insert_char(c)
                 }
             }
-            Operation::DeleteObject => {
+            Action::Operation(Operation::DeleteObject) => {
                 if let Some(obj) = command.object {
                     self.view.delete_object(obj);
                 }
             }
-            Operation::DeleteFromMark(m) => {
+            Action::Operation(Operation::DeleteFromMark(m)) => {
                 if command.object.is_some() {
                     self.view.delete_from_mark_to_object(m, command.object.unwrap())
                 }
             }
-            Operation::Undo => { self.view.undo() }
-            Operation::Redo => { self.view.redo() }
+            Action::Operation(Operation::Undo) => { self.view.undo() }
+            Action::Operation(Operation::Redo) => { self.view.redo() }
+
+            Action::Instruction(_) => {}
         }
     }
 

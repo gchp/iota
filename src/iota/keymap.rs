@@ -1,23 +1,26 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+
+use command::BuilderArgs;
 use keyboard::Key;
 
-pub enum Trie<T: Copy> {
-    Leaf(T),
-    Node(HashMap<Key, Trie<T>>)
+
+pub enum Trie {
+    Leaf(CommandInfo),
+    Node(HashMap<Key, Trie>)
 }
 
-impl<T: Copy> Trie<T> {
-    fn new() -> Trie<T> {
+impl Trie {
+    fn new() -> Trie {
         Trie::Node(HashMap::new())
     }
-    fn lookup_key(&self, key: Key) -> Option<&Trie<T>> {
+    fn lookup_key(&self, key: Key) -> Option<&Trie> {
         match *self {
             Trie::Leaf(_) => None,
             Trie::Node(ref map) => map.get(&key)
         }
     }
-    fn lookup_keys(&self, keys: &[Key]) -> Option<&Trie<T>> {
+    fn lookup_keys(&self, keys: &[Key]) -> Option<&Trie> {
         let mut current = self;
 
         for key in keys.iter() {
@@ -33,7 +36,7 @@ impl<T: Copy> Trie<T> {
 
         Some(&(*current))
     }
-    fn bind_key(&mut self, key: Key, value: T) {
+    fn bind_key(&mut self, key: Key, value: CommandInfo) {
         match *self {
             Trie::Leaf(_) => {
                 *self = Trie::new();
@@ -44,7 +47,7 @@ impl<T: Copy> Trie<T> {
             }
         }
     }
-    fn bind_keys(&mut self, keys: &[Key], value: T) {
+    fn bind_keys(&mut self, keys: &[Key], value: CommandInfo) {
         if keys.len() == 1 {
             self.bind_key(keys[0], value);
         } else if keys.len() > 1 {
@@ -71,22 +74,21 @@ impl<T: Copy> Trie<T> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
-pub enum KeyMapState<T> {
-    Match(T),     // found a match
+pub enum KeyMapState {
+    Match(CommandInfo),     // found a match
     Continue,     // needs another key to disambiguate
     None          // no match
 }
 
 /// Map sequences of `Key`s to values
-pub struct KeyMap<T: Copy> {
-    root: Trie<T>,
-    state: KeyMapState<T>,
+pub struct KeyMap {
+    root: Trie,
+    state: KeyMapState,
     path: Vec<Key>
 }
 
-impl<T: Copy> KeyMap<T> {
-    pub fn new() -> KeyMap<T> {
+impl KeyMap {
+    pub fn new() -> KeyMap {
         KeyMap {
             root: Trie::new(),
             state: KeyMapState::None,
@@ -95,34 +97,63 @@ impl<T: Copy> KeyMap<T> {
     }
 
     /// Eat one keypress, return the new state
-    pub fn check_key(&mut self, key: Key) -> KeyMapState<T> {
+    pub fn check_key(&mut self, key: Key) -> KeyMapState {
         self.path.push(key);
         self.state = match self.root.lookup_keys(&*self.path) {
             Some(n) => {
-                match *n {
-                    Trie::Leaf(value) => KeyMapState::Match(value),
-                    Trie::Node(_) => KeyMapState::Continue
+                match n {
+                    &Trie::Leaf(ref value) => KeyMapState::Match(value.clone()),
+                    &Trie::Node(_) => KeyMapState::Continue
                 }
             }
             _ => { self.path.clear(); KeyMapState::None }
         };
-        match self.state {
-            KeyMapState::Match(value) => {
-                self.state = KeyMapState::None;
+        let (new_state, ret_val) = match self.state {
+            KeyMapState::Match(ref value) => {
+                // self.state = KeyMapState::None;
                 self.path.clear();
-                KeyMapState::Match(value)
+                (Some(KeyMapState::None), KeyMapState::Match(value.clone()))
             },
-            _ => self.state
+            KeyMapState::Continue => (None, KeyMapState::Continue),
+            KeyMapState::None => (None, KeyMapState::None),
+        };
+
+        if let Some(st) = new_state {
+            self.state = st;
         }
+
+        ret_val
     }
 
     /// Insert or overwrite a key-sequence binding
-    pub fn bind_keys(&mut self, keys: &[Key], value: T) {
+    pub fn bind_keys(&mut self, keys: &[Key], value: CommandInfo) {
         self.root.bind_keys(&*keys, value);
     }
 
     /// Insert or overwrite a key binding
-    pub fn bind_key(&mut self, key: Key, value: T) {
+    pub fn bind_key(&mut self, key: Key, value: CommandInfo) {
         self.root.bind_key(key, value);
     }
+
+    // /// Insert or overwrite a key binding or key-sequence binding
+    // pub fn bind(&mut self, binding: KeyBinding) {
+    //     if binding.keys.len() == 1 {
+    //         self.bind_key(binding.keys[0], binding.command_info);
+    //     } else {
+    //         self.bind_keys(&binding.keys.clone(), binding.command_info);
+    //     }
+    // }
+}
+
+
+#[derive(Clone)]
+pub struct KeyBinding {
+    pub keys: Vec<Key>,
+    pub command_info: CommandInfo,
+}
+
+#[derive(Clone)]
+pub struct CommandInfo {
+    pub command_name: String,
+    pub args: Option<BuilderArgs>,
 }
