@@ -1,13 +1,12 @@
 use std::cmp;
 
+use rustbox::{Color, RustBox, Style};
 use unicode_width::UnicodeWidthStr;
-use rustbox::{Style, Color, RustBox};
 
-use editor::ALL_COMMANDS;
 use command::BuilderEvent;
+use editor::ALL_COMMANDS;
 use keyboard::Key;
 use keymap::CommandInfo;
-
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum OverlayType {
@@ -40,7 +39,7 @@ impl CommandPrompt {
     fn get_filtered_command_names(&self) -> Vec<&&str> {
         let mut keys: Vec<&&str> = ALL_COMMANDS
             .keys()
-            .filter(|item| item.starts_with(&*self.data) )
+            .filter(|item| item.starts_with(&*self.data))
             .collect();
         keys.sort();
         keys.reverse();
@@ -48,7 +47,6 @@ impl CommandPrompt {
         keys
     }
 }
-
 
 impl Overlay for CommandPrompt {
     fn draw(&self, rb: &mut RustBox) {
@@ -66,8 +64,22 @@ impl Overlay for CommandPrompt {
         // draw the command completion list
         let mut index = 1;
         for key in &keys {
-            rb.print_char(0, height - index, Style::empty(), Color::White, Color::Black, '│');
-            rb.print_char(max + 1, height - index, Style::empty(), Color::White, Color::Black, '│');
+            rb.print_char(
+                0,
+                height - index,
+                Style::empty(),
+                Color::White,
+                Color::Black,
+                '│',
+            );
+            rb.print_char(
+                max + 1,
+                height - index,
+                Style::empty(),
+                Color::White,
+                Color::Black,
+                '│',
+            );
 
             let (fg, bg) = if index == self.selected_index {
                 (Color::White, Color::Red)
@@ -87,20 +99,55 @@ impl Overlay for CommandPrompt {
             index += 1;
         }
 
-        rb.print_char(0, height - index, Style::empty(), Color::White, Color::Black, '╭');
+        rb.print_char(
+            0,
+            height - index,
+            Style::empty(),
+            Color::White,
+            Color::Black,
+            '╭',
+        );
         for x in 1..max + 1 {
-            rb.print_char(x, height - keys.len() - 1, Style::empty(), Color::White, Color::Black, '─');
+            rb.print_char(
+                x,
+                height - keys.len() - 1,
+                Style::empty(),
+                Color::White,
+                Color::Black,
+                '─',
+            );
         }
-        rb.print_char(max + 1, height - index, Style::empty(), Color::White, Color::Black, '╮');
+        rb.print_char(
+            max + 1,
+            height - index,
+            Style::empty(),
+            Color::White,
+            Color::Black,
+            '╮',
+        );
 
         // draw the given prefix
         for (index, ch) in self.prefix.chars().enumerate() {
-            rb.print_char(index, height, Style::empty(), Color::White, Color::Black, ch);
+            rb.print_char(
+                index,
+                height,
+                Style::empty(),
+                Color::White,
+                Color::Black,
+                ch,
+            );
         }
 
         // draw the overlay data
         for (index, ch) in self.data.chars().enumerate() {
-            rb.print_char(index + offset, height, Style::empty(), Color::White, Color::Black, ch);
+            rb.print_char(
+                index + offset,
+                height,
+                Style::empty(),
+                Color::White,
+                Color::Black,
+                ch,
+            );
         }
     }
 
@@ -123,7 +170,9 @@ impl Overlay for CommandPrompt {
                 };
                 return BuilderEvent::Complete(command_info);
             }
-            Key::Backspace => { self.data.pop(); },
+            Key::Backspace => {
+                self.data.pop();
+            }
             Key::Enter => {
                 let command_info = CommandInfo {
                     command_name: self.data.clone(),
@@ -147,7 +196,7 @@ impl Overlay for CommandPrompt {
                     let command = {
                         let mut keys: Vec<&&str> = ALL_COMMANDS
                             .keys()
-                            .filter(|item| item.starts_with(&*self.data) )
+                            .filter(|item| item.starts_with(&*self.data))
                             .collect();
                         keys.sort();
                         keys.reverse();
@@ -157,7 +206,7 @@ impl Overlay for CommandPrompt {
                     self.data = command.to_string();
                 }
             }
-            Key::Char(c) => { self.data.push(c) },
+            Key::Char(c) => self.data.push(c),
             _ => {}
         }
         BuilderEvent::Incomplete

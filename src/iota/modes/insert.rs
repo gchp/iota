@@ -1,11 +1,10 @@
-use keyboard::Key;
-use keymap::{KeyMap, KeyMapState, CommandInfo};
-use command::{BuilderEvent, BuilderArgs };
-use textobject::{ Offset, Kind, Anchor };
 use buffer::Mark;
+use command::{BuilderArgs, BuilderEvent};
+use keyboard::Key;
+use keymap::{CommandInfo, KeyMap, KeyMapState};
+use textobject::{Anchor, Kind, Offset};
 
-use super::{ModeType, Mode};
-
+use super::{Mode, ModeType};
 
 /// `InsertMode` mimics Vi's Insert mode.
 pub struct InsertMode {
@@ -13,7 +12,6 @@ pub struct InsertMode {
 }
 
 impl InsertMode {
-
     /// Create a new instance of `InsertMode`
     pub fn new() -> InsertMode {
         InsertMode {
@@ -29,77 +27,93 @@ impl InsertMode {
             Key::Esc,
             CommandInfo {
                 command_name: String::from("editor::set_mode"),
-                args: Some(BuilderArgs::new().with_mode(ModeType::Normal))
-            }
+                args: Some(BuilderArgs::new().with_mode(ModeType::Normal)),
+            },
         );
         // Cursor movement
         keymap.bind_key(
             Key::Up,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
-                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Line(Anchor::Same))
+                        .with_offset(Offset::Backward(1, Mark::Cursor(0))),
+                ),
+            },
         );
         keymap.bind_key(
             Key::Down,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
-                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Line(Anchor::Same))
+                        .with_offset(Offset::Forward(1, Mark::Cursor(0))),
+                ),
+            },
         );
         keymap.bind_key(
             Key::Left,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Char)
-                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Char)
+                        .with_offset(Offset::Backward(1, Mark::Cursor(0))),
+                ),
+            },
         );
         keymap.bind_key(
             Key::Right,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Char)
-                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Char)
+                        .with_offset(Offset::Forward(1, Mark::Cursor(0))),
+                ),
+            },
         );
         keymap.bind_key(
             Key::Tab,
             CommandInfo {
                 command_name: String::from("buffer::insert_tab"),
                 args: None,
-            }
+            },
         );
         keymap.bind_key(
             Key::Enter,
             CommandInfo {
                 command_name: String::from("buffer::insert_char"),
                 args: Some(BuilderArgs::new().with_char_arg('\n')),
-            }
+            },
         );
         keymap.bind_key(
             Key::Backspace,
             CommandInfo {
                 command_name: String::from("buffer::delete_char"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Char)
-                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Char)
+                        .with_offset(Offset::Backward(1, Mark::Cursor(0))),
+                ),
+            },
         );
         keymap.bind_key(
             Key::Backspace,
             CommandInfo {
                 command_name: String::from("buffer::delete_char"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Char)
-                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Char)
+                        .with_offset(Offset::Forward(1, Mark::Cursor(0))),
+                ),
+            },
         );
-
 
         keymap
     }
-
 }
 
 impl Mode for InsertMode {

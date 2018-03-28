@@ -40,12 +40,12 @@ impl Default for Kind {
 
 #[derive(Copy, Clone, Debug)]
 pub enum Anchor {
-    Before,     // Index just prior to TextObject
-    Start,      // First index within TextObject
+    Before, // Index just prior to TextObject
+    Start,  // First index within TextObject
     // Middle,  // Middle index of TextObject
-    End,        // Last index within TextObject
-    After,      // First index after TextObject
-    Same,       // Same as index within current TextObject of the same Kind
+    End,   // Last index within TextObject
+    After, // First index after TextObject
+    Same,  // Same as index within current TextObject of the same Kind
 }
 
 impl Default for Anchor {
@@ -62,11 +62,11 @@ pub enum Offset {
 }
 
 impl Offset {
-    pub fn with_num(&self, n: usize) -> Offset{
+    pub fn with_num(&self, n: usize) -> Offset {
         match *self {
-            Offset::Absolute(_)    => Offset::Absolute(n),
+            Offset::Absolute(_) => Offset::Absolute(n),
             Offset::Backward(_, m) => Offset::Backward(n, m),
-            Offset::Forward(_, m)  => Offset::Forward(n, m),
+            Offset::Forward(_, m) => Offset::Forward(n, m),
         }
     }
 }
@@ -80,14 +80,14 @@ impl Default for Offset {
 #[derive(Copy, Clone, Debug)]
 pub struct TextObject {
     pub kind: Kind,
-    pub offset: Offset
+    pub offset: Offset,
 }
 
 impl Default for TextObject {
     fn default() -> TextObject {
         TextObject {
             kind: Default::default(),
-            offset: Default::default()
+            offset: Default::default(),
         }
     }
 }

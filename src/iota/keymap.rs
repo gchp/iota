@@ -4,10 +4,9 @@ use std::collections::hash_map::Entry;
 use command::BuilderArgs;
 use keyboard::Key;
 
-
 pub enum Trie {
     Leaf(CommandInfo),
-    Node(HashMap<Key, Trie>)
+    Node(HashMap<Key, Trie>),
 }
 
 impl Trie {
@@ -17,7 +16,7 @@ impl Trie {
     fn lookup_key(&self, key: Key) -> Option<&Trie> {
         match *self {
             Trie::Leaf(_) => None,
-            Trie::Node(ref map) => map.get(&key)
+            Trie::Node(ref map) => map.get(&key),
         }
     }
     fn lookup_keys(&self, keys: &[Key]) -> Option<&Trie> {
@@ -27,10 +26,10 @@ impl Trie {
             if let Some(node) = current.lookup_key(*key) {
                 match *node {
                     Trie::Leaf(_) => return Some(&(*node)),
-                    Trie::Node(_) => current = &(*node)
+                    Trie::Node(_) => current = &(*node),
                 }
             } else {
-                return None
+                return None;
             }
         }
 
@@ -64,9 +63,8 @@ impl Trie {
                             let mut node = Trie::new();
                             node.bind_keys(keys, value);
                             v.insert(node);
-                        },
-                        Entry::Occupied(mut o) =>
-                            o.get_mut().bind_keys(keys, value)
+                        }
+                        Entry::Occupied(mut o) => o.get_mut().bind_keys(keys, value),
                     }
                 }
             }
@@ -75,16 +73,16 @@ impl Trie {
 }
 
 pub enum KeyMapState {
-    Match(CommandInfo),     // found a match
-    Continue,     // needs another key to disambiguate
-    None          // no match
+    Match(CommandInfo), // found a match
+    Continue,           // needs another key to disambiguate
+    None,               // no match
 }
 
 /// Map sequences of `Key`s to values
 pub struct KeyMap {
     root: Trie,
     state: KeyMapState,
-    path: Vec<Key>
+    path: Vec<Key>,
 }
 
 impl KeyMap {
@@ -92,7 +90,7 @@ impl KeyMap {
         KeyMap {
             root: Trie::new(),
             state: KeyMapState::None,
-            path: Vec::new()
+            path: Vec::new(),
         }
     }
 
@@ -100,20 +98,21 @@ impl KeyMap {
     pub fn check_key(&mut self, key: Key) -> KeyMapState {
         self.path.push(key);
         self.state = match self.root.lookup_keys(&*self.path) {
-            Some(n) => {
-                match n {
-                    &Trie::Leaf(ref value) => KeyMapState::Match(value.clone()),
-                    &Trie::Node(_) => KeyMapState::Continue
-                }
+            Some(n) => match n {
+                &Trie::Leaf(ref value) => KeyMapState::Match(value.clone()),
+                &Trie::Node(_) => KeyMapState::Continue,
+            },
+            _ => {
+                self.path.clear();
+                KeyMapState::None
             }
-            _ => { self.path.clear(); KeyMapState::None }
         };
         let (new_state, ret_val) = match self.state {
             KeyMapState::Match(ref value) => {
                 // self.state = KeyMapState::None;
                 self.path.clear();
                 (Some(KeyMapState::None), KeyMapState::Match(value.clone()))
-            },
+            }
             KeyMapState::Continue => (None, KeyMapState::Continue),
             KeyMapState::None => (None, KeyMapState::None),
         };
@@ -144,7 +143,6 @@ impl KeyMap {
     //     }
     // }
 }
-
 
 #[derive(Clone)]
 pub struct KeyBinding {

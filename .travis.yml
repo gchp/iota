@@ -2,7 +2,12 @@ language: rust
 os:
     - linux
     - osx
+before_script:
+    - rustup default nightly
+    - rustup component add rustfmt-preview
 script:
+    - cargo fmt --version
+    - cargo fmt --all -- --write-mode=diff
     - cargo build --verbose
     - cargo test --verbose
 notifications:
