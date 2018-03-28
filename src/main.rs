@@ -1,19 +1,15 @@
 #![cfg(not(test))]
 
-extern crate libc;
-extern crate rustc_serialize;
-extern crate rustbox;
 extern crate docopt;
 extern crate iota;
+extern crate libc;
+extern crate rustbox;
+extern crate rustc_serialize;
 
-use std::io::stdin;
 use docopt::Docopt;
-use iota::{
-    Editor, Input,
-    StandardMode, NormalMode, EmacsMode,
-    Mode,
-};
-use rustbox::{InitOptions, RustBox, InputMode, OutputMode};
+use iota::{Editor, EmacsMode, Input, Mode, NormalMode, StandardMode};
+use rustbox::{InitOptions, InputMode, OutputMode, RustBox};
+use std::io::stdin;
 static USAGE: &'static str = "
 Usage: iota [<filename>] [options]
        iota --help
@@ -23,7 +19,6 @@ Options:
     --vi                           Start Iota with vi-like modes
     -h, --help                     Show this message.
 ";
-
 
 #[derive(RustcDecodable, Debug)]
 struct Args {
@@ -41,8 +36,8 @@ fn is_atty(fileno: libc::c_int) -> bool {
 
 fn main() {
     let args: Args = Docopt::new(USAGE)
-                            .and_then(|d| d.decode())
-                            .unwrap_or_else(|e| e.exit());
+        .and_then(|d| d.decode())
+        .unwrap_or_else(|e| e.exit());
 
     let stdin_is_atty = is_atty(libc::STDIN_FILENO);
     let stderr_is_atty = is_atty(libc::STDERR_FILENO);
@@ -54,9 +49,8 @@ fn main() {
         Input::Stdin(stdin())
     };
 
-
     // initialise rustbox
-    let rb = match RustBox::init(InitOptions{
+    let rb = match RustBox::init(InitOptions {
         buffer_stderr: stderr_is_atty,
         input_mode: InputMode::Esc,
         output_mode: OutputMode::EightBit,
@@ -69,9 +63,9 @@ fn main() {
     let mode: Box<Mode> = if args.flag_vi {
         Box::new(NormalMode::new())
     } else if args.flag_emacs {
-        Box::new(EmacsMode::new())    
+        Box::new(EmacsMode::new())
     } else {
-         Box::new(StandardMode::new())
+        Box::new(StandardMode::new())
     };
 
     // start the editor

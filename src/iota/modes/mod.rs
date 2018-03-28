@@ -1,15 +1,15 @@
-use keyboard::Key;
 use command::BuilderEvent;
+use keyboard::Key;
 
-pub use self::standard::StandardMode;
-pub use self::normal::NormalMode;
-pub use self::insert::InsertMode;
 pub use self::emacs::EmacsMode;
+pub use self::insert::InsertMode;
+pub use self::normal::NormalMode;
+pub use self::standard::StandardMode;
 
-mod standard;
-mod normal;
-mod insert;
 mod emacs;
+mod insert;
+mod normal;
+mod standard;
 
 #[derive(Copy, Clone, Debug)]
 pub enum ModeType {
@@ -18,7 +18,7 @@ pub enum ModeType {
 }
 
 /// The concept of Iota's modes are taken from Vi.
-/// 
+///
 /// A mode is a mechanism for interpreting key events and converting them into
 /// commands which the Editor will interpret.
 pub trait Mode {

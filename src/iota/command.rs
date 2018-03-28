@@ -1,8 +1,8 @@
 use buffer::Mark;
-use textobject::{ TextObject, Offset, Kind };
-use overlay::OverlayType;
-use modes::ModeType;
 use keymap::CommandInfo;
+use modes::ModeType;
+use overlay::OverlayType;
+use textobject::{Kind, Offset, TextObject};
 
 /// Instructions for the Editor.
 /// These do NOT alter the text, but may change editor/view state
@@ -27,12 +27,12 @@ pub enum Instruction {
 /// to concrete operations on absolute indexes (insert 'a' at index 158, etc.)
 #[derive(Clone)]
 pub enum Operation {
-    Insert(char), // insert text
+    Insert(char),         // insert text
     DeleteObject,         // delete some object
     DeleteFromMark(Mark), // delete from some mark to an object
 
-    Undo,         // rewind buffer transaction log
-    Redo,         // replay buffer transaction log
+    Undo, // rewind buffer transaction log
+    Redo, // replay buffer transaction log
 }
 
 #[derive(Clone)]
@@ -44,8 +44,8 @@ pub enum Action {
 /// A complete, actionable command
 #[derive(Clone)]
 pub struct Command {
-    pub number: i32,        // numeric paramter, line number, repeat count, etc.
-    pub action: Action,     // what to do
+    pub number: i32,                // numeric paramter, line number, repeat count, etc.
+    pub action: Action,             // what to do
     pub object: Option<TextObject>, // where to do it
 }
 
@@ -127,7 +127,7 @@ impl Command {
         Command {
             number: 1,
             action: Action::Operation(Operation::Undo),
-            object: None
+            object: None,
         }
     }
 
@@ -136,7 +136,7 @@ impl Command {
         Command {
             number: 1,
             action: Action::Operation(Operation::Redo),
-            object: None
+            object: None,
         }
     }
 
@@ -150,8 +150,8 @@ impl Command {
             action: Action::Instruction(Instruction::SetMark(Mark::Cursor(0))),
             object: Some(TextObject {
                 kind: kind,
-                offset: offset
-            })
+                offset: offset,
+            }),
         }
     }
 
@@ -231,9 +231,8 @@ impl BuilderArgs {
     }
 }
 
-
 pub enum BuilderEvent {
-    Invalid,            // cannot find a valid interpretation
-    Incomplete,         // needs more information
-    Complete(CommandInfo),  // command is finished
+    Invalid,               // cannot find a valid interpretation
+    Incomplete,            // needs more information
+    Complete(CommandInfo), // command is finished
 }

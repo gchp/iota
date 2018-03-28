@@ -42,7 +42,10 @@ impl LogEntry {
         LogEntry {
             init_point: self.end_point,
             end_point: self.init_point,
-            changes: self.changes.into_iter().map( |change| change.reverse() ).collect(),
+            changes: self.changes
+                .into_iter()
+                .map(|change| change.reverse())
+                .collect(),
         }
     }
 }
@@ -73,11 +76,13 @@ impl<'a> Transaction<'a> {
 impl<'a> Drop for Transaction<'a> {
     fn drop(&mut self) {
         // Check to see if there were any changes, and if not return early.
-        if self.entry.changes.is_empty() { return }
+        if self.entry.changes.is_empty() {
+            return;
+        }
         // Create the new log entry
         let entry = LogEntry {
             changes: mem::replace(&mut self.entry.changes, Vec::new()),
-            .. self.entry
+            ..self.entry
         };
         // Commit the transaction.
         self.entries.undo.push(entry);
@@ -107,7 +112,7 @@ impl Log {
     /// Start a new transaction.
     ///
     /// This returns a RAII guard that can be used to record edits during the transaction.
-    #[cfg_attr(feature="clippy", allow(needless_lifetimes))]
+    #[cfg_attr(feature = "clippy", allow(needless_lifetimes))]
     pub fn start(&mut self, idx: usize) -> Transaction {
         Transaction {
             entries: self,
@@ -115,7 +120,7 @@ impl Log {
                 init_point: idx,
                 end_point: idx,
                 changes: Vec::new(),
-            }
+            },
         }
     }
 
@@ -128,8 +133,8 @@ impl Log {
                 let last = self.redo.len();
                 self.redo.push(change.reverse());
                 Some(&self.redo[last])
-            },
-            None => None
+            }
+            None => None,
         }
     }
     /// This reverses the most recent change on the redo stack, places the new change on the undo
@@ -141,8 +146,8 @@ impl Log {
                 let last = self.undo.len();
                 self.undo.push(change.reverse());
                 Some(&self.undo[last])
-            },
-            None => None
+            }
+            None => None,
         }
     }
 }

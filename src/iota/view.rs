@@ -1,21 +1,20 @@
-use std::cmp;
+use rustbox::{Color, RustBox, Style as RustBoxStyle};
 use std::borrow::Cow;
+use std::cmp;
+use std::fs::{rename, File};
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
-use std::io::Write;
-use std::fs::{File, rename};
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
-use rustbox::{Color, RustBox, Style as RustBoxStyle};
 
 use tempdir::TempDir;
 use unicode_width::UnicodeWidthChar;
 
 use buffer::{Buffer, Mark};
 use overlay::{CommandPrompt, Overlay, OverlayType};
+use textobject::{Anchor, Kind, Offset, TextObject};
 use utils;
-use textobject::{Anchor, TextObject, Kind, Offset};
-
 
 /// A View is an abstract Window (into a Buffer).
 ///
@@ -50,7 +49,6 @@ pub struct View<'v> {
 }
 
 impl<'v> View<'v> {
-
     pub fn new(buffer: Arc<Mutex<Buffer>>, width: usize, height: usize) -> View<'v> {
         let cursor = Mark::Cursor(0);
         let top_line = Mark::DisplayMark(0);
@@ -93,7 +91,7 @@ impl<'v> View<'v> {
         let buffer = self.buffer.clone();
         let last_buffer = match self.last_buffer.clone() {
             Some(buf) => buf,
-            None => return
+            None => return,
         };
 
         self.buffer = last_buffer;
@@ -126,7 +124,14 @@ impl<'v> View<'v> {
     pub fn clear(&mut self, rb: &mut RustBox) {
         for row in 0..self.height {
             for col in 0..self.width {
-                rb.print_char(col, row, RustBoxStyle::empty(), Color::White, Color::Black, ' ');
+                rb.print_char(
+                    col,
+                    row,
+                    RustBoxStyle::empty(),
+                    Color::White,
+                    Color::Black,
+                    ' ',
+                );
             }
         }
     }
@@ -146,7 +151,6 @@ impl<'v> View<'v> {
                 let line = lines.next().unwrap_or_else(Vec::new);
                 draw_line(rb, &line, y_position, self.left_col);
             }
-
         }
 
         self.draw_status(rb);
@@ -160,35 +164,61 @@ impl<'v> View<'v> {
         }
     }
 
-    #[cfg_attr(feature="clippy", allow(needless_range_loop))]
+    #[cfg_attr(feature = "clippy", allow(needless_range_loop))]
     fn draw_status(&mut self, rb: &mut RustBox) {
         let buffer = self.buffer.lock().unwrap();
         let buffer_status = buffer.status_text();
-        let mut cursor_status = buffer.get_mark_display_coords(self.cursor).unwrap_or((0,0));
+        let mut cursor_status = buffer
+            .get_mark_display_coords(self.cursor)
+            .unwrap_or((0, 0));
         cursor_status = (cursor_status.0 + 1, cursor_status.1 + 1);
-        let status_text = format!("{} ({}, {})", buffer_status, cursor_status.0, cursor_status.1).into_bytes();
+        let status_text = format!(
+            "{} ({}, {})",
+            buffer_status, cursor_status.0, cursor_status.1
+        ).into_bytes();
         let status_text_len = status_text.len();
         let width = self.get_width();
         let height = self.get_height() - 1;
 
-
         for index in 0..width {
             let ch: char = if index < status_text_len {
                 status_text[index] as char
-            } else { ' ' };
-            rb.print_char(index, height, RustBoxStyle::empty(), Color::Black, Color::Byte(19), ch);
-
+            } else {
+                ' '
+            };
+            rb.print_char(
+                index,
+                height,
+                RustBoxStyle::empty(),
+                Color::Black,
+                Color::Byte(19),
+                ch,
+            );
         }
 
         if buffer.dirty {
             let data = ['[', '*', ']'];
             for (idx, ch) in data.iter().enumerate() {
-                rb.print_char(status_text_len + idx + 1, height, RustBoxStyle::empty(), Color::Black, Color::Red, *ch);
+                rb.print_char(
+                    status_text_len + idx + 1,
+                    height,
+                    RustBoxStyle::empty(),
+                    Color::Black,
+                    Color::Red,
+                    *ch,
+                );
             }
         }
         if let Some((ref message, _time)) = self.message {
             for (offset, ch) in message.chars().enumerate() {
-                rb.print_char(offset, height + 1, RustBoxStyle::empty(), Color::White, Color::Black, ch);
+                rb.print_char(
+                    offset,
+                    height + 1,
+                    RustBoxStyle::empty(),
+                    Color::White,
+                    Color::Black,
+                    ch,
+                );
             }
         }
     }
@@ -197,7 +227,10 @@ impl<'v> View<'v> {
         let buffer = self.buffer.lock().unwrap();
         if let Some(top_line) = buffer.get_mark_display_coords(self.top_line) {
             if let Some((x, y)) = buffer.get_mark_display_coords(self.cursor) {
-                rb.set_cursor((x - self.left_col) as isize, y as isize - top_line.1 as isize);
+                rb.set_cursor(
+                    (x - self.left_col) as isize,
+                    y as isize - top_line.1 as isize,
+                );
             }
         }
     }
@@ -241,21 +274,21 @@ impl<'v> View<'v> {
     /// Update the top_line mark if necessary to keep the cursor on the screen.
     fn maybe_move_screen(&mut self) {
         let mut buffer = self.buffer.lock().unwrap();
-        if let (Some(cursor), Some((_, top_line))) = (buffer.get_mark_display_coords(self.cursor),
-                                                      buffer.get_mark_display_coords(self.top_line)) {
-
-            let width  = (self.get_width()  - self.threshold) as isize;
+        if let (Some(cursor), Some((_, top_line))) = (
+            buffer.get_mark_display_coords(self.cursor),
+            buffer.get_mark_display_coords(self.top_line),
+        ) {
+            let width = (self.get_width() - self.threshold) as isize;
             let height = (self.get_height() - self.threshold) as isize;
 
             //left-right shifting
             self.left_col = match cursor.0 as isize - self.left_col as isize {
-                x_offset if x_offset < self.threshold as isize => {
-                    cmp::max(0, self.left_col as isize - (self.threshold as isize - x_offset)) as usize
-                }
-                x_offset if x_offset >= width => {
-                    self.left_col + (x_offset - width + 1) as usize
-                }
-                _ => { self.left_col }
+                x_offset if x_offset < self.threshold as isize => cmp::max(
+                    0,
+                    self.left_col as isize - (self.threshold as isize - x_offset),
+                ) as usize,
+                x_offset if x_offset >= width => self.left_col + (x_offset - width + 1) as usize,
+                _ => self.left_col,
             };
 
             //up-down shifting
@@ -264,7 +297,7 @@ impl<'v> View<'v> {
                     let amount = (self.threshold as isize - y_offset) as usize;
                     let obj = TextObject {
                         kind: Kind::Line(Anchor::Same),
-                        offset: Offset::Backward(amount, self.top_line)
+                        offset: Offset::Backward(amount, self.top_line),
                     };
                     buffer.set_mark_to_object(self.top_line, obj);
                 }
@@ -272,11 +305,11 @@ impl<'v> View<'v> {
                     let amount = (y_offset - height + 1) as usize;
                     let obj = TextObject {
                         kind: Kind::Line(Anchor::Same),
-                        offset: Offset::Forward(amount, self.top_line)
+                        offset: Offset::Forward(amount, self.top_line),
                     };
                     buffer.set_mark_to_object(self.top_line, obj);
                 }
-                _ => { }
+                _ => {}
             }
         }
     }
@@ -298,12 +331,15 @@ impl<'v> View<'v> {
 
     /// Insert a chacter into the buffer & update cursor position accordingly.
     pub fn insert_char(&mut self, ch: char) {
-        self.buffer.lock().unwrap().insert_char(self.cursor, ch as u8);
+        self.buffer
+            .lock()
+            .unwrap()
+            .insert_char(self.cursor, ch as u8);
         // NOTE: the last param to char_width here may not be correct
         if let Some(ch_width) = utils::char_width(ch, false, 4, 1) {
             let obj = TextObject {
                 kind: Kind::Char,
-                offset: Offset::Forward(ch_width, Mark::Cursor(0))
+                offset: Offset::Forward(ch_width, Mark::Cursor(0)),
             };
             self.move_mark(Mark::Cursor(0), obj)
         }
@@ -312,8 +348,11 @@ impl<'v> View<'v> {
     pub fn undo(&mut self) {
         {
             let mut buffer = self.buffer.lock().unwrap();
-            let point = if let Some(transaction) = buffer.undo() { transaction.end_point }
-                        else { return; };
+            let point = if let Some(transaction) = buffer.undo() {
+                transaction.end_point
+            } else {
+                return;
+            };
             buffer.set_mark(self.cursor, point);
         }
         self.maybe_move_screen();
@@ -322,8 +361,11 @@ impl<'v> View<'v> {
     pub fn redo(&mut self) {
         {
             let mut buffer = self.buffer.lock().unwrap();
-            let point = if let Some(transaction) = buffer.redo() { transaction.end_point }
-                        else { return; };
+            let point = if let Some(transaction) = buffer.redo() {
+                transaction.end_point
+            } else {
+                return;
+            };
             buffer.set_mark(self.cursor, point);
         }
         self.maybe_move_screen();
@@ -342,19 +384,17 @@ impl<'v> View<'v> {
                 //
                 // TODO: ask the user to submit a bug report on how they hit this.
                 Cow::Owned(PathBuf::from("untitled"))
-            },
+            }
         };
         let tmpdir = match TempDir::new_in(&Path::new("."), "iota") {
             Ok(d) => d,
-            Err(e) => panic!("file error: {}", e)
+            Err(e) => panic!("file error: {}", e),
         };
 
         let tmppath = tmpdir.path().join(Path::new("tmpfile"));
         let mut file = match File::create(&tmppath) {
             Ok(f) => f,
-            Err(e) => {
-                panic!("file error: {}", e)
-            }
+            Err(e) => panic!("file error: {}", e),
         };
 
         //TODO (lee): Is iteration still necessary in this format?
@@ -378,7 +418,9 @@ impl<'v> View<'v> {
             let buffer = self.buffer.lock().unwrap();
 
             match buffer.file_path {
-                Some(_) => { should_save = true; }
+                Some(_) => {
+                    should_save = true;
+                }
                 None => {
                     self.message = Some(("No file name".into(), SystemTime::now()));
                 }
@@ -396,7 +438,6 @@ impl<'v> View<'v> {
     pub fn buffer_is_dirty(&mut self) -> bool {
         self.buffer.lock().unwrap().dirty
     }
-
 }
 
 pub fn draw_line(rb: &mut RustBox, line: &[u8], idx: usize, left: usize) {
@@ -409,13 +450,27 @@ pub fn draw_line(rb: &mut RustBox, line: &[u8], idx: usize, left: usize) {
             '\t' => {
                 let w = 4 - x % 4;
                 for _ in 0..w {
-                    rb.print_char(x, idx, RustBoxStyle::empty(), Color::White, Color::Black, ' ');
+                    rb.print_char(
+                        x,
+                        idx,
+                        RustBoxStyle::empty(),
+                        Color::White,
+                        Color::Black,
+                        ' ',
+                    );
                     x += 1;
                 }
             }
             '\n' => {}
             _ => {
-                rb.print_char(x, idx, RustBoxStyle::empty(), Color::White, Color::Black, ch);
+                rb.print_char(
+                    x,
+                    idx,
+                    RustBoxStyle::empty(),
+                    Color::White,
+                    Color::Black,
+                    ch,
+                );
                 x += UnicodeWidthChar::width(ch).unwrap_or(1);
             }
         }
@@ -426,23 +481,41 @@ pub fn draw_line(rb: &mut RustBox, line: &[u8], idx: usize, left: usize) {
 
     // Replace any cells after end of line with ' '
     while x < width {
-        rb.print_char(x, idx, RustBoxStyle::empty(), Color::White, Color::Black, ' ');
+        rb.print_char(
+            x,
+            idx,
+            RustBoxStyle::empty(),
+            Color::White,
+            Color::Black,
+            ' ',
+        );
         x += 1;
     }
 
     // If the line is too long to fit on the screen, show an indicator
-    let indicator = if line.len() > width + left { '→' } else { ' ' };
-    rb.print_char(width, idx, RustBoxStyle::empty(), Color::White, Color::Black, indicator);
+    let indicator = if line.len() > width + left {
+        '→'
+    } else {
+        ' '
+    };
+    rb.print_char(
+        width,
+        idx,
+        RustBoxStyle::empty(),
+        Color::White,
+        Color::Black,
+        indicator,
+    );
 }
 
 #[cfg(test)]
 mod tests {
 
-    use std::sync::{Arc, Mutex};
     use std::rc::Rc;
+    use std::sync::{Arc, Mutex};
 
-    use view::View;
     use buffer::Buffer;
+    use view::View;
 
     fn setup_view(testcase: &'static str) -> View {
         let buffer = Arc::new(Mutex::new(Buffer::new()));

@@ -1,12 +1,10 @@
-use keyboard::Key;
-use keymap::{KeyMap, KeyMapState, CommandInfo};
-use command::{BuilderEvent, BuilderArgs };
 use buffer::Mark;
-use textobject::{ Offset, Kind, Anchor };
+use command::{BuilderArgs, BuilderEvent};
+use keyboard::Key;
+use keymap::{CommandInfo, KeyMap, KeyMapState};
+use textobject::{Anchor, Kind, Offset};
 
 use super::Mode;
-
-
 
 /// Standard mode is Iota's default mode.
 ///
@@ -22,7 +20,6 @@ pub struct StandardMode {
 }
 
 impl StandardMode {
-
     /// Create a new instance of StandardMode
     pub fn new() -> StandardMode {
         StandardMode {
@@ -41,14 +38,14 @@ impl StandardMode {
             CommandInfo {
                 command_name: String::from("editor::quit"),
                 args: None,
-            }
+            },
         );
         keymap.bind_key(
             Key::Ctrl('s'),
             CommandInfo {
                 command_name: String::from("editor::save_buffer"),
                 args: None,
-            }
+            },
         );
 
         // Cursor movement
@@ -56,67 +53,91 @@ impl StandardMode {
             Key::Up,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
-                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Line(Anchor::Same))
+                        .with_offset(Offset::Backward(1, Mark::Cursor(0))),
+                ),
+            },
         );
         keymap.bind_key(
             Key::Down,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
-                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Line(Anchor::Same))
+                        .with_offset(Offset::Forward(1, Mark::Cursor(0))),
+                ),
+            },
         );
         keymap.bind_key(
             Key::Left,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Char)
-                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Char)
+                        .with_offset(Offset::Backward(1, Mark::Cursor(0))),
+                ),
+            },
         );
         keymap.bind_key(
             Key::Right,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Char)
-                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Char)
+                        .with_offset(Offset::Forward(1, Mark::Cursor(0))),
+                ),
+            },
         );
 
         keymap.bind_key(
             Key::CtrlRight,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Word(Anchor::Start))
-                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Word(Anchor::Start))
+                        .with_offset(Offset::Forward(1, Mark::Cursor(0))),
+                ),
+            },
         );
         keymap.bind_key(
             Key::CtrlLeft,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Word(Anchor::Start))
-                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Word(Anchor::Start))
+                        .with_offset(Offset::Backward(1, Mark::Cursor(0))),
+                ),
+            },
         );
-    
+
         keymap.bind_key(
             Key::End,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::End))
-                                             .with_offset(Offset::Forward(0, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Line(Anchor::End))
+                        .with_offset(Offset::Forward(0, Mark::Cursor(0))),
+                ),
+            },
         );
         keymap.bind_key(
             Key::Home,
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::End))
-                                             .with_offset(Offset::Backward(0, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Line(Anchor::End))
+                        .with_offset(Offset::Backward(0, Mark::Cursor(0))),
+                ),
+            },
         );
 
         // Editing
@@ -125,30 +146,36 @@ impl StandardMode {
             CommandInfo {
                 command_name: String::from("buffer::insert_tab"),
                 args: None,
-            }
+            },
         );
         keymap.bind_key(
             Key::Enter,
             CommandInfo {
                 command_name: String::from("buffer::insert_char"),
                 args: Some(BuilderArgs::new().with_char_arg('\n')),
-            }
+            },
         );
         keymap.bind_key(
             Key::Backspace,
             CommandInfo {
                 command_name: String::from("buffer::delete_char"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Char)
-                                             .with_offset(Offset::Backward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Char)
+                        .with_offset(Offset::Backward(1, Mark::Cursor(0))),
+                ),
+            },
         );
         keymap.bind_key(
             Key::Backspace,
             CommandInfo {
                 command_name: String::from("buffer::delete_char"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Char)
-                                             .with_offset(Offset::Forward(1, Mark::Cursor(0))))
-            }
+                args: Some(
+                    BuilderArgs::new()
+                        .with_kind(Kind::Char)
+                        .with_offset(Offset::Forward(1, Mark::Cursor(0))),
+                ),
+            },
         );
 
         // History
@@ -157,14 +184,14 @@ impl StandardMode {
             CommandInfo {
                 command_name: String::from("editor::undo"),
                 args: None,
-            }
+            },
         );
         keymap.bind_key(
             Key::Ctrl('r'),
             CommandInfo {
                 command_name: String::from("editor::redo"),
                 args: None,
-            }
+            },
         );
 
         keymap
@@ -184,7 +211,7 @@ impl StandardMode {
             KeyMapState::Match(c) => {
                 self.match_in_progress = false;
                 BuilderEvent::Complete(c)
-            },
+            }
             KeyMapState::Continue => {
                 self.match_in_progress = true;
                 BuilderEvent::Incomplete
@@ -195,7 +222,6 @@ impl StandardMode {
             }
         }
     }
-
 }
 
 impl Mode for StandardMode {
@@ -203,7 +229,7 @@ impl Mode for StandardMode {
     /// If no match is found, treat it as an InsertChar command.
     fn handle_key_event(&mut self, key: Key) -> BuilderEvent {
         if self.match_in_progress {
-            return self.check_key(key)
+            return self.check_key(key);
         }
 
         if let Key::Char(c) = key {
@@ -215,7 +241,6 @@ impl Mode for StandardMode {
         } else {
             self.check_key(key)
         }
-
     }
 }
 

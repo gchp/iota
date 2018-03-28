@@ -1,19 +1,18 @@
-use std::path::PathBuf;
-use std::sync::{Mutex, Arc};
-use std::sync::mpsc::{Sender, Receiver};
-use std::sync::mpsc::channel;
 use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::mpsc::channel;
+use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, Mutex};
 
-use rustbox::{RustBox, Event};
+use rustbox::{Event, RustBox};
 
-use input::Input;
-use keyboard::Key;
-use view::View;
-use modes::{Mode, ModeType, InsertMode, NormalMode};
 use buffer::Buffer;
 use command::Command;
-use command::{Action, BuilderEvent, BuilderArgs, Operation, Instruction};
-
+use command::{Action, BuilderArgs, BuilderEvent, Instruction, Operation};
+use input::Input;
+use keyboard::Key;
+use modes::{InsertMode, Mode, ModeType, NormalMode};
+use view::View;
 
 type EditorCommand = fn(Option<BuilderArgs>) -> Command;
 lazy_static! {
@@ -34,7 +33,6 @@ lazy_static! {
         map.insert("buffer::insert_char", Command::insert_char);
         map.insert("buffer::insert_tab", Command::insert_tab);
 
-
         map
     };
 }
@@ -54,7 +52,6 @@ pub struct Editor<'e> {
 }
 
 impl<'e> Editor<'e> {
-
     /// Create a new Editor instance from the given source
     pub fn new(source: Input, mode: Box<Mode + 'e>, rb: RustBox) -> Editor<'e> {
         let height = rb.height();
@@ -65,15 +62,11 @@ impl<'e> Editor<'e> {
         let mut buffers = Vec::new();
 
         let buffer = match source {
-            Input::Filename(path) => {
-                match path {
-                    Some(path) => Buffer::from(PathBuf::from(path)),
-                    None       => Buffer::new(),
-                }
+            Input::Filename(path) => match path {
+                Some(path) => Buffer::from(PathBuf::from(path)),
+                None => Buffer::new(),
             },
-            Input::Stdin(reader) => {
-                Buffer::from(reader)
-            }
+            Input::Stdin(reader) => Buffer::from(reader),
         };
         buffers.push(Arc::new(Mutex::new(buffer)));
 
@@ -104,14 +97,14 @@ impl<'e> Editor<'e> {
     /// Mode, which returns a Command which we dispatch to handle_command.
     fn handle_key_event(&mut self, event: Event) {
         let key = Key::from_event(&mut self.rb, event);
- 
+
         let key = match key {
             Some(k) => k,
-            None => return
+            None => return,
         };
 
         let command = match self.view.overlay {
-            None                  => self.mode.handle_key_event(key),
+            None => self.mode.handle_key_event(key),
             Some(ref mut overlay) => overlay.handle_key_event(key),
         };
 
@@ -149,7 +142,9 @@ impl<'e> Editor<'e> {
     fn handle_command(&mut self, command: Command) {
         let repeat = if command.number > 0 {
             command.number
-        } else { 1 };
+        } else {
+            1
+        };
         for _ in 0..repeat {
             match command.action {
                 Action::Instruction(_) => self.handle_instruction(command.clone()),
@@ -158,10 +153,9 @@ impl<'e> Editor<'e> {
         }
     }
 
-
     fn handle_instruction(&mut self, command: Command) {
         match command.action {
-            Action::Instruction(Instruction::SaveBuffer) => { self.view.try_save_buffer() }
+            Action::Instruction(Instruction::SaveBuffer) => self.view.try_save_buffer(),
             Action::Instruction(Instruction::ExitEditor) => {
                 if self.view.buffer_is_dirty() {
                     let args = BuilderArgs::new().with_str("Unsaved changes".into());
@@ -169,7 +163,6 @@ impl<'e> Editor<'e> {
                 } else {
                     self.running = false;
                 }
-
             }
             Action::Instruction(Instruction::SetMark(mark)) => {
                 if let Some(object) = command.object {
@@ -179,19 +172,15 @@ impl<'e> Editor<'e> {
             Action::Instruction(Instruction::SetOverlay(overlay_type)) => {
                 self.view.set_overlay(overlay_type)
             }
-            Action::Instruction(Instruction::SetMode(mode)) => {
-                match mode {
-                    ModeType::Insert => { self.mode = Box::new(InsertMode::new()) }
-                    ModeType::Normal => { self.mode = Box::new(NormalMode::new()) }
-                }
-            }
+            Action::Instruction(Instruction::SetMode(mode)) => match mode {
+                ModeType::Insert => self.mode = Box::new(InsertMode::new()),
+                ModeType::Normal => self.mode = Box::new(NormalMode::new()),
+            },
             Action::Instruction(Instruction::SwitchToLastBuffer) => {
                 self.view.switch_last_buffer();
                 self.view.clear(&mut self.rb);
             }
-            Action::Instruction(Instruction::ShowMessage(msg)) => {
-                self.view.show_message(msg)
-            }
+            Action::Instruction(Instruction::ShowMessage(msg)) => self.view.show_message(msg),
 
             _ => {}
         }
@@ -199,11 +188,9 @@ impl<'e> Editor<'e> {
 
     fn handle_operation(&mut self, command: Command) {
         match command.action {
-            Action::Operation(Operation::Insert(c)) => {
-                for _ in 0..command.number {
-                    self.view.insert_char(c)
-                }
-            }
+            Action::Operation(Operation::Insert(c)) => for _ in 0..command.number {
+                self.view.insert_char(c)
+            },
             Action::Operation(Operation::DeleteObject) => {
                 if let Some(obj) = command.object {
                     self.view.delete_object(obj);
@@ -211,11 +198,12 @@ impl<'e> Editor<'e> {
             }
             Action::Operation(Operation::DeleteFromMark(m)) => {
                 if command.object.is_some() {
-                    self.view.delete_from_mark_to_object(m, command.object.unwrap())
+                    self.view
+                        .delete_from_mark_to_object(m, command.object.unwrap())
                 }
             }
-            Action::Operation(Operation::Undo) => { self.view.undo() }
-            Action::Operation(Operation::Redo) => { self.view.redo() }
+            Action::Operation(Operation::Undo) => self.view.undo(),
+            Action::Operation(Operation::Redo) => self.view.redo(),
 
             Action::Instruction(_) => {}
         }
@@ -229,7 +217,9 @@ impl<'e> Editor<'e> {
             self.view.maybe_clear_message();
 
             match self.rb.poll_event(true) {
-                Ok(Event::ResizeEvent(width, height)) => self.handle_resize_event(width as usize, height as usize),
+                Ok(Event::ResizeEvent(width, height)) => {
+                    self.handle_resize_event(width as usize, height as usize)
+                }
                 Ok(key_event) => self.handle_key_event(key_event),
                 _ => {}
             }
