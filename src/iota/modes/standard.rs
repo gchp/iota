@@ -137,15 +137,15 @@ impl StandardMode {
         keymap.bind_key(
             Key::Backspace,
             CommandInfo {
-                command_name: String::from("buffer::delete_char"),
+                command_name: String::from("buffer::delete"),
                 args: Some(BuilderArgs::new().with_kind(Kind::Char)
                                              .with_offset(Offset::Backward(1, Mark::Cursor(0))))
             }
         );
         keymap.bind_key(
-            Key::Backspace,
+            Key::Delete,
             CommandInfo {
-                command_name: String::from("buffer::delete_char"),
+                command_name: String::from("buffer::delete"),
                 args: Some(BuilderArgs::new().with_kind(Kind::Char)
                                              .with_offset(Offset::Forward(1, Mark::Cursor(0))))
             }
