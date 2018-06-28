@@ -145,8 +145,6 @@ impl KeyMap {
     // }
 }
 
-
-#[derive(Clone)]
 pub struct KeyBinding {
     pub keys: Vec<Key>,
     pub command_info: CommandInfo,
