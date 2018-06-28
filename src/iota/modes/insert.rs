@@ -88,7 +88,7 @@ impl InsertMode {
             }
         );
         keymap.bind_key(
-            Key::Backspace,
+            Key::Delete,
             CommandInfo {
                 command_name: String::from("buffer::delete_char"),
                 args: Some(BuilderArgs::new().with_kind(Kind::Char)

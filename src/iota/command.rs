@@ -101,6 +101,21 @@ impl Command {
         }
     }
 
+    /// Shortcut to create a Delete command
+    pub fn delete_char(args: Option<BuilderArgs>) -> Command {
+        let args = args.expect("no arguments given to delete_char");
+        let kind = args.kind.expect("no kind provided");
+        let offset = args.offset.expect("no offset provided");
+        Command {
+            number: 1,
+            action: Action::Operation(Operation::DeleteFromMark(Mark::Cursor(0))),
+            object: Some(TextObject {
+                kind: kind,
+                offset: offset
+            })
+        }
+    }
+
     /// Shortcut to create an Insert command
     pub fn insert_char(args: Option<BuilderArgs>) -> Command {
         let args = args.expect("no arguments given to insert_char");

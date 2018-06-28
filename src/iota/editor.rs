@@ -33,6 +33,7 @@ lazy_static! {
         map.insert("buffer::move_cursor", Command::move_cursor);
         map.insert("buffer::insert_char", Command::insert_char);
         map.insert("buffer::insert_tab", Command::insert_tab);
+        map.insert("buffer::delete_char", Command::delete_char);
 
 
         map
