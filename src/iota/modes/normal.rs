@@ -92,7 +92,7 @@ impl NormalMode {
             Key::Char('0'),
             CommandInfo {
                 command_name: String::from("buffer::move_cursor"),
-                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::End))
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Start))
                                              .with_offset(Offset::Backward(0, Mark::Cursor(0))))
             }
         );
