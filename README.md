@@ -47,7 +47,8 @@ integration with Rust tooling. This could also be applied to other languages too
 
 Clone the project and run `cargo build --release`.
 
-**NOTE:** Iota needs to be built using the nightly toolchain for now, not stable.
+**NOTE:** Iota needs to be built using the nightly toolchain for now, not stable.<br>
+Run the following commands - `$ rustup install nightly` following which run - `$ rustup override set nightly `.<br>
 [Rustup](https://github.com/rust-lang-nursery/rustup.rs) is very useful for managing
 multiple rust versions.
 
