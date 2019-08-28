@@ -47,6 +47,7 @@ pub struct Editor<'e> {
     buffers: Vec<Arc<Mutex<Buffer>>>,
     view: View<'e>,
     running: bool,
+    force_quit: bool,
     rb: RustBox,
     mode: Box<Mode + 'e>,
 
@@ -84,6 +85,7 @@ impl<'e> Editor<'e> {
             buffers: buffers,
             view: view,
             running: true,
+            force_quit: false,
             rb: rb,
             mode: mode,
 
@@ -164,9 +166,10 @@ impl<'e> Editor<'e> {
         match command.action {
             Action::Instruction(Instruction::SaveBuffer) => { self.view.try_save_buffer() }
             Action::Instruction(Instruction::ExitEditor) => {
-                if self.view.buffer_is_dirty() {
-                    let args = BuilderArgs::new().with_str("Unsaved changes".into());
+                if self.view.buffer_is_dirty() && ! self.force_quit {
+                    let args = BuilderArgs::new().with_str("Unsaved changes (press ctrl+q to force quit)".into());
                     let _ = self.command_sender.send(Command::show_message(Some(args)));
+                    self.force_quit = true;
                 } else {
                     self.running = false;
                 }
