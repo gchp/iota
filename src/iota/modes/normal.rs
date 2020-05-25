@@ -96,6 +96,22 @@ impl NormalMode {
                                              .with_offset(Offset::Backward(0, Mark::Cursor(0))))
             }
         );
+        keymap.bind_key(
+            Key::Ctrl('b'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Backward(12, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::Ctrl('f'),
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Forward(12, Mark::Cursor(0))))
+            }
+        );
 
         // actions
         keymap.bind_key(
