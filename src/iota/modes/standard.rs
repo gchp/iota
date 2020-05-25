@@ -118,6 +118,22 @@ impl StandardMode {
                                              .with_offset(Offset::Backward(0, Mark::Cursor(0))))
             }
         );
+        keymap.bind_key(
+            Key::PageUp,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Backward(12, Mark::Cursor(0))))
+            }
+        );
+        keymap.bind_key(
+            Key::PageDown,
+            CommandInfo {
+                command_name: String::from("buffer::move_cursor"),
+                args: Some(BuilderArgs::new().with_kind(Kind::Line(Anchor::Same))
+                                             .with_offset(Offset::Forward(12, Mark::Cursor(0))))
+            }
+        );
 
         // Editing
         keymap.bind_key(

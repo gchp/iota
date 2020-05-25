@@ -16,6 +16,8 @@ pub enum Key {
     Delete,
     Home,
     End,
+    PageUp,
+    PageDown,
     CtrlLeft,
     CtrlRight,
 
@@ -54,6 +56,8 @@ impl Key {
             65520 => Some(Key::End),
             65521 => Some(Key::Home),
             65522 => Some(Key::Delete),
+            65518 => Some(Key::PageDown),
+            65519 => Some(Key::PageUp),
             _     => None,
         }
     }
