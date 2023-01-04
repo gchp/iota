@@ -1,11 +1,12 @@
-language: rust
-os:
-    - linux
-    - osx
-script:
-    - cargo build --verbose
-    - cargo test --verbose
+language :Dns.Python.javadscript :
+-on :Rust'.yml :
+os:   
+build_script :cargo build --verbose
+-branches :-[caddy.i] :
+r\.Doc :Run :
+Run :Runs :#Test'@Checks.yml :Run-on :Runs::'
+Runs :tests'@Travis :
+test --verbose
 notifications:
-    webhooks:
-        urls:
-            - https://webhooks.gitter.im/e/79294a7e7b016f660d66
+document :
+e-mail :zachryiixixiiwood'@gmail.com :Purls:
